@@ -1,0 +1,38 @@
+[x] 1. Define action space (defined interface to add actions) || revisit this after the agent is defined
+[x] 2. Define observable environment
+[ ] 3. Define baseline state
+[ ] 4. Define proposed state
+[ ] 5. Define state representation
+[ ] 6. Define state transitions
+[ ] 7. Define reward events
+[ ] 8. Design Q-table
+[ ] 9. Implement Q-update
+[ ] 10. Implement ε-greedy + decay
+---------------------------------------------------------------------------- by-next-week
+[ ] 11. Build minimal environment
+[ ] 12. Implement action execution
+[ ] 13. Implement environment observation
+[ ] 14. Finish memory structures
+[ ] 15. Implement memory persistence
+[ ] 16. Implement memory retrieval
+[ ] 17. Implement memory → insight conversion
+
+[ ] 18. Implement baseline agent
+[ ] 19. Implement proposed agent
+[ ] 20. Connect memory/affect → state
+[ ] 21. Verify identical action interface
+
+[ ] 22. Build training environment
+[ ] 23. Define common training interactions
+[ ] 24. Train baseline
+[ ] 25. Train proposed agent
+[ ] 26. Add user-specific interactions
+
+[ ] 27. Test memory
+[ ] 28. Test retrieval
+[ ] 29. Test state augmentation
+[ ] 30. Test behavioural divergence
+[ ] 31. Implement logging
+[ ] 32. Define experimental scenarios
+[ ] 33. Run controlled comparison
+[ ] 34. User evaluation
