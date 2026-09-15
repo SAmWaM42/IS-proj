@@ -48,7 +48,7 @@ class memory_component
     std::vector<record> records; // raw data temp_store (can be cleared after parsing)
     void load_memory();
     void update_memory();
-    void store_context(); //might be useful to allow compression of the agent to prevent data loss 
 
+    void store_context(); //might be useful to allow compression of the agent to prevent data loss 
 
 };
