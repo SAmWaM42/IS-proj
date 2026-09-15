@@ -3,10 +3,15 @@
 #include <math.h>
 #include <vector>
 #include <memory>
+#include <map>
 
 
-
-
+class qLearning
+{ public:
+    std::string current_state;
+    std::map<std::string,std::map<std::string,float>> qtable;
+    void update();
+};
 
 
 // defentitions for action implementation
