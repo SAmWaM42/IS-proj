@@ -71,6 +71,7 @@ struct MemoryRecord {
     int observation_count = 0;
     std::string last_updated;
     float relevance = 0.0f;
+    float recency = 0.0f;
 
     void update_record();
 };
@@ -87,10 +88,49 @@ struct record {
     int observation_count = 0;
     std::string last_updated;
     float relevance = 0.0f;
+    float recency = 0.0f;
 
     record();
     void update_record();
 };
+
+struct SessionContext {
+    int current_intent = 0;
+    int target_proximity = 0;
+    int user_status = 0;
+    int energy_level = 0;
+    int stress_level = 0;
+    std::string current_action;
+    std::string last_timestamp;
+    float last_reward = 0.0f;
+};
+
+struct InteractionEvent {
+    std::string timestamp;
+    std::string action_taken;
+    std::string summary;
+    float reward = 0.0f;
+    std::string state_summary;
+    float affect_signal = 0.0f;
+};
+
+float summarizeMemorySignal(const std::vector<record>& records);
+float calculateMemoryRecordWeight(const record& entry);
+float calculateRecordSignal(const record& entry);
+std::vector<record> rankRelevantRecords(const std::vector<record>& entries, const std::string& query);
+float summarizeWeightedMemorySignal(const std::vector<record>& entries);
+bool saveMemoryRecords(const std::string& path, const std::vector<record>& records);
+std::vector<record> loadMemoryRecords(const std::string& path);
+bool saveAffectiveState(const std::string& path, const AffectiveState& affect);
+AffectiveState loadAffectiveState(const std::string& path);
+bool saveSessionContext(const std::string& path, const SessionContext& context);
+SessionContext loadSessionContext(const std::string& path);
+bool saveInteractionHistory(const std::string& path, const std::vector<InteractionEvent>& history);
+std::vector<InteractionEvent> loadInteractionHistory(const std::string& path);
+bool saveAggregateFacts(const std::string& path, const std::vector<record>& facts);
+std::vector<record> loadAggregateFacts(const std::string& path);
+std::vector<record> aggregateRestStateFacts(const std::vector<InteractionEvent>& history,
+                                          const std::vector<record>& existingFacts);
 
 class action_log {
 public:

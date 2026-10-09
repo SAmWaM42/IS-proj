@@ -29,6 +29,70 @@ bool nearlyEqual(double lhs, double rhs, double tolerance = 1e-6) {
     return std::abs(lhs - rhs) <= tolerance;
 }
 
+float normalizeEnergyLevel(Level energy) {
+    switch (energy) {
+        case Level::LOW:
+            return 0.0f;
+        case Level::MEDIUM:
+            return 0.5f;
+        case Level::HIGH:
+            return 1.0f;
+    }
+    return 0.0f;
+}
+
+int summarizeMemoryBias(float confidence, float relevance, float recency) {
+    const float normalized = std::clamp(
+        0.45f * confidence + 0.35f * relevance + 0.20f * recency,
+        0.0f,
+        1.0f);
+
+    if (normalized < 0.33f) {
+        return 0;
+    }
+    if (normalized < 0.66f) {
+        return 1;
+    }
+    return 2;
+}
+
+int summarizeAffectTrend(const AffectiveState& affect, Level energy) {
+    const float energyNorm = normalizeEnergyLevel(energy);
+    const float energyLowBias = std::pow(1.0f - energyNorm, 2.0f);
+
+    float valenceWeight = 0.0f;
+    switch (affect.valence) {
+        case AffectValence::POSITIVE:
+            valenceWeight = 1.0f;
+            break;
+        case AffectValence::NEGATIVE:
+            valenceWeight = -1.0f;
+            break;
+        case AffectValence::NEUTRAL:
+        default:
+            valenceWeight = 0.0f;
+            break;
+    }
+
+    const float affectScore = std::clamp(
+        0.25f * valenceWeight +
+            0.25f * affect.arousal +
+            0.20f * affect.engagement +
+            0.15f * affect.affinity -
+            0.20f * affect.stress -
+            0.35f * energyLowBias,
+        -1.0f,
+        1.0f);
+
+    if (affectScore < -0.10f) {
+        return 0;
+    }
+    if (std::abs(affectScore) <= 0.10f) {
+        return 1;
+    }
+    return 2;
+}
+
 std::size_t mixEncode(const std::map<std::string, distance>& environmentCondition,
                       Level energy,
                       Level stress,
@@ -36,7 +100,9 @@ std::size_t mixEncode(const std::map<std::string, distance>& environmentConditio
                       Level attachment,
                       const AffectiveState& affect,
                       float encoded_user_input,
-                      float memory) {
+                      float memory,
+                      int memoryBias,
+                      int affectTrend) {
     const int intent = std::clamp(static_cast<int>(std::round(encoded_user_input)), 0, 3);
 
     int proximity = 0;
@@ -87,9 +153,9 @@ std::size_t mixEncode(const std::map<std::string, distance>& environmentConditio
     const int arousalIdx = std::clamp(static_cast<int>(std::round(affect.arousal * 2.0f)), 0, 2);
     const int engagementIdx = std::clamp(static_cast<int>(std::round(affect.engagement * 2.0f)), 0, 2);
 
-    const std::size_t encoded =
-        (((((((((intent * 4 + proximity) * 4 + userStatus) * 4 + energyIdx) * 4 + stressIdx) * 4 + curiosityIdx) * 4 + attachmentIdx)
-            * 3 + valenceIdx) * 3 + affectEnergyIdx) * 3 + arousalIdx) * 3 + engagementIdx;
+    const std::size_t base =
+        (((((((((intent * 4 + proximity) * 4 + userStatus) * 4 + energyIdx) * 4 + stressIdx) * 4 + curiosityIdx) * 4 + attachmentIdx) * 3 + valenceIdx) * 3 + affectEnergyIdx) * 3 + arousalIdx) * 3 + engagementIdx;
+    const std::size_t encoded = (base * 3 + static_cast<std::size_t>(memoryBias)) * 3 + static_cast<std::size_t>(affectTrend);
 
     return encoded + static_cast<std::size_t>(std::round(memory));
 }
@@ -106,6 +172,163 @@ bool testBasicQUpdate() {
     const double qValue = table.getQValue(currentState, "FETCH");
     const double expected = 0.1;
     return nearlyEqual(qValue, expected, 1e-6);
+}
+
+bool testContextSummaryChangesState() {
+    const AffectiveState neutralAffect{};
+    const state baseline = makeStateWithContext(
+        1,
+        distance::CLOSE,
+        Level::LOW,
+        Level::LOW,
+        Level::MEDIUM,
+        Level::LOW,
+        0,
+        0.0f,
+        0.1f,
+        0.1f,
+        0.1f,
+        neutralAffect);
+
+    const state highMemory = makeStateWithContext(
+        1,
+        distance::CLOSE,
+        Level::LOW,
+        Level::LOW,
+        Level::MEDIUM,
+        Level::LOW,
+        0,
+        0.0f,
+        0.9f,
+        0.9f,
+        0.9f,
+        neutralAffect);
+
+    state lowEnergyVariant = baseline;
+    lowEnergyVariant.affect = AffectiveState{AffectValence::NEGATIVE, AffectEnergy::LOW, 0.2f, 0.1f, 0.8f, 0.1f};
+    lowEnergyVariant.energy = Level::LOW;
+    lowEnergyVariant.affect_trend = summarizeAffectTrend(lowEnergyVariant.affect, lowEnergyVariant.energy);
+
+    return baseline.encode() != highMemory.encode() && baseline.encode() != lowEnergyVariant.encode();
+}
+
+bool testLiveMemorySummariesChangeState() {
+    const AffectiveState neutralAffect{};
+    const std::vector<record> noMemory;
+
+    record strongEntryA;
+    strongEntryA.raw_fact.subject = "user";
+    strongEntryA.raw_fact.relation = "prefers";
+    strongEntryA.raw_fact.object = "quiet";
+    strongEntryA.confidence = 0.9f;
+    strongEntryA.relevance = 0.8f;
+    strongEntryA.recency = 0.9f;
+
+    record strongEntryB;
+    strongEntryB.raw_fact.subject = "user";
+    strongEntryB.raw_fact.relation = "likes";
+    strongEntryB.raw_fact.object = "music";
+    strongEntryB.confidence = 0.7f;
+    strongEntryB.relevance = 0.9f;
+    strongEntryB.recency = 0.8f;
+
+    const std::vector<record> strongMemory = {strongEntryA, strongEntryB};
+
+    const state neutralState = makeStateFromMemoryRecords(
+        1,
+        distance::CLOSE,
+        Level::MEDIUM,
+        Level::LOW,
+        Level::MEDIUM,
+        Level::LOW,
+        0,
+        0.0f,
+        noMemory,
+        neutralAffect);
+
+    const state memoryAwareState = makeStateFromMemoryRecords(
+        1,
+        distance::CLOSE,
+        Level::MEDIUM,
+        Level::LOW,
+        Level::MEDIUM,
+        Level::LOW,
+        0,
+        0.0f,
+        strongMemory,
+        neutralAffect);
+
+    return neutralState.encode() != memoryAwareState.encode();
+}
+
+bool testPersistenceRoundTripAndAggregation() {
+    const std::filesystem::path dir = std::filesystem::temp_directory_path() / "is2_persistence_roundtrip";
+    std::filesystem::create_directories(dir);
+
+    record memoryRecord;
+    memoryRecord.raw_fact.subject = "user";
+    memoryRecord.raw_fact.relation = "prefers";
+    memoryRecord.raw_fact.object = "quiet";
+    memoryRecord.confidence = 0.8f;
+    memoryRecord.relevance = 0.7f;
+    memoryRecord.recency = 0.9f;
+    memoryRecord.current_context = record::USER_SPECIFIC;
+    const std::vector<record> records = {memoryRecord};
+
+    const std::filesystem::path memoryPath = dir / "memory_records.json";
+    const std::filesystem::path affectPath = dir / "affect_state.json";
+    const std::filesystem::path sessionPath = dir / "session_context.json";
+    const std::filesystem::path historyPath = dir / "interaction_history.json";
+    const std::filesystem::path aggPath = dir / "aggregated_facts.json";
+
+    if (!saveMemoryRecords(memoryPath.string(), records)) {
+        return false;
+    }
+    const auto loadedRecords = loadMemoryRecords(memoryPath.string());
+
+    const AffectiveState affect{AffectValence::POSITIVE, AffectEnergy::HIGH, 0.8f, 0.9f, 0.2f, 0.7f};
+    if (!saveAffectiveState(affectPath.string(), affect)) {
+        return false;
+    }
+    const auto loadedAffect = loadAffectiveState(affectPath.string());
+
+    SessionContext context;
+    context.current_intent = 2;
+    context.target_proximity = 1;
+    context.user_status = 0;
+    context.energy_level = 1;
+    context.stress_level = 0;
+    context.current_action = "FETCH";
+    context.last_timestamp = "2026-10-09";
+    context.last_reward = 1.0f;
+    if (!saveSessionContext(sessionPath.string(), context)) {
+        return false;
+    }
+    const auto loadedContext = loadSessionContext(sessionPath.string());
+
+    const std::vector<InteractionEvent> history = {
+        {"2026-10-09T10:00:00Z", "FETCH", "user prefers quiet space", 0.5f, "quiet space", 0.4f},
+        {"2026-10-09T10:05:00Z", "FETCH", "user prefers quiet space", 0.6f, "quiet space", 0.5f},
+        {"2026-10-09T10:10:00Z", "FETCH", "user prefers quiet space", 0.7f, "quiet space", 0.6f}
+    };
+    if (!saveInteractionHistory(historyPath.string(), history)) {
+        return false;
+    }
+    const auto loadedHistory = loadInteractionHistory(historyPath.string());
+
+    const auto aggregated = aggregateRestStateFacts(loadedHistory, loadedRecords);
+    if (!saveAggregateFacts(aggPath.string(), aggregated)) {
+        return false;
+    }
+    const auto loadedAggregate = loadAggregateFacts(aggPath.string());
+
+    return !loadedRecords.empty() &&
+           loadedRecords.front().raw_fact.subject == "user" &&
+           loadedAffect.affinity == affect.affinity &&
+           loadedContext.current_action == "FETCH" &&
+           !loadedHistory.empty() &&
+           !loadedAggregate.empty() &&
+           loadedAggregate.front().confidence <= 0.35f;
 }
 
 bool testUnseenStateHandling() {
@@ -149,17 +372,73 @@ state makeState(int intent,
                 Level attachment,
                 int userStatus,
                 float memory) {
+    return makeStateWithContext(
+        intent,
+        proximity,
+        energy,
+        stress,
+        curiosity,
+        attachment,
+        userStatus,
+        memory,
+        0.0f,
+        0.0f,
+        0.0f,
+        AffectiveState{});
+}
+
+state makeStateWithContext(int intent,
+                          distance proximity,
+                          Level energy,
+                          Level stress,
+                          Level curiosity,
+                          Level attachment,
+                          int userStatus,
+                          float memory,
+                          float confidence,
+                          float relevance,
+                          float recency,
+                          const AffectiveState& affect) {
     state s;
     s.energy = energy;
     s.stress = stress;
     s.curiosity = curiosity;
     s.attachment = attachment;
-    s.affect = AffectiveState{};
+    s.affect = affect;
     s.memory = memory;
     s.encoded_user_input = static_cast<float>(intent);
     s.environmentCondition["target_proximity"] = proximity;
     s.environmentCondition["user_status"] = static_cast<distance>(userStatus);
+    s.memory_bias = summarizeMemoryBias(confidence, relevance, recency);
+    s.affect_trend = summarizeAffectTrend(s.affect, s.energy);
     return s;
+}
+
+state makeStateFromMemoryRecords(int intent,
+                                distance proximity,
+                                Level energy,
+                                Level stress,
+                                Level curiosity,
+                                Level attachment,
+                                int userStatus,
+                                float memory,
+                                const std::vector<record>& records,
+                                const AffectiveState& affect) {
+    const std::vector<record> rankedRecords = rankRelevantRecords(records, "");
+    const float memorySignal = summarizeWeightedMemorySignal(rankedRecords);
+    return makeStateWithContext(
+        intent,
+        proximity,
+        energy,
+        stress,
+        curiosity,
+        attachment,
+        userStatus,
+        memory,
+        memorySignal,
+        memorySignal,
+        memorySignal,
+        affect);
 }
 
 std::size_t state::encode() const {
@@ -171,7 +450,9 @@ std::size_t state::encode() const {
         attachment,
         affect,
         encoded_user_input,
-        memory);
+        memory,
+        memory_bias,
+        affect_trend);
 }
 
 QTable::QTable(double learningRate, double discountFactor)
@@ -367,7 +648,10 @@ bool runBaselineValidation() {
         {"Unseen state handling", testUnseenStateHandling()},
         {"Persistence", testPersistence()},
         {"Terminal handling", testTerminalHandling()},
-        {"Memory/affect encoding", testMemoryAffectStateEncoding()}
+        {"Memory/affect encoding", testMemoryAffectStateEncoding()},
+        {"Context summary state changes", testContextSummaryChangesState()},
+        {"Live memory summary state changes", testLiveMemorySummariesChangeState()},
+        {"Persistence round trip and aggregation", testPersistenceRoundTripAndAggregation()}
     };
 
     bool allPassed = true;

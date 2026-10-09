@@ -28,6 +28,8 @@ Both agents share the same environment and action definitions during the first e
 
 ## Current status
 
+Development status: Baseline
+
 The project is currently in a validated baseline stage.
 
 Verified milestones:

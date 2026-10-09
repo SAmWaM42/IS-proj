@@ -44,6 +44,8 @@ struct state
     AffectiveState affect;
     float memory = 0.0f;
     float encoded_user_input = 0.0f;
+    int memory_bias = 0;
+    int affect_trend = 0;
 
     std::size_t encode() const;
 };
@@ -124,5 +126,29 @@ state makeState(int intent,
                 Level attachment,
                 int userStatus = 0,
                 float memory = 0.0f);
+
+state makeStateWithContext(int intent,
+                          distance proximity,
+                          Level energy,
+                          Level stress,
+                          Level curiosity,
+                          Level attachment,
+                          int userStatus,
+                          float memory,
+                          float confidence,
+                          float relevance,
+                          float recency,
+                          const AffectiveState& affect);
+
+state makeStateFromMemoryRecords(int intent,
+                                distance proximity,
+                                Level energy,
+                                Level stress,
+                                Level curiosity,
+                                Level attachment,
+                                int userStatus,
+                                float memory,
+                                const std::vector<record>& records,
+                                const AffectiveState& affect);
 
 bool runBaselineValidation();
