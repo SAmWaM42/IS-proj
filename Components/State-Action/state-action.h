@@ -19,7 +19,7 @@ enum class InputType // will be used elsewhere
     QUESTION
 };
 enum class distance{
-CLOSE,MEDIUM,FAR
+CLOSE,MEDIUM,FAR,UNAVAILABLE
 };
 
 enum class Level

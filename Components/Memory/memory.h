@@ -1,107 +1,158 @@
+#pragma once
+
+#include <condition_variable>
 #include <iostream>
-#include <math.h>
-#include <vector>
 #include <json.hpp>
-#include <thread>
+#include <math.h>
 #include <mutex>
 #include <queue>
-#include <condition_variable>
+#include <string>
+#include <thread>
+#include <vector>
+
 class NLPClient;
-typedef struct
-{
+
+typedef struct {
     std::string subject;
     std::string relation;
     std::string object;
 } fact;
-typedef struct
-{
+
+typedef struct {
     std::string subject;
     float confidence;
 } ex_record;
+
 class state;
-struct record
-{
+
+enum class AffectValence {
+    NEUTRAL,
+    POSITIVE,
+    NEGATIVE
+};
+
+enum class AffectEnergy {
+    LOW,
+    MODERATE,
+    HIGH
+};
+
+struct AffectiveState {
+    AffectValence valence = AffectValence::NEUTRAL;
+    AffectEnergy energy = AffectEnergy::MODERATE;
+    float arousal = 0.5f;
+    float engagement = 0.5f;
+    float stress = 0.5f;
+    float affinity = 0.5f;
+
+    void updateFromFeedback(float reward, bool positive_feedback, bool explicit_negative);
+};
+
+enum class MemorySource {
+    USER_STATEMENT,
+    OBSERVATION,
+    ACTION_HISTORY,
+    INFERENCE
+};
+
+enum class MemoryScope {
+    GENERAL,
+    USER_SPECIFIC
+};
+
+struct MemoryRecord {
     fact raw_fact;
-    float confidence;
-    float generalization_factor;
-    enum user_context{GENERAL,USER_SPECIFIC};
-    user_context current_context;
+    float confidence = 0.0f;
+    float generalization_factor = 0.0f;
+    MemoryScope scope = MemoryScope::GENERAL;
     std::vector<std::string> relevant_users;
-    // How the fact was obtained
-    enum source_type{USER_STATEMENT,OBSERVATION,ACTION_HISTORY, INFERENCE};
-    source_type source;
-    // How often / recently this information has been reinforced
-    int observation_count;// tracking to prove confidence value
-    std::string last_updated;// How useful this memory is for retrieval
-    float relevance; // will be calculation based on a factor of confidence,generalization_factor and update_time( makes fetching faster)
+    MemorySource source = MemorySource::OBSERVATION;
+    int observation_count = 0;
+    std::string last_updated;
+    float relevance = 0.0f;
+
+    void update_record();
+};
+
+struct record {
+    fact raw_fact;
+    float confidence = 0.0f;
+    float generalization_factor = 0.0f;
+    enum user_context { GENERAL, USER_SPECIFIC };
+    user_context current_context = GENERAL;
+    std::vector<std::string> relevant_users;
+    enum source_type { USER_STATEMENT, OBSERVATION, ACTION_HISTORY, INFERENCE };
+    source_type source = OBSERVATION;
+    int observation_count = 0;
+    std::string last_updated;
+    float relevance = 0.0f;
+
     record();
     void update_record();
 };
-class action_log
-{
+
+class action_log {
+public:
     std::string action_taken;
     std::string time;
-    float count;
+    float count = 0.0f;
+
     action_log();
 };
-class cache
-{
+
+class cache {
+public:
     std::vector<ex_record> data_store;
 };
-class memory_loader
-{
+
+class memory_loader {
+public:
     nlohmann::json read_data(std::string path);
     bool save_data(std::string path);
 };
-class NLPClient
-{
-private:
-    // Python process
-    // stdin/stdout pipes
-    // Worker thread
-    std::thread worker;
 
-    // Communication
+class NLPClient {
+private:
+    std::thread worker;
     std::queue<std::string> requestQueue;
     std::queue<nlohmann::json> responseQueue;
-
-    // Synchronization
     std::mutex requestMutex;
     std::mutex responseMutex;
-    // prevents continous checks to the queues
     std::condition_variable requestCV;
     std::condition_variable responseCV;
-    // Lifecycle
-    bool running;
-    // Internal worker
+    bool running = false;
+
     void workerLoop();
-    // Communication with Python
     void sendRequest(const std::string &text);
     nlohmann::json receiveResponse();
 
 public:
-     NLPClient();
+    NLPClient();
     ~NLPClient();
     void start();
     void submitText(const std::string &text);
     nlohmann::json getResult();
     void stop();
 };
-class input_parser{};
-class memory_parser
-{
+
+class input_parser {};
+
+class memory_parser {
+public:
     std::vector<record> get_relevant_records(std::string input, state State);
     std::vector<ex_record> extract_data_from_records(std::vector<record>, NLPClient);
 };
-class memory_component
-{
+
+class memory_component {
 public:
     memory_parser parser;
     memory_loader loader;
-    cache active_mem; // store of parsed facts to prevent reparsing already known data too often
+    cache active_mem;
     std::vector<action_log> logs;
-    std::vector<record> records; // raw data temp_store (can be cleared after parsing)
+    std::vector<record> records;
+    AffectiveState affect;
+
     void load_memory();
     void update_memory();
-    void store_context(); // might be useful to allow compression of the agent to prevent data loss
+    void store_context();
 };
