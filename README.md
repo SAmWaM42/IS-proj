@@ -1,37 +1,115 @@
-# Memory System
+# Companion Agent Project
 
 ## Overview
 
-The memory component is responsible for storing, loading, updating, retrieving, and processing information that the companion agent has acquired during interactions and simulation.
+This project investigates a companion agent that learns from repeated interaction and can later incorporate persistent memory and affective state into its decision-making.
 
-The system is designed to separate **raw memories** from the smaller set of information that is relevant to the agent's current decision.
+The current work is intentionally staged:
 
-The general flow is:
+1. Establish a minimal, validated baseline learning loop.
+2. Formalise the shared state and action contracts.
+3. Add minimal memory and affect scaffolding.
+4. Integrate these components only after the baseline is stable and testable.
 
-```text
-User Input
-    ↓
-NLP Processing
-    ↓
-Input Parser
-    ↓
-Parsed Input
-    ↓
-Memory Component
-    ├── Store / Update Memory
-    ├── Retrieve Relevant Records
-    └── Extract Relevant Features
-              ↓
-        Agent / RL State
-```
-
-The memory system is therefore not intended to directly control the agent. Instead, it provides information that can be used by the agent's decision-making system.
+The project is not intended to be a general-purpose chatbot or a large-scale LLM application. It is a bounded research prototype focused on agent behaviour, learning, and perceived believability under controlled conditions.
 
 ---
 
-# Components
+## Project scope
 
-## `fact`
+The system is designed around the comparison between two experimental agents:
+
+- Baseline agent: learns from environmental observations and a fixed action space without advanced memory or affect integration.
+- Proposed agent: augments the baseline with semantic memory, affective-state variables, and memory-derived features.
+
+Both agents share the same environment and action definitions during the first experiment so that behavioural differences can be attributed to the memory/affect augmentation rather than to different underlying mechanics.
+
+---
+
+## Current status
+
+The project is currently in a validated baseline stage.
+
+Verified milestones:
+
+- A minimal C++ baseline learning loop has been implemented and validated.
+- The shared state/action contracts are formalised and documented.
+- The C++/Python tokenizer boundary has been tested successfully.
+- Minimal memory and affect scaffolding has been added as an explicit staged extension point.
+
+The current implementation does not yet combine memory and affect into the Q-learning policy. That integration remains deliberately deferred until the baseline remains stable and reproducible.
+
+---
+
+## Architecture
+
+The project separates responsibilities into bounded components:
+
+```text
+User / Interaction
+      |
+      v
+NLP Client (Python + spaCy)
+      |
+      v
+Memory Parser / Memory Layer
+      |
+      v
+Affective State
+      |
+      v
+State Builder
+      |
+      v
+Q-learning Policy
+      |
+      v
+Simulation Environment / Reward Loop
+```
+
+The main architectural rule is that the learning loop is kept separate from NLP, memory, and affect details until those interfaces are formally validated.
+
+---
+
+## Core design principles
+
+- Prefer working, testable increments over architectural complexity.
+- Keep the Q-table state bounded and deterministic.
+- Use discrete action and observation categories during the first prototype.
+- Treat memory and affect as explicit, structured inputs rather than hidden system behaviour.
+- Validate each stage before moving to the next.
+
+---
+
+## Component overview
+
+### NLP boundary
+
+The project uses a Python spaCy-based tokenizer process communicating with the C++ application through a lightweight stdin/stdout interface. This boundary was validated with a minimal C++ harness and is intended to supply structured language-processing results without making the decision layer directly dependent on Python internals.
+
+### Environment and state
+
+The environment exposes small, bounded observations such as object proximity, interaction status, and relevant task state. These are converted into discrete categories before entering the Q-table.
+
+### Learning loop
+
+The baseline uses tabular Q-learning with a fixed action space and a compact state representation. The Q-table updates based on observed rewards and the best value available in the next state.
+
+### Memory subsystem
+
+The memory layer stores structured facts, confidence, generalisation, source, scope, and relevance metadata. This allows a future retrieval process to select records that are helpful in the current context without overloading the decision system with raw historical data.
+
+### Affective state
+
+The affective layer tracks bounded variables such as valence, energy, arousal, engagement, stress, and affinity. These are designed to provide structured inputs for future state construction without yet directly changing the baseline policy.
+
+---
+
+## Minimal memory model
+
+The project currently defines a minimal memory contract intended for future retrieval and state construction.
+
+### `fact`
 
 ```cpp
 typedef struct {
@@ -41,238 +119,118 @@ typedef struct {
 } fact;
 ```
 
-Represents the basic semantic relationship contained within a piece of information.
-
-A fact follows the general structure:
+A `fact` captures the underlying semantic relationship, for example:
 
 ```text
-subject → relation → object
+user -> likes -> fetch
+agent -> observed -> user_playing_fetch
 ```
 
-For example:
-
-```text
-user → likes → fetch
-```
-
-or:
-
-```text
-agent → observed → user_playing_fetch
-```
-
-The `fact` structure represents the actual information, while a `record` contains additional metadata about that information.
-
----
-
-# `record`
+### `record`
 
 ```cpp
-class record
-{
-public:
+struct record {
     fact raw_fact;
-    float confidence;
-    float generalization_factor;
+    float confidence = 0.0f;
+    float generalization_factor = 0.0f;
+    enum user_context { GENERAL, USER_SPECIFIC };
+    user_context current_context = GENERAL;
     std::vector<std::string> relevant_users;
-
-    enum user_context
-    {
-        GENERAL,
-        USER_SPECIFIC
-    };
-
-    user_context current_context;
-
-    record();
-    void update_record();
+    enum source_type { USER_STATEMENT, OBSERVATION, ACTION_HISTORY, INFERENCE };
+    source_type source = OBSERVATION;
+    int observation_count = 0;
+    std::string last_updated;
+    float relevance = 0.0f;
 };
 ```
 
-A `record` represents a piece of information stored in the agent's long-term memory.
+A `record` augments the raw fact with metadata describing how reliable, general, and context-specific it is.
 
-Unlike a `fact`, a record contains additional information describing how reliable, general, and context-dependent the memory is.
-
-### Fields
-
-### `raw_fact`
-
-Contains the actual information being remembered.
-
-Example:
-
-```text
-user → likes → fetch
-```
-
-### `confidence`
-
-Represents how confident the system is that the stored information is accurate.
-
-Confidence can potentially be updated when the same information is observed or stated again.
-
-For example:
-
-```text
-Initial observation:
-    "I like fetch."
-
-confidence = 0.6
-
-Repeated confirmation:
-    "I really like playing fetch."
-
-confidence = 0.85
-```
-
-The exact confidence update mechanism is determined by `update_record()`.
-
-### `generalization_factor`
-
-Represents how broadly the memory can be applied.
-
-A highly specific memory might describe one particular user or situation:
-
-```text
-User likes playing fetch after work.
-```
-
-A generalized memory could become:
-
-```text
-User enjoys play after periods of inactivity.
-```
-
-The generalization factor allows the memory system to distinguish between highly specific memories and information that may be applicable in a broader context.
-
-### `relevant_users`
-
-Contains users to whom the record applies.
-
-This allows the memory system to distinguish between:
-
-```text
-General knowledge
-```
-
-and:
-
-```text
-Information specific to a particular user
-```
-
-### `user_context`
-
-Determines whether a record is general or user-specific.
+### `action_log`
 
 ```cpp
-GENERAL
-USER_SPECIFIC
-```
-
-For example:
-
-```text
-GENERAL:
-    Dogs generally respond positively to play.
-
-USER_SPECIFIC:
-    User A enjoys playing fetch.
-```
-
----
-
-# `action_log`
-
-```cpp
-class action_log
-{
+class action_log {
+public:
     std::string action_taken;
     std::string time;
-    float count;
-
-    action_log();
+    float count = 0.0f;
 };
 ```
 
-`action_log` stores information about actions performed by the agent.
+Action logs provide a historical record of what the agent has done, which can later be used to update memory or influence behavioural patterns.
 
-The log can be used as another source of information for the memory system.
-
-For example:
-
-```text
-action_taken = "play_fetch"
-time = "18:30"
-count = 5
-```
-
-Repeated actions can potentially be used to identify behavioral patterns.
-
-This is different from a `record` because an action log represents **what happened**, whereas a memory record represents **information derived from observations or interactions**.
-
----
-
-# `ex_record`
+### `cache`
 
 ```cpp
-typedef struct {
-    std::string subject;
-    float confidence;
-} ex_record;
-```
-
-`ex_record` is intended to represent a simplified piece of information extracted from memory.
-
-Its purpose is to provide information that can be passed from the memory system toward the agent's decision-making system.
-
-For example, a collection of detailed records could be processed into a smaller representation such as:
-
-```text
-subject = "user_fetch_affinity"
-confidence = 0.87
-```
-
-This allows the decision-making system to work with relevant information without needing to process every stored memory record.
-
-This structure may be expanded as the memory-to-RL interface is developed.
-
----
-
-# `cache`
-
-```cpp
-class cache
-{
+class cache {
+public:
     std::vector<ex_record> data_store;
 };
 ```
 
-The cache stores recently or frequently processed memory information.
+The cache is a lightweight optimization layer for reusing already extracted memory information.
 
-Its purpose is to reduce unnecessary processing.
+### `AffectiveState`
 
-Instead of repeatedly extracting the same information from long-term memory, already processed information can be kept in the cache and reused when appropriate.
-
-Conceptually:
-
-```text
-Long-Term Memory
-       ↓
-Memory Processing
-       ↓
-Relevant Information
-       ↓
-Cache
-       ↓
-Agent
+```cpp
+struct AffectiveState {
+    AffectValence valence = AffectValence::NEUTRAL;
+    AffectEnergy energy = AffectEnergy::MODERATE;
+    float arousal = 0.5f;
+    float engagement = 0.5f;
+    float stress = 0.5f;
+    float affinity = 0.5f;
+};
 ```
 
-The cache is therefore an optimization layer rather than the primary source of persistent memory.
+These values are intentionally small and bounded so they can be tested cleanly before being integrated into the state representation.
 
 ---
 
-# `memory_loader`
+## Build and validation
 
-```cpp
-class memory_loader
+The project uses CMake as the build entry point.
+
+```bash
+cmake -S . -B build
+cmake --build build --target IS-2
+./build/IS-2
+```
+
+The tokenizer boundary is also validated with a dedicated C++ harness:
+
+```bash
+cmake --build build --target tokenizer_probe
+./build/tokenizer_probe
+```
+
+Current validated baseline checks include:
+
+- basic Q update
+- unseen state handling
+- persistence
+- terminal handling
+
+The current baseline validation passes successfully.
+
+---
+
+## Planned next stage
+
+The next step is to integrate memory and affective state into the state-construction pipeline, while preserving the already-validated baseline learning loop and the shared action/state contracts.
+
+The expected sequence is:
+
+1. Extend the state builder with bounded memory-derived features.
+2. Add affective-state inputs to the state representation.
+3. Validate the updated state representation separately.
+4. Re-run baseline checks and compare results against the earlier baseline.
+5. Only then evaluate behavioural outcomes under the proposed agent configuration.
+
+---
+
+## Summary
+
+This project is best understood as a staged research prototype for a learning-based companion agent. The current implementation is intentionally conservative: the baseline learning loop is validated first, the memory and affect contracts are defined next, and only then are those features integrated into the decision-making pipeline.
+
+This staged approach keeps the project explainable, testable, and aligned with the project’s research objectives.

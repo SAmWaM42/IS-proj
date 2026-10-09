@@ -4,11 +4,14 @@
 #include <iostream>
 #include <json.hpp>
 #include <math.h>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <string>
 #include <thread>
 #include <vector>
+
+class state;
 
 class NLPClient;
 
@@ -22,8 +25,6 @@ typedef struct {
     std::string subject;
     float confidence;
 } ex_record;
-
-class state;
 
 enum class AffectValence {
     NEUTRAL,
@@ -123,14 +124,15 @@ private:
     bool running = false;
 
     void workerLoop();
-    void sendRequest(const std::string &text);
+    void sendRequest(const std::string& text);
     nlohmann::json receiveResponse();
 
 public:
     NLPClient();
     ~NLPClient();
+
     void start();
-    void submitText(const std::string &text);
+    void submitText(const std::string& text);
     nlohmann::json getResult();
     void stop();
 };
@@ -139,7 +141,7 @@ class input_parser {};
 
 class memory_parser {
 public:
-    std::vector<record> get_relevant_records(std::string input, state State);
+    std::vector<record> get_relevant_records(std::string input, const state& stateRef);
     std::vector<ex_record> extract_data_from_records(std::vector<record>, NLPClient);
 };
 

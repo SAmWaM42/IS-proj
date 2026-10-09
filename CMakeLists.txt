@@ -5,6 +5,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(IS-2
    main.c++
+   Components/State-Action/state-action.cpp
+   Components/Memory/memory.cpp
+   Components/Environment/environment.cpp
 )
 
 target_include_directories(IS-2 PRIVATE
