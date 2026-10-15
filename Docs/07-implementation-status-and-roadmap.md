@@ -101,7 +101,106 @@ Expected work items:
 Spec status:
 - implemented in [Docs/09-persistence-and-rest-aggregation.md](Docs/09-persistence-and-rest-aggregation.md)
 
-### 3. Full affect-driven decision policy integration
+### 3. Runtime state lifecycle and observation normalisation
+
+Status: pending specification review
+
+Intent:
+- define the runtime handoff from interaction and observation events into a consistent bounded state
+- keep the state builder deterministic and compatible with the baseline state contract
+
+Expected work items:
+- normalise incoming interaction records into a runtime observation model
+- preserve the baseline state key when memory/affect inputs are empty
+- gate memory and affect features behind bounded runtime values
+
+Spec status:
+- draft in [Docs/10-runtime-state-lifecycle.md](Docs/10-runtime-state-lifecycle.md)
+
+### 4. Live memory activation and ranking
+
+Status: pending specification review
+
+Intent:
+- define the runtime retrieval layer that ranks prospective memory records before summarisation
+- ensure the retrieved memory signal is compact and safe for state construction
+
+Expected work items:
+- score records using confidence, relevance, recency, and context match
+- filter noise and low-support memory entries
+- pass only a compact summary into the state builder
+
+Spec status:
+- draft in [Docs/11-live-memory-activation-and-ranking.md](Docs/11-live-memory-activation-and-ranking.md)
+
+### 5. Runtime affect and rest-state orchestration
+
+Status: pending specification review
+
+Intent:
+- connect affective trend updates and rest-state candidate generation to the runtime lifecycle
+- keep affective and rest-state updates bounded and non-policy-breaking
+
+Expected work items:
+- update affective variables from runtime events and outcomes
+- apply the low-energy exponential weighting rule
+- aggregate repeated low-confidence observations only during rest states
+
+Spec status:
+- draft in [Docs/12-runtime-affect-and-rest-state-orchestration.md](Docs/12-runtime-affect-and-rest-state-orchestration.md)
+
+### 6. Runtime persistence and continuity contract
+
+Status: pending specification review
+
+Intent:
+- define a runtime save/load contract for the learning state, memory, affect, session, and low-confidence fact domains
+- preserve continuity across restarts without broadening the learning policy
+
+Expected work items:
+- define the persisted schema and ordering for all domains
+- validate restart-safe loading semantics
+- keep aggregated low-confidence facts separate from confirmed memory entries
+
+Spec status:
+- draft in [Docs/13-runtime-persistence-and-continuity-contract.md](Docs/13-runtime-persistence-and-continuity-contract.md)
+
+### 7. Pre-simulation environment contract
+
+Status: pending specification review
+
+Intent:
+- define the environment boundary and observation/action types before the actual simulation engine is built
+- prepare a controlled runtime contract for later simulation implementation
+
+Expected work items:
+- define the observation/action types and reward contract
+- establish the agent-environment boundary
+- confirm that state, memory, and affect contracts remain stable before the environment layer is built
+
+Spec status:
+- draft in [Docs/14-pre-simulation-environment-contract.md](Docs/14-pre-simulation-environment-contract.md)
+
+### 8. Baseline and proposed agent comparison setup
+
+Status: pending specification approval
+
+Intent:
+- define the minimum class and harness design needed to compare a baseline Q-learning agent against the proposed memory-and-affect agent in the same configured environment
+- ensure both agents share the same simulation contract and reward semantics before training begins
+
+Expected work items:
+- define the common environment contract and reward structure
+- define the proposed-agent class responsibilities and state members
+- define the baseline-agent class responsibilities and exclusions
+- define an evaluation harness that runs both agents under matching conditions
+- collect comparable metrics for action choice, reward totals, and final state
+
+Spec status:
+- draft in [Docs/15-proposed-agent-comparison-spec.md](Docs/15-proposed-agent-comparison-spec.md)
+- draft in [Docs/16-baseline-agent-comparison-spec.md](Docs/16-baseline-agent-comparison-spec.md)
+
+### 9. Full affect-driven decision policy integration
 
 Status: pending
 
@@ -117,7 +216,7 @@ Expected work items:
 Spec status:
 - no dedicated implementation spec yet; this should remain a later-phase specification
 
-### 4. Environment and simulation integration
+### 10. Environment and simulation integration
 
 Status: pending
 
@@ -145,6 +244,11 @@ Spec status:
 | Live memory-to-state wiring | Completed in the current working tree | [Docs/06-memory-affect-state-integration.md](Docs/06-memory-affect-state-integration.md) |
 | Retrieval and ranking layer | Completed | [Docs/08-live-memory-retrieval-and-ranking.md](Docs/08-live-memory-retrieval-and-ranking.md) |
 | Persistence layer + rest-state aggregation | Completed | [Docs/09-persistence-and-rest-aggregation.md](Docs/09-persistence-and-rest-aggregation.md) |
+| Runtime state lifecycle and observation normalisation | Pending specification review | [Docs/10-runtime-state-lifecycle.md](Docs/10-runtime-state-lifecycle.md) |
+| Live memory activation and ranking | Pending specification review | [Docs/11-live-memory-activation-and-ranking.md](Docs/11-live-memory-activation-and-ranking.md) |
+| Runtime affect and rest-state orchestration | Pending specification review | [Docs/12-runtime-affect-and-rest-state-orchestration.md](Docs/12-runtime-affect-and-rest-state-orchestration.md) |
+| Runtime persistence and continuity contract | Pending specification review | [Docs/13-runtime-persistence-and-continuity-contract.md](Docs/13-runtime-persistence-and-continuity-contract.md) |
+| Pre-simulation environment contract | Pending specification review | [Docs/14-pre-simulation-environment-contract.md](Docs/14-pre-simulation-environment-contract.md) |
 | Full affect-driven policy usage | Pending | not yet specified |
 | Simulation integration | Pending | reference project-context |
 

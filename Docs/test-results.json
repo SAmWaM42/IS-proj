@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-10-15T07:08:13Z",
+  "project": "IS-2",
+  "status": "PASS",
+  "summary": {
+    "failed": 0,
+    "passed": 9,
+    "total": 9
+  },
+  "tests": [
+    {
+      "category": "baseline",
+      "name": "Basic Q update",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "baseline",
+      "name": "Unseen state handling",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "baseline",
+      "name": "Persistence",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "baseline",
+      "name": "Terminal handling",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "state",
+      "name": "Memory/affect encoding",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "state",
+      "name": "Context summary state changes",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "memory",
+      "name": "Live memory summary state changes",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "persistence",
+      "name": "Persistence round trip and aggregation",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "runtime",
+      "name": "Runtime lifecycle and environment contract",
+      "passed": true,
+      "status": "PASS"
+    }
+  ]
+}

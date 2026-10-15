@@ -34,6 +34,29 @@ enum class Level
     HIGH
 };
 
+struct EnvironmentConfig {
+    int width = 960;
+    int height = 600;
+    int max_steps = 100;
+    int seed = 42;
+    std::vector<std::string> actions = {
+        "FETCH",
+        "WANDER",
+        "BARK",
+        "ACT_CONFUSED",
+        "SLEEP_LAY",
+        "NUZZLE",
+        "INSIST",
+        "GREETING"
+    };
+    float reward_positive = 1.0f;
+    float reward_negative = -1.0f;
+    float reward_neutral = 0.0f;
+    bool allow_user_stimulus = true;
+};
+
+using ActionOutcome = ActionResult;
+
 struct state
 {
     std::map<std::string, distance> environmentCondition;
@@ -118,6 +141,70 @@ public:
     void loadTrainingData(const std::string& path);
 };
 
+class BaselineAgent {
+public:
+    explicit BaselineAgent(const EnvironmentConfig& config = EnvironmentConfig{});
+
+    void reset();
+    std::string selectAction(const EnvironmentObservation& observation);
+    void applyOutcome(const EnvironmentObservation& observation,
+                      const std::string& action,
+                      const ActionOutcome& outcome);
+
+    void loadPersistentState(const std::string& path);
+    void savePersistentState(const std::string& path);
+
+    const state& getCurrentState() const;
+    const SessionContext& getSessionContext() const;
+    const std::vector<InteractionEvent>& getInteractionHistory() const;
+
+private:
+    EnvironmentConfig config;
+    QLearning q_policy;
+    SessionContext session_context;
+    std::vector<InteractionEvent> interaction_history;
+    state current_state;
+};
+
+class ProposedAgent {
+public:
+    explicit ProposedAgent(const EnvironmentConfig& config = EnvironmentConfig{});
+
+    void reset();
+    std::string selectAction(const EnvironmentObservation& observation);
+    void applyOutcome(const EnvironmentObservation& observation,
+                      const std::string& action,
+                      const ActionOutcome& outcome);
+
+    void loadPersistentState(const std::string& path);
+    void savePersistentState(const std::string& path);
+
+    const state& getCurrentState() const;
+    const SessionContext& getSessionContext() const;
+    const std::vector<InteractionEvent>& getInteractionHistory() const;
+    const std::vector<record>& getMemoryRecords() const;
+    const AffectiveState& getAffectiveState() const;
+
+private:
+    EnvironmentConfig config;
+    QLearning q_policy;
+    SessionContext session_context;
+    AffectiveState affective_state;
+    std::vector<record> memory_records;
+    std::vector<InteractionEvent> interaction_history;
+    RuntimeContext runtime_context;
+    state current_state;
+};
+
+struct AgentComparisonRun {
+    EnvironmentConfig config;
+    BaselineAgent baseline_agent;
+    ProposedAgent proposed_agent;
+    std::vector<SimulationTick> tick_log;
+};
+
+AgentComparisonRun runAgentComparison(const EnvironmentConfig& config, int steps = 10);
+
 state makeState(int intent,
                 distance proximity,
                 Level energy,
@@ -150,5 +237,9 @@ state makeStateFromMemoryRecords(int intent,
                                 float memory,
                                 const std::vector<record>& records,
                                 const AffectiveState& affect);
+
+state makeRuntimeState(const RuntimeContext& runtimeContext);
+int summarizeMemoryBias(float confidence, float relevance, float recency);
+int summarizeAffectTrend(const AffectiveState& affect, Level energy);
 
 bool runBaselineValidation();

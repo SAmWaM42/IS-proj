@@ -1,0 +1,16 @@
+[
+  {
+    "confidence": 0.3499999940395355,
+    "current_context": "GENERAL",
+    "generalization_factor": 0.20000000298023224,
+    "last_updated": "rest_state",
+    "object": "improved",
+    "observation_count": 6,
+    "recency": 0.5,
+    "relation": "mentions",
+    "relevance": 0.5,
+    "relevant_users": [],
+    "source": 1,
+    "subject": "user"
+  }
+]

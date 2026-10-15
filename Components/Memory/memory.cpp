@@ -120,6 +120,64 @@ float summarizeMemorySignal(const std::vector<record>& records) {
     return summarizeWeightedMemorySignal(records);
 }
 
+MemorySummary buildMemorySummary(const std::vector<record>& records, const std::string& query) {
+    MemorySummary summary;
+    const std::vector<record> ranked = rankRelevantRecords(records, query);
+    if (ranked.empty()) {
+        return summary;
+    }
+
+    summary.record_count = static_cast<int>(ranked.size());
+    float totalWeight = 0.0f;
+    float totalConfidence = 0.0f;
+    float totalRecency = 0.0f;
+    float totalSignal = 0.0f;
+
+    for (const auto& entry : ranked) {
+        const float weight = calculateMemoryRecordWeight(entry);
+        totalWeight += weight;
+        totalConfidence += weight * std::clamp(entry.confidence, 0.0f, 1.0f);
+        totalRecency += weight * std::clamp(entry.recency, 0.0f, 1.0f);
+        totalSignal += weight * calculateRecordSignal(entry);
+
+        if (summary.top_tags.size() < 3) {
+            const std::string tag = entry.raw_fact.subject + ":" + entry.raw_fact.relation + ":" + entry.raw_fact.object;
+            summary.top_tags.push_back(tag);
+        }
+    }
+
+    if (totalWeight > 0.0f) {
+        summary.memory_bias = std::clamp(totalSignal / totalWeight, 0.0f, 1.0f);
+        summary.confidence_weight = std::clamp(totalConfidence / totalWeight, 0.0f, 1.0f);
+        summary.recency_weight = std::clamp(totalRecency / totalWeight, 0.0f, 1.0f);
+        summary.signal_quality = summary.memory_bias;
+    }
+
+    return summary;
+}
+
+NormalisedObservation normaliseRuntimeObservation(const RuntimeContext& runtime) {
+    NormalisedObservation observation;
+    observation.user_status = std::clamp(runtime.session_context.user_status, 0, 3);
+    observation.target_proximity = std::clamp(runtime.session_context.target_proximity, 0, 3);
+    observation.interaction_intent = std::clamp(runtime.session_context.current_intent, 0, 3);
+    observation.task_state = std::clamp(runtime.session_context.energy_level + runtime.session_context.stress_level, 0, 3);
+    observation.memory_bias = std::clamp(runtime.memory_summary.memory_bias, 0.0f, 1.0f);
+    observation.affect_trend = std::clamp(
+        static_cast<float>(summarizeAffectTrend(runtime.affective_state, static_cast<Level>(std::clamp(runtime.session_context.energy_level, 0, 2)))),
+        0.0f,
+        2.0f);
+    return observation;
+}
+
+bool isRestState(const SessionContext& context, float memory_signal, float affect_trend) {
+    const bool idleRequest = context.current_action.empty() || context.current_action == "IDLE";
+    const bool lowSignal = memory_signal <= 0.15f;
+    const bool lowAffect = affect_trend <= 0.5f;
+    const bool lowEnergy = context.energy_level <= 0;
+    return idleRequest && (lowSignal || lowAffect || lowEnergy);
+}
+
 namespace {
 
 nlohmann::json recordToJson(const record& entry) {

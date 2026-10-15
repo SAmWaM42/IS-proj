@@ -41,6 +41,35 @@ float normalizeEnergyLevel(Level energy) {
     return 0.0f;
 }
 
+Level levelFromValue(int value) {
+    const int bounded = std::clamp(value, 0, 2);
+    switch (bounded) {
+        case 0:
+            return Level::LOW;
+        case 1:
+            return Level::MEDIUM;
+        case 2:
+        default:
+            return Level::HIGH;
+    }
+}
+
+distance proximityFromValue(int value) {
+    switch (std::clamp(value, 0, 3)) {
+        case 0:
+            return distance::CLOSE;
+        case 1:
+            return distance::MEDIUM;
+        case 2:
+            return distance::FAR;
+        case 3:
+        default:
+            return distance::UNAVAILABLE;
+    }
+}
+
+} // namespace
+
 int summarizeMemoryBias(float confidence, float relevance, float recency) {
     const float normalized = std::clamp(
         0.45f * confidence + 0.35f * relevance + 0.20f * recency,
@@ -362,7 +391,42 @@ bool testTerminalHandling() {
     return std::isfinite(value);
 }
 
-} // namespace
+bool testRuntimeLifecycleAndEnvironmentContract() {
+    RuntimeContext runtime;
+    runtime.session_context.current_intent = 2;
+    runtime.session_context.target_proximity = 1;
+    runtime.session_context.user_status = 1;
+    runtime.session_context.energy_level = 1;
+    runtime.session_context.stress_level = 0;
+    runtime.session_context.current_action = "FETCH";
+    runtime.memory_summary.memory_bias = 0.8f;
+    runtime.memory_summary.confidence_weight = 0.8f;
+    runtime.memory_summary.signal_quality = 0.7f;
+    runtime.memory_summary.recency_weight = 0.9f;
+    runtime.affective_state = AffectiveState{AffectValence::POSITIVE, AffectEnergy::HIGH, 0.8f, 0.9f, 0.2f, 0.7f};
+
+    const state runtimeState = makeRuntimeState(runtime);
+    const auto normalized = normaliseRuntimeObservation(runtime);
+    const bool stateChanged = runtimeState.encode() != makeState(2, distance::MEDIUM, Level::MEDIUM, Level::LOW, Level::MEDIUM, Level::LOW, 1, 0.0f).encode();
+
+    EnvironmentObservation observation;
+    observation.goal_state = 1;
+    observation.target_proximity = 1;
+    observation.user_status = 1;
+    observation.task_status = 1;
+    observation.signal_strength = 0.75f;
+
+    ActionResult actionResult;
+    actionResult.action_id = 0;
+    actionResult.reward = 1.0f;
+    actionResult.terminal = false;
+    actionResult.outcome_tag = "observed";
+
+    SimulationTick tick{observation, actionResult, "2026-10-11T00:00:00Z"};
+
+    return stateChanged && normalized.memory_bias > 0.0f && normalized.affect_trend > 0.0f &&
+           observation.target_proximity == 1 && tick.action_result.reward > 0.0f;
+}
 
 state makeState(int intent,
                 distance proximity,
@@ -439,6 +503,26 @@ state makeStateFromMemoryRecords(int intent,
         memorySignal,
         memorySignal,
         affect);
+}
+
+state makeRuntimeState(const RuntimeContext& runtimeContext) {
+    const float confidence = std::clamp(runtimeContext.memory_summary.confidence_weight, 0.0f, 1.0f);
+    const float relevance = std::clamp(runtimeContext.memory_summary.signal_quality, 0.0f, 1.0f);
+    const float recency = std::clamp(runtimeContext.memory_summary.recency_weight, 0.0f, 1.0f);
+
+    return makeStateWithContext(
+        runtimeContext.session_context.current_intent,
+        proximityFromValue(runtimeContext.session_context.target_proximity),
+        levelFromValue(runtimeContext.session_context.energy_level),
+        levelFromValue(runtimeContext.session_context.stress_level),
+        Level::MEDIUM,
+        Level::LOW,
+        runtimeContext.session_context.user_status,
+        static_cast<float>(runtimeContext.memory_summary.memory_bias),
+        confidence,
+        relevance,
+        recency,
+        runtimeContext.affective_state);
 }
 
 std::size_t state::encode() const {
@@ -642,25 +726,355 @@ bool testMemoryAffectStateEncoding() {
     return neutral.encode() != positive.encode() && neutral.encode() != negative.encode() && positive.encode() != negative.encode();
 }
 
-bool runBaselineValidation() {
-    const std::vector<std::pair<std::string, bool>> tests = {
-        {"Basic Q update", testBasicQUpdate()},
-        {"Unseen state handling", testUnseenStateHandling()},
-        {"Persistence", testPersistence()},
-        {"Terminal handling", testTerminalHandling()},
-        {"Memory/affect encoding", testMemoryAffectStateEncoding()},
-        {"Context summary state changes", testContextSummaryChangesState()},
-        {"Live memory summary state changes", testLiveMemorySummariesChangeState()},
-        {"Persistence round trip and aggregation", testPersistenceRoundTripAndAggregation()}
-    };
+struct TestResultRecord {
+    std::string name;
+    std::string status;
+    bool passed = false;
+    std::string category;
+};
 
-    bool allPassed = true;
-    for (const auto& [name, passed] : tests) {
-        std::cout << name << ": " << (passed ? "PASS" : "FAIL") << std::endl;
-        if (!passed) {
-            allPassed = false;
-        }
+void writeValidationReport(const std::vector<TestResultRecord>& results, const std::string& outputPath) {
+    std::filesystem::path path(outputPath);
+    if (path.has_parent_path()) {
+        std::filesystem::create_directories(path.parent_path());
     }
 
+    nlohmann::json payload = nlohmann::json::object();
+    const std::time_t now = std::time(nullptr);
+    char stamp[32];
+    std::strftime(stamp, sizeof(stamp), "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&now));
+
+    payload["project"] = "IS-2";
+    payload["generated_at"] = std::string(stamp);
+    payload["status"] = std::all_of(results.begin(), results.end(), [](const TestResultRecord& result) {
+        return result.passed;
+    })
+        ? "PASS"
+        : "FAIL";
+
+    nlohmann::json tests = nlohmann::json::array();
+    for (const auto& result : results) {
+        nlohmann::json entry = nlohmann::json::object();
+        entry["name"] = result.name;
+        entry["status"] = result.status;
+        entry["passed"] = result.passed;
+        entry["category"] = result.category;
+        tests.push_back(entry);
+    }
+
+    payload["tests"] = tests;
+    payload["summary"] = nlohmann::json::object();
+    payload["summary"]["total"] = static_cast<int>(tests.size());
+    payload["summary"]["passed"] = std::count_if(results.begin(), results.end(), [](const TestResultRecord& result) {
+        return result.passed;
+    });
+    payload["summary"]["failed"] = static_cast<int>(results.size()) - static_cast<int>(payload["summary"]["passed"]);
+
+    std::ofstream out(path);
+    if (!out.is_open()) {
+        return;
+    }
+    out << payload.dump(2);
+    out << '\n';
+}
+
+namespace {
+float scoreActionAgainstObservation(const std::string& action, const EnvironmentObservation& observation) {
+    float score = 0.0f;
+    const std::string lowered = action;
+    if (action == "FETCH") {
+        score += observation.task_status == 1 ? 0.6f : 0.2f;
+        score += observation.signal_strength * 0.5f;
+    } else if (action == "GREETING") {
+        score += observation.user_status == 1 ? 0.5f : 0.1f;
+    } else if (action == "ACT_CONFUSED") {
+        score += observation.signal_strength > 0.75f ? 0.2f : -0.2f;
+    } else if (action == "SLEEP_LAY") {
+        score += observation.task_status == 0 ? 0.5f : -0.1f;
+    } else if (action == "BARK") {
+        score += observation.signal_strength > 0.7f ? 0.1f : -0.2f;
+    } else if (action == "INSIST") {
+        score += observation.user_status == 1 ? 0.2f : -0.1f;
+    }
+    return std::clamp(score, -1.0f, 1.0f);
+}
+
+std::string currentTimeStamp() {
+    const auto now = std::chrono::system_clock::now();
+    const auto timer = std::chrono::system_clock::to_time_t(now);
+    std::tm gmt{};
+    gmtime_r(&timer, &gmt);
+    char stamp[32];
+    std::strftime(stamp, sizeof(stamp), "%Y-%m-%dT%H:%M:%SZ", &gmt);
+    return std::string(stamp);
+}
+} // namespace
+
+BaselineAgent::BaselineAgent(const EnvironmentConfig& configValue)
+    : config(configValue), q_policy(0.25f, 0.8f, 0.15f) {
+    q_policy.setActions(config.actions);
+    reset();
+}
+
+void BaselineAgent::reset() {
+    session_context = SessionContext{};
+    session_context.current_action = "IDLE";
+    session_context.last_timestamp = currentTimeStamp();
+    current_state = makeState(
+        0,
+        distance::FAR,
+        Level::MEDIUM,
+        Level::LOW,
+        Level::MEDIUM,
+        Level::LOW,
+        0,
+        0.0f);
+    interaction_history.clear();
+    q_policy.setActions(config.actions);
+}
+
+std::string BaselineAgent::selectAction(const EnvironmentObservation& observation) {
+    const state candidate = makeState(
+        session_context.current_intent,
+        proximityFromValue(observation.target_proximity),
+        levelFromValue(session_context.energy_level),
+        levelFromValue(session_context.stress_level),
+        Level::MEDIUM,
+        Level::LOW,
+        observation.user_status,
+        0.0f);
+    current_state = candidate;
+    session_context.current_action = q_policy.chooseAction(candidate);
+    return session_context.current_action;
+}
+
+void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
+                                const std::string& action,
+                                const ActionOutcome& outcome) {
+    state next_state = makeState(
+        session_context.current_intent,
+        proximityFromValue(observation.target_proximity),
+        levelFromValue(std::max(0, session_context.energy_level + (outcome.reward > 0.0f ? 1 : 0))),
+        levelFromValue(std::max(0, session_context.stress_level + (outcome.reward < 0.0f ? 1 : 0))),
+        Level::MEDIUM,
+        Level::LOW,
+        observation.user_status,
+        std::clamp(outcome.reward, 0.0f, 1.0f));
+
+    q_policy.update(current_state, action, outcome.reward, next_state);
+    session_context.last_reward = outcome.reward;
+    session_context.last_timestamp = currentTimeStamp();
+    session_context.current_action = action;
+    session_context.user_status = observation.user_status;
+    session_context.target_proximity = observation.target_proximity;
+
+    InteractionEvent event;
+    event.timestamp = session_context.last_timestamp;
+    event.action_taken = action;
+    event.summary = outcome.outcome_tag;
+    event.reward = outcome.reward;
+    event.state_summary = "baseline_observation";
+    event.affect_signal = std::clamp(observation.signal_strength, 0.0f, 1.0f);
+    interaction_history.push_back(event);
+}
+
+void BaselineAgent::loadPersistentState(const std::string& path) {
+    q_policy.loadQTable(path);
+}
+
+void BaselineAgent::savePersistentState(const std::string& path) {
+    q_policy.saveQTable(path);
+}
+
+const state& BaselineAgent::getCurrentState() const {
+    return current_state;
+}
+
+const SessionContext& BaselineAgent::getSessionContext() const {
+    return session_context;
+}
+
+const std::vector<InteractionEvent>& BaselineAgent::getInteractionHistory() const {
+    return interaction_history;
+}
+
+ProposedAgent::ProposedAgent(const EnvironmentConfig& configValue)
+    : config(configValue), q_policy(0.25f, 0.8f, 0.15f), affective_state{} {
+    q_policy.setActions(config.actions);
+    reset();
+}
+
+void ProposedAgent::reset() {
+    session_context = SessionContext{};
+    session_context.current_action = "IDLE";
+    session_context.last_timestamp = currentTimeStamp();
+    affective_state = AffectiveState{};
+    memory_records.clear();
+    interaction_history.clear();
+    runtime_context = RuntimeContext{};
+    current_state = makeState(
+        0,
+        distance::FAR,
+        Level::MEDIUM,
+        Level::LOW,
+        Level::MEDIUM,
+        Level::LOW,
+        0,
+        0.0f);
+    q_policy.setActions(config.actions);
+}
+
+std::string ProposedAgent::selectAction(const EnvironmentObservation& observation) {
+    runtime_context.session_context = session_context;
+    runtime_context.affective_state = affective_state;
+    runtime_context.memory_summary = buildMemorySummary(memory_records, "");
+    current_state = makeRuntimeState(runtime_context);
+    current_state.encoded_user_input = static_cast<float>(observation.task_status);
+
+    session_context.current_intent = observation.goal_state;
+    session_context.target_proximity = observation.target_proximity;
+    session_context.user_status = observation.user_status;
+    session_context.current_action = q_policy.chooseAction(current_state);
+    return session_context.current_action;
+}
+
+void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
+                                const std::string& action,
+                                const ActionOutcome& outcome) {
+    session_context.current_intent = observation.goal_state;
+    session_context.target_proximity = observation.target_proximity;
+    session_context.user_status = observation.user_status;
+    session_context.last_reward = outcome.reward;
+    session_context.last_timestamp = currentTimeStamp();
+    affective_state.updateFromFeedback(outcome.reward, outcome.reward > 0.0f, outcome.reward < 0.0f);
+
+    record memory_entry;
+    memory_entry.raw_fact.subject = "user";
+    memory_entry.raw_fact.relation = "interaction";
+    memory_entry.raw_fact.object = outcome.outcome_tag.empty() ? action : outcome.outcome_tag;
+    memory_entry.confidence = std::clamp(observation.signal_strength, 0.0f, 1.0f);
+    memory_entry.generalization_factor = 0.5f;
+    memory_entry.current_context = record::USER_SPECIFIC;
+    memory_entry.source = record::OBSERVATION;
+    memory_entry.observation_count = 1;
+    memory_entry.last_updated = session_context.last_timestamp;
+    memory_entry.relevance = std::clamp(std::abs(outcome.reward) + 0.25f, 0.0f, 1.0f);
+    memory_entry.recency = std::clamp(observation.signal_strength, 0.0f, 1.0f);
+    memory_records.push_back(memory_entry);
+
+    runtime_context.session_context = session_context;
+    runtime_context.affective_state = affective_state;
+    runtime_context.memory_summary = buildMemorySummary(memory_records, action);
+
+    state next_state = makeRuntimeState(runtime_context);
+    next_state.memory = outcome.reward;
+    next_state.affect_trend = summarizeAffectTrend(affective_state, levelFromValue(session_context.energy_level));
+    q_policy.update(current_state, action, outcome.reward, next_state);
+
+    InteractionEvent event;
+    event.timestamp = session_context.last_timestamp;
+    event.action_taken = action;
+    event.summary = outcome.outcome_tag.empty() ? action : outcome.outcome_tag;
+    event.reward = outcome.reward;
+    event.state_summary = "proposed_memory_aware_observation";
+    event.affect_signal = std::clamp(affective_state.affinity + affective_state.arousal, 0.0f, 1.0f);
+    interaction_history.push_back(event);
+
+    session_context.current_action = action;
+    current_state = next_state;
+}
+
+void ProposedAgent::loadPersistentState(const std::string& path) {
+    q_policy.loadQTable(path);
+}
+
+void ProposedAgent::savePersistentState(const std::string& path) {
+    q_policy.saveQTable(path);
+}
+
+const state& ProposedAgent::getCurrentState() const {
+    return current_state;
+}
+
+const SessionContext& ProposedAgent::getSessionContext() const {
+    return session_context;
+}
+
+const std::vector<InteractionEvent>& ProposedAgent::getInteractionHistory() const {
+    return interaction_history;
+}
+
+const std::vector<record>& ProposedAgent::getMemoryRecords() const {
+    return memory_records;
+}
+
+const AffectiveState& ProposedAgent::getAffectiveState() const {
+    return affective_state;
+}
+
+AgentComparisonRun runAgentComparison(const EnvironmentConfig& config, int steps) {
+    AgentComparisonRun run{config, BaselineAgent(config), ProposedAgent(config), {}};
+
+    for (int stepIndex = 0; stepIndex < steps; ++stepIndex) {
+        EnvironmentObservation observation;
+        observation.goal_state = stepIndex % 3;
+        observation.target_proximity = (stepIndex + 1) % 3;
+        observation.user_status = stepIndex % 2;
+        observation.task_status = (stepIndex + 1) % 2;
+        observation.signal_strength = 0.35f + 0.12f * static_cast<float>((stepIndex % 5));
+
+        const std::string baselineAction = run.baseline_agent.selectAction(observation);
+        const std::string proposedAction = run.proposed_agent.selectAction(observation);
+
+        const float baselineReward = scoreActionAgainstObservation(baselineAction, observation);
+        const float proposedReward = scoreActionAgainstObservation(proposedAction, observation);
+
+        ActionOutcome baselineOutcome;
+        baselineOutcome.action_id = stepIndex;
+        baselineOutcome.reward = baselineReward;
+        baselineOutcome.terminal = (stepIndex + 1 == steps);
+        baselineOutcome.outcome_tag = "baseline_" + baselineAction;
+
+        ActionOutcome proposedOutcome;
+        proposedOutcome.action_id = stepIndex;
+        proposedOutcome.reward = proposedReward;
+        proposedOutcome.terminal = (stepIndex + 1 == steps);
+        proposedOutcome.outcome_tag = "proposed_" + proposedAction;
+
+        run.baseline_agent.applyOutcome(observation, baselineAction, baselineOutcome);
+        run.proposed_agent.applyOutcome(observation, proposedAction, proposedOutcome);
+
+        SimulationTick tick;
+        tick.observation = observation;
+        tick.action_result = baselineOutcome;
+        tick.timestamp = currentTimeStamp();
+        run.tick_log.push_back(tick);
+    }
+
+    return run;
+}
+
+bool runBaselineValidation() {
+    std::vector<TestResultRecord> results;
+    results.push_back({"Basic Q update", "PASS", testBasicQUpdate(), "baseline"});
+    results.push_back({"Unseen state handling", "PASS", testUnseenStateHandling(), "baseline"});
+    results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
+    results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
+    results.push_back({"Memory/affect encoding", "PASS", testMemoryAffectStateEncoding(), "state"});
+    results.push_back({"Context summary state changes", "PASS", testContextSummaryChangesState(), "state"});
+    results.push_back({"Live memory summary state changes", "PASS", testLiveMemorySummariesChangeState(), "memory"});
+    results.push_back({"Persistence round trip and aggregation", "PASS", testPersistenceRoundTripAndAggregation(), "persistence"});
+    results.push_back({"Runtime lifecycle and environment contract", "PASS", testRuntimeLifecycleAndEnvironmentContract(), "runtime"});
+
+    bool allPassed = true;
+    for (auto& result : results) {
+        if (!result.passed) {
+            result.status = "FAIL";
+            allPassed = false;
+        }
+        std::cout << result.name << ": " << (result.passed ? "PASS" : "FAIL") << std::endl;
+    }
+
+    writeValidationReport(results, "Docs/test-results.json");
     return allPassed;
 }

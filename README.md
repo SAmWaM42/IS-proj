@@ -28,18 +28,23 @@ Both agents share the same environment and action definitions during the first e
 
 ## Current status
 
-Development status: Baseline
+Development status: Baseline + runtime comparison harness
 
-The project is currently in a validated baseline stage.
+The project is currently in a stable staged prototype phase. The original baseline learning loop remains validated, and the implementation has progressed beyond the purely tabular baseline to include bounded memory/affect integration, persistence, and a minimal SFML-backed runtime environment.
 
 Verified milestones:
 
-- A minimal C++ baseline learning loop has been implemented and validated.
-- The shared state/action contracts are formalised and documented.
-- The C++/Python tokenizer boundary has been tested successfully.
-- Minimal memory and affect scaffolding has been added as an explicit staged extension point.
+- A minimal C++ baseline Q-learning loop has been implemented and validated.
+- Shared state/action contracts are formalised and documented.
+- Memory and affect scaffolding was added as an explicit staged extension point.
+- Bounded memory/affect state integration has been implemented without destabilising the baseline policy.
+- Live memory retrieval, ranking, and state summarisation are in place.
+- Persistence and rest-state aggregation are implemented for Q-table, memory records, affective state, session context, interaction history, and low-confidence aggregated facts.
+- A minimal backyard simulation shell has been added using SFML, with policy-driven random stimuli and on-screen state display.
+- A baseline-vs-proposed comparison harness has been scaffolded and executed under a shared environment contract.
+- A machine-readable validation report is stored in [Docs/test-results.json](Docs/test-results.json).
 
-The current implementation does not yet combine memory and affect into the Q-learning policy. That integration remains deliberately deferred until the baseline remains stable and reproducible.
+The current implementation deliberately keeps the policy layer stable and explainable while the runtime, memory, and affect pipeline is exercised under controlled conditions. This keeps the project testable while still enabling comparison and simulation-level observation.
 
 ---
 
@@ -217,17 +222,17 @@ The current baseline validation passes successfully.
 
 ---
 
-## Planned next stage
+## Current development focus
 
-The next step is to integrate memory and affective state into the state-construction pipeline, while preserving the already-validated baseline learning loop and the shared action/state contracts.
+The repository has moved past the initial baseline-only stage and is now focused on the comparison and runtime validation layer.
 
-The expected sequence is:
+The immediate work is:
 
-1. Extend the state builder with bounded memory-derived features.
-2. Add affective-state inputs to the state representation.
-3. Validate the updated state representation separately.
-4. Re-run baseline checks and compare results against the earlier baseline.
-5. Only then evaluate behavioural outcomes under the proposed agent configuration.
+1. Continue validating the shared environment contract for both agents.
+2. Expand the baseline/proposed comparison harness into a more formal training and evaluation pass.
+3. Keep the simulation environment deliberately minimal but behaviourally meaningful.
+4. Preserve the baseline as the control condition while testing the memory/affect-aware variant under the same stimuli and reward semantics.
+5. Maintain persistence continuity across runtime sessions and rest-state aggregation without broadening the Q-learning policy.
 
 ---
 

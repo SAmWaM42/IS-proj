@@ -1,0 +1,10 @@
+{
+  "current_action": "FETCH",
+  "current_intent": 0,
+  "energy_level": 2,
+  "last_reward": 0.9000000357627869,
+  "last_timestamp": "2026-10-15T06:56:17Z",
+  "stress_level": 0,
+  "target_proximity": 0,
+  "user_status": 0
+}
