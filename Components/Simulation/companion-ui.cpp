@@ -502,7 +502,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                     {"A", agentAIsProposed ? "proposed" : "baseline"},
                     {"B", agentAIsProposed ? "baseline" : "proposed"}
                 };
-                std::ofstream manifestOut(std::filesystem::path(outputDirectory) / "run-manifest.json");
+                std::ofstream manifestOut(std::filesystem::path(outputDirectory) / ("run-manifest-" + runId + ".json"));
                 if (manifestOut) manifestOut << manifest.dump(2) << '\n';
             }
             screen = Screen::Simulation;
@@ -778,6 +778,8 @@ void CompanionUI::saveSession() {
         const auto directory = std::filesystem::path(outputDirectory);
         std::filesystem::create_directories(directory);
         nlohmann::json session;
+        session["run_id"] = runId;
+        session["condition_code"] = std::string(1, selectedAgentCode);
         session["interaction_count"] = interactionCount;
         session["latest_stimulus"] = latestStimulus;
         session["baseline_action"] = latestBaselineAction;
