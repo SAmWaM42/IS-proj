@@ -281,7 +281,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
     if (actionDisplayTimer <= 0.0f && !interactionBuffer.empty()) {
         const auto next = interactionBuffer.front();
         interactionBuffer.pop_front();
-        executeInteraction(next.label, next.observation, next.reward);
+        executeInteraction(next.label, next.observation, next.reward, next.preference, next.preferencePositive);
     }
 }
 
@@ -323,14 +323,19 @@ void CompanionUI::drawCompanion(float x, float y) {
 
 void CompanionUI::processInteraction(const std::string& label,
                                      const EnvironmentObservation& observation,
-                                     float feedbackRewardValue) {
-    interactionBuffer.push_back(QueuedInteraction{label, observation, feedbackRewardValue});
+                                     float feedbackRewardValue,
+                                     const std::string& preference,
+                                     bool preferencePositive) {
+    interactionBuffer.push_back(QueuedInteraction{label, observation, feedbackRewardValue, preference, preferencePositive});
     appendLog("Queued interaction (" + std::to_string(interactionBuffer.size()) + " waiting): " + label);
 }
 
 void CompanionUI::executeInteraction(const std::string& label,
                                      const EnvironmentObservation& observation,
-                                     float feedbackRewardValue) {
+                                     float feedbackRewardValue,
+                                     const std::string& preference,
+                                     bool preferencePositive) {
+    if (!preference.empty()) proposed.recordUserPreference(preference, preferencePositive);
     const auto affectBefore = proposed.getAffectiveState();
     const std::size_t memoryCountBefore = proposed.getMemoryRecords().size();
     const int interactionId = interactionCount + 1;
@@ -473,7 +478,31 @@ void CompanionUI::processTextInteraction(const std::string& text) {
     EnvironmentObservation observation;
     float reward = 0.25f;
     const std::string intent = interpretIntent(text, observation, reward);
-    processInteraction(text + " [" + intent + " / " + nlpMethod + "]", observation, reward);
+
+    std::string lower = text;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+        [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    const bool explicitLike = lower.find("prefer") != std::string::npos ||
+                              lower.find("like") != std::string::npos ||
+                              lower.find("love") != std::string::npos;
+    const bool explicitDislike = lower.find("dislike") != std::string::npos ||
+                                 lower.find("hate") != std::string::npos ||
+                                 lower.find("don't like") != std::string::npos ||
+                                 lower.find("do not like") != std::string::npos ||
+                                 lower.find("not like") != std::string::npos;
+    std::string preference;
+    if (explicitLike || explicitDislike) {
+        if (lower.find("fetch") != std::string::npos || lower.find("ball") != std::string::npos)
+            preference = "FETCH";
+        else if (lower.find("bark") != std::string::npos || lower.find("noise") != std::string::npos)
+            preference = "BARK";
+        else if (lower.find("rest") != std::string::npos || lower.find("sleep") != std::string::npos)
+            preference = "SLEEP_LAY";
+        else if (lower.find("greet") != std::string::npos)
+            preference = "GREETING";
+    }
+    processInteraction(text + " [" + intent + " / " + nlpMethod + "]",
+                       observation, reward, preference, !explicitDislike);
 }
 
 void CompanionUI::handleClick(sf::Vector2f point) {
