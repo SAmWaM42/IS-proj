@@ -345,16 +345,26 @@ void CompanionUI::draw() {
 
 void CompanionUI::saveSession() {
     try {
-        const auto path = std::filesystem::path(outputDirectory) / "simulation-session.json";
-        std::ofstream out(path);
-        if (!out) return;
-        out << "{\n  \"interaction_count\": " << interactionCount
-            << ",\n  \"latest_stimulus\": \"" << latestStimulus
-            << "\",\n  \"baseline_action\": \"" << latestBaselineAction
-            << "\",\n  \"proposed_action\": \"" << latestProposedAction << "\"\n}\n";
-        baseline.savePersistentState((std::filesystem::path(outputDirectory) / "baseline-session.qtable").string());
-        proposed.savePersistentState((std::filesystem::path(outputDirectory) / "proposed-session.qtable").string());
+        const auto directory = std::filesystem::path(outputDirectory);
+        std::filesystem::create_directories(directory);
+        nlohmann::json session;
+        session["interaction_count"] = interactionCount;
+        session["latest_stimulus"] = latestStimulus;
+        session["baseline_action"] = latestBaselineAction;
+        session["proposed_action"] = latestProposedAction;
+        session["interactions"] = nlohmann::json::array();
+        for (std::size_t i = 0; i < eventLog.size(); ++i) {
+            session["interactions"].push_back(eventLog[i]);
+        }
+        std::ofstream out(directory / "simulation-session.json");
+        if (!out) {
+            std::cerr << "Unable to write simulation session summary.\\n";
+            return;
+        }
+        out << session.dump(2) << '\\n';
+        baseline.savePersistentState((directory / "baseline-session.qtable").string());
+        proposed.savePersistentState((directory / "proposed-session.qtable").string());
     } catch (const std::exception& e) {
-        std::cerr << "Unable to save simulation session: " << e.what() << '\n';
+        std::cerr << "Unable to save simulation session: " << e.what() << '\\n';
     }
 }
