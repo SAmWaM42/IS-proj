@@ -358,13 +358,13 @@ void CompanionUI::saveSession() {
         }
         std::ofstream out(directory / "simulation-session.json");
         if (!out) {
-            std::cerr << "Unable to write simulation session summary.\\n";
+            std::cerr << "Unable to write simulation session summary.\n";
             return;
         }
-        out << session.dump(2) << '\\n';
+        out << session.dump(2) << '\n';
         baseline.savePersistentState((directory / "baseline-session.qtable").string());
         proposed.savePersistentState((directory / "proposed-session.qtable").string());
     } catch (const std::exception& e) {
-        std::cerr << "Unable to save simulation session: " << e.what() << '\\n';
+        std::cerr << "Unable to save simulation session: " << e.what() << '\n';
     }
 }
