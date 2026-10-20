@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-20T02:32:56Z",
+  "generated_at": "2026-10-20T03:17:45Z",
   "project": "IS-2",
   "status": "PASS",
   "summary": {
     "failed": 0,
-    "passed": 12,
-    "total": 12
+    "passed": 16,
+    "total": 16
   },
   "tests": [
     {
@@ -17,6 +17,30 @@
     {
       "category": "baseline",
       "name": "Unseen state handling",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "policy",
+      "name": "Intent-appropriate fallback actions",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "state",
+      "name": "Task and signal state encoding",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "affect",
+      "name": "Proposed agent adapts after negative feedback",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "memory",
+      "name": "Proposed agent avoids rejected action",
       "passed": true,
       "status": "PASS"
     },

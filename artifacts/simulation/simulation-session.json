@@ -1,0 +1,20 @@
+{
+  "baseline_action": "NUZZLE",
+  "interaction_count": 17,
+  "interactions": [
+    "You: Praise the companion",
+    "Baseline: Moves closer affectionately",
+    "Proposed: Moves closer affectionately",
+    "You: A sudden loud noise occurs",
+    "Baseline: Pauses, appearing uncertain",
+    "Proposed: Lies down to rest",
+    "You: The companion should rest",
+    "Baseline: Lies down to rest",
+    "Proposed: Explores the yard",
+    "You: hi",
+    "Baseline: Moves closer affectionately",
+    "Proposed: Greets you warmly"
+  ],
+  "latest_stimulus": "hi",
+  "proposed_action": "GREETING"
+}
