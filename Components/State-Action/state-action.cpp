@@ -386,9 +386,10 @@ bool testTerminalHandling() {
     QTable table(0.1, 0.9);
     const state s = makeState(2, distance::FAR, Level::MEDIUM, Level::LOW, Level::LOW, Level::LOW, 0, 0.0f);
     const state terminal = makeState(2, distance::UNAVAILABLE, Level::LOW, Level::LOW, Level::LOW, Level::LOW, 0, 0.0f);
-    table.update(s.encode(), "ACT_CONFUSED", -1.0, terminal.encode());
+    table.table[terminal.encode()]["FETCH"] = 100.0;
+    table.update(s.encode(), "ACT_CONFUSED", -1.0, terminal.encode(), true);
     const double value = table.getQValue(s.encode(), "ACT_CONFUSED");
-    return std::isfinite(value);
+    return nearlyEqual(value, -0.1, 1e-6);
 }
 
 bool testRuntimeLifecycleAndEnvironmentContract() {
@@ -556,20 +557,22 @@ double QTable::getQValue(std::size_t stateKey, std::string action) const {
     return actionIt->second;
 }
 
-void QTable::update(std::size_t stateKey, std::string action, double reward, std::size_t nextState) {
+void QTable::update(std::size_t stateKey, std::string action, double reward, std::size_t nextState, bool terminal) {
     const double oldValue = getQValue(stateKey, action);
     double bestNextValue = 0.0;
 
-    const auto nextIt = table.find(nextState);
-    if (nextIt != table.end()) {
-        for (const auto& entry : nextIt->second) {
-            if (entry.second > bestNextValue) {
-                bestNextValue = entry.second;
+    if (!terminal) {
+        const auto nextIt = table.find(nextState);
+        if (nextIt != table.end()) {
+            for (const auto& entry : nextIt->second) {
+                if (entry.second > bestNextValue) {
+                    bestNextValue = entry.second;
+                }
             }
         }
     }
 
-    const double newValue = oldValue + learningRate * (reward + discountFactor * bestNextValue - oldValue);
+    const double newValue = oldValue + learningRate * (reward + (terminal ? 0.0 : discountFactor * bestNextValue) - oldValue);
     table[stateKey][action] = newValue;
 }
 
@@ -682,17 +685,20 @@ std::string QLearning::chooseAction(const state& stateRef) const {
     return getBestAction(stateRef);
 }
 
-void QLearning::update(const state& current_state, const std::string& action, float reward, const state& next_state) {
+void QLearning::update(const state& current_state, const std::string& action, float reward, const state& next_state, bool terminal) {
     const double currentValue = q_table.getQValue(current_state.encode(), action);
     double bestNextValue = 0.0;
-    for (const auto& candidate : actions) {
-        const double candidateValue = q_table.getQValue(next_state.encode(), candidate);
-        if (candidateValue > bestNextValue) {
-            bestNextValue = candidateValue;
+    if (!terminal) {
+        for (const auto& candidate : actions) {
+            const double candidateValue = q_table.getQValue(next_state.encode(), candidate);
+            if (candidateValue > bestNextValue) {
+                bestNextValue = candidateValue;
+            }
         }
     }
 
-    const double updatedValue = currentValue + learning_rate * (reward + discount_factor * bestNextValue - currentValue);
+    const double bootstrapValue = terminal ? 0.0 : discount_factor * bestNextValue;
+    const double updatedValue = currentValue + learning_rate * (reward + bootstrapValue - currentValue);
     q_table.table[current_state.encode()][action] = updatedValue;
 }
 
@@ -859,9 +865,9 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
         Level::MEDIUM,
         Level::LOW,
         observation.user_status,
-        std::clamp(outcome.reward, 0.0f, 1.0f));
+        0.0f);
 
-    q_policy.update(current_state, action, outcome.reward, next_state);
+    q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
     session_context.last_reward = outcome.reward;
     session_context.last_timestamp = currentTimeStamp();
     session_context.current_action = action;
@@ -967,7 +973,6 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     runtime_context.memory_summary = buildMemorySummary(memory_records, action);
 
     state next_state = makeRuntimeState(runtime_context);
-    next_state.memory = outcome.reward;
     next_state.affect_trend = summarizeAffectTrend(affective_state, levelFromValue(session_context.energy_level));
     q_policy.update(current_state, action, outcome.reward, next_state);
 
