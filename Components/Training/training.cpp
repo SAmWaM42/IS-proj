@@ -174,10 +174,12 @@ bool runTrainingExperiment(const std::string& mode,
         return false;
     }
 
-    std::mt19937 environmentRng(seed);
+    const unsigned int environmentSeed = mode == "train" ? seed : seed + 1000003u;
+    std::mt19937 environmentRng(environmentSeed);
     nlohmann::json summary;
     summary["mode"] = mode;
     summary["seed"] = seed;
+    summary["environment_seed"] = environmentSeed;
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v1";
