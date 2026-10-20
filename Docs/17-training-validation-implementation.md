@@ -21,7 +21,7 @@ Build a reproducible synthetic experiment around the existing C++ baseline and p
 - Training runs both agents against the same pre-generated observations and synthetic reward function, with a decaying exploration rate. Q-tables are saved as `baseline.qtable` and `proposed.qtable`.
 - Validation/comparison loads those policies, disables exploration and learning, and uses an evaluation environment seed offset from the supplied seed.
 - Each condition writes step-level JSONL logs; each run writes an episode-level JSON summary.
-- Q-learning updates now accept a terminal flag, seeded exploration is per-agent, and a validation check covers seeded exploration and baseline feature isolation.
+- Q-learning updates now accept a terminal flag, seeded exploration is per-agent, and validation checks cover seeded exploration, baseline feature isolation, and evaluation-mode Q-table immutability.
 
 This is a first headless experiment slice, not a complete participant study. The synthetic reward function is deliberately a development proxy and must not be presented as perceived believability. The participant-facing interface/questionnaire and optional shared-policy experiment remain unimplemented. Build/test execution against the branch still needs to be confirmed. The checked-in `Docs/test-results.json` is not automatically refreshed by these commits; run `./IS-2 --self-test` after building to regenerate it.
 
