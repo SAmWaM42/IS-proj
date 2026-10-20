@@ -11,6 +11,7 @@ add_executable(IS-2
    Components/Memory/memory.cpp
    Components/Environment/environment.cpp
    Components/Training/training.cpp
+   Components/Study/study.cpp
 )
 
 target_include_directories(IS-2 PRIVATE
@@ -20,6 +21,7 @@ target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}/Components/Memory
    ${CMAKE_SOURCE_DIR}/Components/State-Action
    ${CMAKE_SOURCE_DIR}/Components/Training
+   ${CMAKE_SOURCE_DIR}/Components/Study
 )
 
 target_link_libraries(IS-2 PRIVATE
