@@ -38,11 +38,13 @@ def classify(tokens, raw):
         return "greeting"
     return "unknown"
 
-def main():
-    request = json.loads(sys.stdin.readline() or "{}")
+def handle_line(line):
+    request = json.loads(line or "{}")
     raw = str(request.get("text", ""))[:500]
     if not raw.strip():
-        print(json.dumps({"intent": "unknown", "confidence": 0.0, "method": "empty"}))
+        print(json.dumps({"intent": "unknown", "goal_state": 0, "target_proximity": 1,
+                          "task_status": 0, "signal_strength": 0.45, "reward": 0.25,
+                          "confidence": 0.0, "method": "empty"}), flush=True)
         return
     try:
         import spacy
@@ -74,7 +76,19 @@ def main():
         "intent": intent, "goal_state": goal, "target_proximity": proximity,
         "task_status": task, "signal_strength": signal, "reward": reward,
         "confidence": 0.8 if method == "spacy" else 0.45, "method": method
-    }))
+    }), flush=True)
+
+def main():
+    # Persistent line-delimited protocol: one JSON request in, one JSON response out.
+    for line in sys.stdin:
+        try:
+            handle_line(line)
+        except Exception as exc:
+            print(json.dumps({
+                "intent": "unknown", "goal_state": 0, "target_proximity": 1,
+                "task_status": 0, "signal_strength": 0.45, "reward": 0.25,
+                "confidence": 0.0, "method": "service-error", "error": str(exc)
+            }), flush=True)
 
 if __name__ == "__main__":
     main()
