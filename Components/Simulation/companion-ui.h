@@ -20,7 +20,9 @@ private:
     sf::RenderWindow window;
     sf::Font font;
     sf::Texture dogTexture;
+    sf::Texture environmentTexture;
     bool dogTextureLoaded = false;
+    bool environmentTextureLoaded = false;
     sf::Clock frameClock;
     std::string policyDirectory;
     std::string outputDirectory;
