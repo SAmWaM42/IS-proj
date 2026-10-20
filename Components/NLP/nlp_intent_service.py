@@ -9,6 +9,9 @@ import json
 import re
 import sys
 
+_NLP = None
+_SPACY_LOAD_ATTEMPTED = False
+
 INTENTS = {
     "greeting": (0, 1, 0, 0.55, 0.65),
     "request": (1, 1, 1, 0.85, 0.65),
@@ -46,10 +49,15 @@ def handle_line(line):
                           "task_status": 0, "signal_strength": 0.45, "reward": 0.25,
                           "confidence": 0.0, "method": "empty"}), flush=True)
         return
+    global _NLP, _SPACY_LOAD_ATTEMPTED
     try:
-        import spacy
-        nlp = spacy.load("en_core_web_sm")
-        doc = nlp(raw)
+        if not _SPACY_LOAD_ATTEMPTED:
+            _SPACY_LOAD_ATTEMPTED = True
+            import spacy
+            _NLP = spacy.load("en_core_web_sm")
+        if _NLP is None:
+            raise RuntimeError("spaCy model unavailable")
+        doc = _NLP(raw)
         intent = classify(doc, raw)
         method = "spacy"
     except Exception as exc:
