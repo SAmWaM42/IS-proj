@@ -13,30 +13,120 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <future>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 namespace {
 using nlohmann::json;
 
-std::string quoteShell(const std::string& value) {
-    std::string quoted(1, static_cast<char>(39));
-    for (char ch : value) {
-        if (static_cast<unsigned char>(ch) == 39) quoted += "'\\''";
-        else quoted += ch;
+class PersistentNlpClient {
+public:
+    explicit PersistentNlpClient(std::string scriptPath) : script(std::move(scriptPath)), worker(&PersistentNlpClient::run, this) {}
+    ~PersistentNlpClient() {
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            stopping = true;
+        }
+        condition.notify_all();
+        if (worker.joinable()) worker.join();
     }
-    quoted += static_cast<char>(39);
-    return quoted;
-}
+    std::string request(const std::string& text) {
+        auto promise = std::make_shared<std::promise<std::string>>();
+        auto result = promise->get_future();
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            requests.push(Request{json{{"text", text}}.dump(), promise});
+        }
+        condition.notify_one();
+        return result.get();
+    }
+private:
+    struct Request { std::string jsonLine; std::shared_ptr<std::promise<std::string>> result; };
+    std::string script;
+    std::mutex mutex;
+    std::condition_variable condition;
+    std::queue<Request> requests;
+    bool stopping = false;
+    std::thread worker;
+    pid_t child = -1;
+    int childInput = -1;
+    int childOutput = -1;
 
-std::string callNlp(const std::string& script, const std::string& input) {
-    const std::string payload = json{{"text", input}}.dump();
-    const std::string command = "printf %s " + quoteShell(payload) + " | python3 " +
-                                quoteShell(script) + " 2>/dev/null";
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
-    if (!pipe) return {};
-    std::string output;
-    char buffer[512];
-    while (fgets(buffer, sizeof(buffer), pipe.get())) output += buffer;
-    return output;
+    bool startService() {
+        int toChild[2], fromChild[2];
+        if (pipe(toChild) != 0 || pipe(fromChild) != 0) return false;
+        child = fork();
+        if (child == 0) {
+            dup2(toChild[0], STDIN_FILENO);
+            dup2(fromChild[1], STDOUT_FILENO);
+            close(toChild[0]); close(toChild[1]); close(fromChild[0]); close(fromChild[1]);
+            execlp("python3", "python3", script.c_str(), static_cast<char*>(nullptr));
+            _exit(127);
+        }
+        close(toChild[0]); close(fromChild[1]);
+        if (child < 0) { close(toChild[1]); close(fromChild[0]); return false; }
+        childInput = toChild[1];
+        childOutput = fromChild[0];
+        return true;
+    }
+    void stopService() {
+        if (childInput >= 0) { close(childInput); childInput = -1; }
+        if (childOutput >= 0) { close(childOutput); childOutput = -1; }
+        if (child > 0) { int status = 0; waitpid(child, &status, 0); child = -1; }
+    }
+    std::string exchange(const std::string& line) {
+        if (childInput < 0 || childOutput < 0) return {};
+        const std::string payload = line + "\\n";
+        std::size_t written = 0;
+        while (written < payload.size()) {
+            const ssize_t n = write(childInput, payload.data() + written, payload.size() - written);
+            if (n <= 0) return {};
+            written += static_cast<std::size_t>(n);
+        }
+        std::string response;
+        char ch = 0;
+        while (read(childOutput, &ch, 1) == 1) {
+            if (ch == '\\n') break;
+            response.push_back(ch);
+            if (response.size() > 65536) return {};
+        }
+        return response;
+    }
+    void run() {
+        bool running = startService();
+        for (;;) {
+            Request requestItem;
+            {
+                std::unique_lock<std::mutex> lock(mutex);
+                condition.wait(lock, [&] { return stopping || !requests.empty(); });
+                if (stopping && requests.empty()) break;
+                requestItem = std::move(requests.front());
+                requests.pop();
+            }
+            std::string response;
+            if (running) response = exchange(requestItem.jsonLine);
+            if (response.empty()) {
+                if (running) { stopService(); running = false; }
+                response = R"({"intent":"unknown","goal_state":0,"target_proximity":1,"task_status":0,"signal_strength":0.45,"reward":0.25,"method":"nlp-service-unavailable"})";
+            }
+            requestItem.result->set_value(std::move(response));
+        }
+        stopService();
+    }
+};
+
+PersistentNlpClient& nlpClient() {
+    static PersistentNlpClient client("Components/NLP/nlp_intent_service.py");
+    return client;
+}
+std::string callNlp(const std::string&, const std::string& input) {
+    return nlpClient().request(input);
 }
 const sf::Color kBackground(239, 243, 247);
 const sf::Color kPanel(255, 255, 255);
