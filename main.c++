@@ -28,8 +28,9 @@ void printUsage(const char* executable) {
         << "  " << executable << " --train [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
         << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
         << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
+        << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
         << "  " << executable << " --sim | --sim-history\n\n"
-        << "Run --train before --validate or --compare. Evaluation disables exploration and learning.\n";
+        << "Run --train before --validate, --compare, or --study. Evaluation disables policy updates.\n";
 }
 } // namespace
 
