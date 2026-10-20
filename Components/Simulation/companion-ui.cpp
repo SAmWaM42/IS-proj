@@ -262,8 +262,9 @@ void CompanionUI::handleClick(sf::Vector2f point) {
         return;
     }
     if (screen != Screen::Simulation) return;
-    textInputFocused = y >= 700 && y <= 750;
-    if (y >= 445 && y <= 495) {
+    if (!controlsVisible) return;
+    textInputFocused = y >= 755 && y <= 805;
+    if (y >= 550 && y <= 594) {
         if (x >= 40 && x < 255) processInteraction("Greet the companion", {0, 1, 0, 0, 0.55f}, 0.65f);
         else if (x >= 275 && x < 490) processInteraction("Ask the companion to fetch the ball", {1, 1, 1, 1, 0.85f}, 0.85f);
         else if (x >= 510 && x < 725) processInteraction("Praise the companion", {0, 0, 1, 0, 0.75f}, 1.0f);
@@ -271,7 +272,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
         else if (x >= 980 && x < 1200) processInteraction("The companion should rest", {2, 2, 0, 0, 0.20f}, 0.25f);
         return;
     }
-    if (y >= 700 && y <= 750 && x >= 1040 && !textInput.empty()) {
+    if (y >= 755 && y <= 805 && x >= 1020 && !textInput.empty()) {
         processTextInteraction(textInput);
         textInput.clear();
     }
