@@ -28,7 +28,7 @@ Both agents share the same environment and action definitions during the first e
 
 ## Current status
 
-Development status: Baseline + runtime comparison harness
+Development status: Baseline + runtime comparison harness + headless synthetic experiment CLI
 
 The project is currently in a stable staged prototype phase. The original baseline learning loop remains validated, and the implementation has progressed beyond the purely tabular baseline to include bounded memory/affect integration, persistence, and a minimal SFML-backed runtime environment.
 
@@ -42,11 +42,28 @@ Verified milestones:
 - Persistence and rest-state aggregation are implemented for Q-table, memory records, affective state, session context, interaction history, and low-confidence aggregated facts.
 - A minimal backyard simulation shell has been added using SFML, with policy-driven random stimuli and on-screen state display.
 - A baseline-vs-proposed comparison harness has been scaffolded and executed under a shared environment contract.
+- A headless synthetic training/evaluation runner is available through `--train`, `--validate`, and `--compare`; it writes per-step JSONL logs and episode summaries.
+- Terminal transitions no longer bootstrap from next-state Q-values, and policy exploration uses a per-agent seed derived from the experiment configuration.
 - A machine-readable validation report is stored in [Docs/test-results.json](Docs/test-results.json).
 
 The current implementation deliberately keeps the policy layer stable and explainable while the runtime, memory, and affect pipeline is exercised under controlled conditions. This keeps the project testable while still enabling comparison and simulation-level observation.
 
 ---
+
+## Headless experiment commands
+
+Build the project with the existing CMake setup, then run:
+
+```sh
+./IS-2 --self-test
+./IS-2 --train --episodes 1000 --steps 40 --seed 42 --out artifacts/training
+./IS-2 --validate --episodes 200 --steps 40 --seed 43 --out artifacts/training
+./IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training
+```
+
+Training saves `baseline.qtable` and `proposed.qtable`. Validation and comparison load those checkpoints, disable exploration and policy updates, and use an evaluation scenario seed offset from the supplied seed. Step logs are written to `baseline_steps.jsonl` and `proposed_steps.jsonl`; a mode-specific JSON summary is also written.
+
+These are synthetic engineering diagnostics only. The reward model does not measure believability, and the participant-facing interaction/questionnaire workflow and optional policy-sharing experiment are not yet implemented. Build and test the branch before relying on generated results.
 
 ## Architecture
 
