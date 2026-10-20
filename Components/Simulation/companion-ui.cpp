@@ -196,6 +196,19 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
         appendLog("Dog sprite sheet unavailable; using vector companion fallback.");
     }
     std::filesystem::create_directories(outputDirectory);
+    {
+        nlohmann::json manifest;
+        manifest["schema_version"] = 1;
+        manifest["mode"] = "interactive_simulation";
+        manifest["policy_updates_enabled"] = false;
+        manifest["selected_condition"] = std::string(1, selectedAgentCode);
+        manifest["condition_key"] = {
+            {"A", agentAIsProposed ? "proposed" : "baseline"},
+            {"B", agentAIsProposed ? "baseline" : "proposed"}
+        };
+        std::ofstream manifestOut(std::filesystem::path(outputDirectory) / "run-manifest.json");
+        if (manifestOut) manifestOut << manifest.dump(2) << '\\n';
+    }
     const auto basePath = std::filesystem::path(policyDirectory) / "baseline.qtable";
     const auto proposedPath = std::filesystem::path(policyDirectory) / "proposed.qtable";
     if (std::filesystem::exists(basePath)) baseline.loadPersistentState(basePath.string());
@@ -317,6 +330,9 @@ void CompanionUI::processInteraction(const std::string& label,
 void CompanionUI::executeInteraction(const std::string& label,
                                      const EnvironmentObservation& observation,
                                      float feedbackRewardValue) {
+    const auto affectBefore = proposed.getAffectiveState();
+    const std::size_t memoryCountBefore = proposed.getMemoryRecords().size();
+    const int interactionId = interactionCount + 1;
     latestObservation = observation;
     latestStimulus = label;
     latestBaselineAction = baseline.selectAction(observation);
@@ -341,6 +357,45 @@ void CompanionUI::executeInteraction(const std::string& label,
     appendLog("You: " + label);
     appendLog("Baseline: " + describeAction(latestBaselineAction));
     appendLog("Proposed: " + describeAction(latestProposedAction));
+    {
+        nlohmann::json row;
+        row["schema_version"] = 1;
+        row["run_id"] = "interactive-simulation";
+        row["interaction_id"] = interactionId;
+        row["sequence_index"] = interactionId - 1;
+        row["condition_code"] = std::string(1, selectedAgentCode);
+        row["input_summary"] = label;
+        row["observation"] = {
+            {"goal_state", observation.goal_state},
+            {"target_proximity", observation.target_proximity},
+            {"user_status", observation.user_status},
+            {"task_status", observation.task_status},
+            {"signal_strength", observation.signal_strength}
+        };
+        row["baseline"] = {{"action", latestBaselineAction}, {"reward", baselineOutcome.reward},
+                           {"learning_update_enabled", false}};
+        row["proposed"] = {
+            {"action", latestProposedAction}, {"reward", proposedOutcome.reward},
+            {"learning_update_enabled", false},
+            {"memory_count_before", memoryCountBefore},
+            {"memory_count_after", proposed.getMemoryRecords().size()},
+            {"affect_before", {
+                {"affinity", affectBefore.affinity}, {"stress", affectBefore.stress},
+                {"arousal", affectBefore.arousal}, {"engagement", affectBefore.engagement},
+                {"valence", static_cast<int>(affectBefore.valence)}
+            }},
+            {"affect_after", {
+                {"affinity", proposed.getAffectiveState().affinity},
+                {"stress", proposed.getAffectiveState().stress},
+                {"arousal", proposed.getAffectiveState().arousal},
+                {"engagement", proposed.getAffectiveState().engagement},
+                {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
+            }}
+        };
+        std::ofstream log(std::filesystem::path(outputDirectory) / "interaction-events.jsonl", std::ios::app);
+        if (log) log << row.dump() << '\\n';
+        else appendLog("WARNING: interaction event log could not be written.");
+    }
     saveSession();
 }
 
