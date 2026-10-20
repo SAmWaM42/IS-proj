@@ -1314,6 +1314,10 @@ const AffectiveState& ProposedAgent::getAffectiveState() const {
     return affective_state;
 }
 
+void ProposedAgent::clearMemory() {
+    memory_records.clear();
+}
+
 AgentComparisonRun runAgentComparison(const EnvironmentConfig& config, int steps) {
     AgentComparisonRun run{config, BaselineAgent(config), ProposedAgent(config), {}};
 
