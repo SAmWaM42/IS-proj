@@ -6,6 +6,7 @@
 #include "Components/State-Action/state-action.h"
 #include "Components/Training/training.h"
 #include "Components/Study/study.h"
+#include "Components/Simulation/companion-ui.h"
 
 namespace {
 bool parsePositiveInt(const char* value, int& result) {
@@ -47,6 +48,16 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--sim" || arg == "sim") {
+            try {
+                CompanionUI simulation(policyDirectory, "artifacts/simulation");
+                simulation.run();
+            } catch (const std::exception& error) {
+                std::cerr << "Unable to start companion UI: " << error.what() << '\\n';
+                return 1;
+            }
+            return 0;
+        }
+        if (arg == "--legacy-sim") {
             BackyardSimulation simulation;
             simulation.run();
             return 0;
