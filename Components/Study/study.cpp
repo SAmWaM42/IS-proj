@@ -40,7 +40,7 @@ struct SurveyItem {
 
 const std::array<Scenario, 5> kScenarios{{
     {"You greet the companion after entering the yard.",
-     EnvironmentObservation{0, 0, 1, 0, 0.55f}},
+     EnvironmentObservation{0, 1, 0, 0, 0.55f}},
     {"You ask the companion to fetch a ball nearby.",
      EnvironmentObservation{1, 1, 1, 1, 0.85f}},
     {"A sudden loud noise occurs nearby.",
