@@ -133,6 +133,7 @@ public:
 
     void setActions(const std::vector<std::string>& actions);
     std::string chooseAction(const state& stateRef) const;
+    std::string chooseAction(const state& stateRef, const std::string& contextualFallback) const;
     void update(const state& current_state, const std::string& action, float reward, const state& next_state, bool terminal = false);
 
     void setEpsilon(float epsilon);
