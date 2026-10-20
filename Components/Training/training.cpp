@@ -167,8 +167,8 @@ bool runTrainingExperiment(const std::string& mode,
         proposed.setExplorationRate(0.0f);
     }
 
-    std::ofstream baselineLog(outDir / "baseline_steps.jsonl");
-    std::ofstream proposedLog(outDir / "proposed_steps.jsonl");
+    std::ofstream baselineLog(outDir / (mode + "_baseline_steps.jsonl"));
+    std::ofstream proposedLog(outDir / (mode + "_proposed_steps.jsonl"));
     if (!baselineLog || !proposedLog) {
         std::cerr << "Unable to open experiment log files in " << outDir << '\n';
         return false;
@@ -189,6 +189,10 @@ bool runTrainingExperiment(const std::string& mode,
     nlohmann::json proposedEpisodes = nlohmann::json::array();
     double baselineRewardSum = 0.0;
     double proposedRewardSum = 0.0;
+    double baselineRewardPerStepSum = 0.0;
+    double proposedRewardPerStepSum = 0.0;
+    double baselineStepSum = 0.0;
+    double proposedStepSum = 0.0;
     int baselineCompletions = 0;
     int proposedCompletions = 0;
 
@@ -211,6 +215,10 @@ bool runTrainingExperiment(const std::string& mode,
 
         baselineRewardSum += baselineMetrics.total_reward;
         proposedRewardSum += proposedMetrics.total_reward;
+        baselineRewardPerStepSum += baselineMetrics.steps > 0 ? baselineMetrics.total_reward / baselineMetrics.steps : 0.0;
+        proposedRewardPerStepSum += proposedMetrics.steps > 0 ? proposedMetrics.total_reward / proposedMetrics.steps : 0.0;
+        baselineStepSum += baselineMetrics.steps;
+        proposedStepSum += proposedMetrics.steps;
         baselineCompletions += baselineMetrics.completed ? 1 : 0;
         proposedCompletions += proposedMetrics.completed ? 1 : 0;
 
@@ -230,10 +238,16 @@ bool runTrainingExperiment(const std::string& mode,
         proposed.savePersistentState(proposedPolicy.string());
     }
 
-    summary["baseline"]["mean_reward"] = baselineRewardSum / episodes;
+    summary["baseline"]["mean_total_reward_per_episode"] = baselineRewardSum / episodes;
+    summary["baseline"]["mean_reward_per_step"] = baselineRewardPerStepSum / episodes;
+    summary["baseline"]["mean_steps_per_episode"] = baselineStepSum / episodes;
+    summary["baseline"]["mean_reward"] = baselineRewardSum / episodes; // Backwards-compatible alias.
     summary["baseline"]["completion_rate"] = static_cast<double>(baselineCompletions) / episodes;
     summary["baseline"]["episodes"] = baselineEpisodes;
-    summary["proposed"]["mean_reward"] = proposedRewardSum / episodes;
+    summary["proposed"]["mean_total_reward_per_episode"] = proposedRewardSum / episodes;
+    summary["proposed"]["mean_reward_per_step"] = proposedRewardPerStepSum / episodes;
+    summary["proposed"]["mean_steps_per_episode"] = proposedStepSum / episodes;
+    summary["proposed"]["mean_reward"] = proposedRewardSum / episodes; // Backwards-compatible alias.
     summary["proposed"]["completion_rate"] = static_cast<double>(proposedCompletions) / episodes;
     summary["proposed"]["episodes"] = proposedEpisodes;
 
@@ -246,8 +260,8 @@ bool runTrainingExperiment(const std::string& mode,
 
     std::cout << mode << " experiment complete (" << episodes << " episodes, seed "
               << seed << ").\n"
-              << "Baseline mean reward: " << summary["baseline"]["mean_reward"] << '\n'
-              << "Proposed mean reward: " << summary["proposed"]["mean_reward"] << '\n'
+              << "Baseline mean reward per step: " << summary["baseline"]["mean_reward_per_step"] << '\n'
+              << "Proposed mean reward per step: " << summary["proposed"]["mean_reward_per_step"] << '\n'
               << "Results: " << (outDir / (mode + "_summary.json")) << '\n';
 
     return true;
