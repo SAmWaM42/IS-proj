@@ -724,6 +724,21 @@ void QLearning::loadTrainingData(const std::string&) {
     // intentionally left as no-op for the minimal prototype
 }
 
+bool testSeededExplorationIsReproducible() {
+    const state sample = makeState(1, distance::CLOSE, Level::MEDIUM, Level::LOW, Level::MEDIUM, Level::LOW, 1, 0.0f);
+    QLearning first(0.25f, 0.8f, 1.0f, 12345u);
+    QLearning second(0.25f, 0.8f, 1.0f, 12345u);
+    const std::vector<std::string> actions = {"FETCH", "WANDER", "BARK", "INSIST"};
+    first.setActions(actions);
+    second.setActions(actions);
+    for (int i = 0; i < 100; ++i) {
+        if (first.chooseAction(sample) != second.chooseAction(sample)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool testMemoryAffectStateEncoding() {
     const state neutral = makeState(1, distance::CLOSE, Level::LOW, Level::LOW, Level::MEDIUM, Level::LOW, 0, 0.0f);
     state positive = neutral;
@@ -850,6 +865,9 @@ void BaselineAgent::setLearningEnabled(bool enabled) {
 }
 
 std::string BaselineAgent::selectAction(const EnvironmentObservation& observation) {
+    session_context.current_intent = observation.goal_state;
+    session_context.target_proximity = observation.target_proximity;
+    session_context.user_status = observation.user_status;
     const state candidate = makeState(
         session_context.current_intent,
         proximityFromValue(observation.target_proximity),
@@ -1087,6 +1105,7 @@ bool runBaselineValidation() {
     results.push_back({"Unseen state handling", "PASS", testUnseenStateHandling(), "baseline"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
+    results.push_back({"Seeded exploration reproducibility", "PASS", testSeededExplorationIsReproducible(), "training"});
     results.push_back({"Memory/affect encoding", "PASS", testMemoryAffectStateEncoding(), "state"});
     results.push_back({"Context summary state changes", "PASS", testContextSummaryChangesState(), "state"});
     results.push_back({"Live memory summary state changes", "PASS", testLiveMemorySummariesChangeState(), "memory"});
