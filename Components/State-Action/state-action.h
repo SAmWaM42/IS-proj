@@ -196,6 +196,7 @@ public:
 
     void loadPersistentState(const std::string& path);
     void savePersistentState(const std::string& path);
+    void savePersistentContext(const std::string& path);
 
     const state& getCurrentState() const;
     const SessionContext& getSessionContext() const;
