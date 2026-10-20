@@ -12,19 +12,21 @@ void AffectiveState::updateFromFeedback(float reward, bool positive_feedback, bo
         stress = std::min(1.0f, stress + 0.35f);
         engagement = std::max(0.0f, engagement - 0.25f);
         affinity = std::max(0.0f, affinity - 0.30f);
-        return;
-    }
-
-    if (positive_feedback) {
+    } else if (positive_feedback) {
         valence = AffectValence::POSITIVE;
+        stress = std::max(0.0f, stress - 0.10f);
         engagement = std::min(1.0f, engagement + 0.25f);
         affinity = std::min(1.0f, affinity + 0.20f);
     } else {
         valence = AffectValence::NEUTRAL;
+        stress = std::max(0.0f, stress - 0.03f);
     }
 
+    // Every feedback event affects arousal and energy; negative feedback
+    // must not bypass these transitions via an early return.
     arousal = std::clamp(arousal + reward * 0.1f, 0.0f, 1.0f);
-    energy = reward > 0.0f ? AffectEnergy::HIGH : AffectEnergy::MODERATE;
+    energy = reward > 0.0f ? AffectEnergy::HIGH :
+             reward < 0.0f ? AffectEnergy::LOW : AffectEnergy::MODERATE;
 }
 
 void MemoryRecord::update_record() {
