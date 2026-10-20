@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -49,6 +50,11 @@ private:
     int animationFrame = 0;
     bool animationActive = false;
     float animationClock = 0.0f;
+    float actionDisplayTimer = 0.0f;
+    struct QueuedInteraction { std::string label; EnvironmentObservation observation; float reward; };
+    std::deque<QueuedInteraction> interactionBuffer;
+    void enqueueInteraction(const std::string& label, const EnvironmentObservation& observation, float reward);
+
     std::string nlpMethod = "not used";
     std::string assetsDirectory = "assets";
     std::string nlpScript = "Components/NLP/nlp_intent_service.py";
