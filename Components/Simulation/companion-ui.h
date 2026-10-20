@@ -36,6 +36,7 @@ private:
     sf::Clock frameClock;
     std::string policyDirectory;
     std::string outputDirectory;
+    std::string runId;
     Screen screen = Screen::AgentSelection;
     BaselineAgent baseline;
     ProposedAgent proposed;
