@@ -157,6 +157,10 @@ public:
     void applyOutcome(const EnvironmentObservation& observation,
                       const std::string& action,
                       const ActionOutcome& outcome);
+    void applyOutcome(const EnvironmentObservation& observation,
+                      const std::string& action,
+                      const ActionOutcome& outcome,
+                      const EnvironmentObservation& nextObservation);
 
     void loadPersistentState(const std::string& path);
     void savePersistentState(const std::string& path);
@@ -185,6 +189,10 @@ public:
     void applyOutcome(const EnvironmentObservation& observation,
                       const std::string& action,
                       const ActionOutcome& outcome);
+    void applyOutcome(const EnvironmentObservation& observation,
+                      const std::string& action,
+                      const ActionOutcome& outcome,
+                      const EnvironmentObservation& nextObservation);
 
     void loadPersistentState(const std::string& path);
     void savePersistentState(const std::string& path);
