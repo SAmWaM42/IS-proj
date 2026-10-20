@@ -724,6 +724,22 @@ void QLearning::loadTrainingData(const std::string&) {
     // intentionally left as no-op for the minimal prototype
 }
 
+bool testBaselineExcludesMemoryAndAffectInputs() {
+    EnvironmentConfig config;
+    BaselineAgent agent(config);
+    EnvironmentObservation observation;
+    observation.goal_state = 2;
+    observation.target_proximity = 1;
+    observation.user_status = 1;
+    observation.task_status = 1;
+    observation.signal_strength = 0.9f;
+    agent.selectAction(observation);
+    const state& baselineState = agent.getCurrentState();
+    return baselineState.memory == 0.0f &&
+           baselineState.memory_bias == 0 &&
+           baselineState.affect.valence == AffectValence::NEUTRAL;
+}
+
 bool testSeededExplorationIsReproducible() {
     const state sample = makeState(1, distance::CLOSE, Level::MEDIUM, Level::LOW, Level::MEDIUM, Level::LOW, 1, 0.0f);
     QLearning first(0.25f, 0.8f, 1.0f, 12345u);
@@ -1109,6 +1125,7 @@ bool runBaselineValidation() {
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
     results.push_back({"Seeded exploration reproducibility", "PASS", testSeededExplorationIsReproducible(), "training"});
+    results.push_back({"Baseline excludes memory and affect inputs", "PASS", testBaselineExcludesMemoryAndAffectInputs(), "training"});
     results.push_back({"Memory/affect encoding", "PASS", testMemoryAffectStateEncoding(), "state"});
     results.push_back({"Context summary state changes", "PASS", testContextSummaryChangesState(), "state"});
     results.push_back({"Live memory summary state changes", "PASS", testLiveMemorySummariesChangeState(), "memory"});
