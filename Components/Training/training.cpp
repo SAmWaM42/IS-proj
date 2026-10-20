@@ -9,6 +9,7 @@
 #include <map>
 #include <random>
 #include <stdexcept>
+#include <set>
 #include <vector>
 
 namespace
@@ -19,22 +20,39 @@ namespace
         int steps = 0;
         bool completed = false;
         std::map<std::string, int> action_counts;
+        std::set<std::size_t> visited_states;
     };
 
-    EnvironmentObservation makeObservation(std::mt19937 &rng)
+    EnvironmentObservation makeObservation(std::mt19937 &rng, int stepIndex)
     {
-        std::uniform_int_distribution<int> goalDist(0, 2);
-        std::uniform_int_distribution<int> proximityDist(0, 3);
-        std::uniform_int_distribution<int> userDist(0, 2);
-        std::uniform_int_distribution<int> taskDist(0, 1);
-        std::uniform_real_distribution<float> signalDist(0.0f, 1.0f);
-
+        // Use a repeatable interaction pattern rather than unrelated random
+        // observations. Repeated contexts give the tabular policies enough
+        // visits to learn, while small controlled variations prevent a single
+        // exact observation from being the whole training set.
+        std::uniform_int_distribution<int> nearDist(0, 1);
+        std::uniform_int_distribution<int> socialDist(0, 1);
         EnvironmentObservation observation;
-        observation.goal_state = goalDist(rng);
-        observation.target_proximity = proximityDist(rng);
-        observation.user_status = userDist(rng);
-        observation.task_status = taskDist(rng);
-        observation.signal_strength = signalDist(rng);
+        switch (stepIndex % 6)
+        {
+        case 0: // User initiates a social interaction.
+            observation = {0, 1, socialDist(rng), 0, 0.45f};
+            break;
+        case 1: // Explicit fetch request with a nearby object.
+            observation = {1, nearDist(rng), 1, 1, 0.82f};
+            break;
+        case 2: // A loud unexpected disturbance.
+            observation = {2, 0, 0, 0, 0.92f};
+            break;
+        case 3: // Quiet period with no task pending.
+            observation = {2, 2, 0, 0, 0.18f};
+            break;
+        case 4: // Positive social feedback / renewed contact.
+            observation = {0, 0, 1, 0, 0.72f};
+            break;
+        default: // Request where the target is too far away.
+            observation = {1, 3, 1, 1, 0.56f};
+            break;
+        }
         return observation;
     }
 
@@ -120,6 +138,7 @@ namespace
         {
             const auto &observation = observations[step];
             const std::string action = agent.selectAction(observation);
+            metrics.visited_states.insert(agent.getCurrentState().encode());
             const float reward = rewardFor(action, observation);
             const bool completed = observation.goal_state == 1 &&
                                    action == "FETCH" &&
@@ -153,6 +172,7 @@ namespace
             row["task_status"] = observation.task_status;
             row["signal_strength"] = observation.signal_strength;
             row["action"] = action;
+            row["encoded_state"] = agent.getCurrentState().encode();
             row["reward"] = reward;
             row["terminal"] = terminal;
             row["completed"] = completed;
@@ -173,6 +193,7 @@ namespace
         result["steps"] = metrics.steps;
         result["completed"] = metrics.completed;
         result["action_counts"] = metrics.action_counts;
+        result["unique_states_visited"] = metrics.visited_states.size();
         return result;
     }
 } // namespace
@@ -239,8 +260,9 @@ bool runTrainingExperiment(const std::string &mode,
     summary["environment_seed"] = environmentSeed;
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
-    summary["reward_model"] = "synthetic_v1";
-    summary["note"] = "Synthetic reward is not a measure of perceived believability.";
+    summary["reward_model"] = "synthetic_v2_context_sequence";
+    summary["scenario_pattern"] = {"social", "fetch_near", "disturbance", "rest", "positive_social", "fetch_far"};
+    summary["note"] = "Training uses repeated contextual scenarios for tabular coverage. Synthetic reward is not a measure of perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
     nlohmann::json proposedEpisodes = nlohmann::json::array();
@@ -257,7 +279,7 @@ bool runTrainingExperiment(const std::string &mode,
         observations.reserve(static_cast<std::size_t>(steps));
         for (int step = 0; step < steps; ++step)
         {
-            observations.push_back(makeObservation(environmentRng));
+            observations.push_back(makeObservation(environmentRng, step));
         }
 
         const float epsilon = mode == "train"
