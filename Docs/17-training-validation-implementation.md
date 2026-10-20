@@ -23,7 +23,18 @@ Build a reproducible synthetic experiment around the existing C++ baseline and p
 - Each condition writes step-level JSONL logs; each run writes an episode-level JSON summary.
 - Q-learning updates now accept a terminal flag, seeded exploration is per-agent, and validation checks cover seeded exploration, baseline feature isolation, and evaluation-mode Q-table immutability.
 
-The synthetic reward function is deliberately a development proxy and must not be presented as perceived believability. Build/test execution against the branch still needs to be confirmed. The checked-in `Docs/test-results.json` is not automatically refreshed by these commits; run `./build/IS-2 --self-test` after building to regenerate it.
+The synthetic reward function is deliberately a development proxy and must not be presented as perceived believability.
+
+### Corrective policy changes (2026-10)
+
+- Unseen or unlearned state/action combinations no longer default blindly to the first configured action (FETCH). The agents now use a contextual fallback based on interaction intent, task status, proximity, signal strength, and proposed-agent affect.
+- The encoded Q state now includes task availability and a three-level signal-strength bucket. This helps distinguish an active fetch request from a disturbance/rest situation.
+- Rewards are conditioned on intent: social interactions reward greeting/affiliation, explicit requests reward feasible fetches, and disturbances/rest reward investigation or rest behaviours rather than unrelated fetch actions.
+- Proposed-agent memory stores action-specific positive/neutral/negative feedback and avoids an action after a recent negative response. Affective stress also influences the response to a repeated disturbance.
+- The participant study's quiet-rest scenario is now encoded as rest/disturbance intent rather than social greeting, and the greeting scenario is encoded separately.
+- Synthetic training observations are independently sampled, not a causal action-driven MDP. Q updates therefore avoid bootstrapping from unrelated next observations. This is contextual reward learning; do not claim it demonstrates long-horizon planning.
+- The state encoding changed, so old Q-table checkpoints are not compatible with the corrected policy. Retrain both policies before validation or study sessions.
+ Build/test execution against the branch still needs to be confirmed. The checked-in `Docs/test-results.json` is not automatically refreshed by these commits; run `./build/IS-2 --self-test` after building to regenerate it.
 
 - Added an SFML participant-study prototype under `Components/Study`, exposed through `--study`. It uses randomised A/B condition mapping, the same five scenarios in both conditions, participant feedback after each action, and four 1–5 questionnaire items per condition.
 - Participant-session Q-table learning is disabled. Feedback is supplied to the agent outcome path so the proposed condition can update memory and affect; questionnaire ratings are stored separately from reward.
