@@ -841,6 +841,14 @@ void BaselineAgent::reset() {
     q_policy.setActions(config.actions);
 }
 
+void BaselineAgent::setExplorationRate(float epsilon) {
+    q_policy.setEpsilon(std::clamp(epsilon, 0.0f, 1.0f));
+}
+
+void BaselineAgent::setLearningEnabled(bool enabled) {
+    learning_enabled = enabled;
+}
+
 std::string BaselineAgent::selectAction(const EnvironmentObservation& observation) {
     const state candidate = makeState(
         session_context.current_intent,
@@ -869,7 +877,9 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
         observation.user_status,
         0.0f);
 
-    q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
+    if (learning_enabled) {
+        q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
+    }
     session_context.last_reward = outcome.reward;
     session_context.last_timestamp = currentTimeStamp();
     session_context.current_action = action;
@@ -930,6 +940,14 @@ void ProposedAgent::reset() {
         0,
         0.0f);
     q_policy.setActions(config.actions);
+}
+
+void ProposedAgent::setExplorationRate(float epsilon) {
+    q_policy.setEpsilon(std::clamp(epsilon, 0.0f, 1.0f));
+}
+
+void ProposedAgent::setLearningEnabled(bool enabled) {
+    learning_enabled = enabled;
 }
 
 std::string ProposedAgent::selectAction(const EnvironmentObservation& observation) {
