@@ -2158,7 +2158,10 @@
         "total_reward": 11.79283332824707
       }
     ],
-    "mean_reward": 6.486507212817669
+    "mean_reward": 6.486507212817669,
+    "mean_reward_per_step": 0.3612646735069713,
+    "mean_steps_per_episode": 17.955,
+    "mean_total_reward_per_episode": 6.486507212817669
   },
   "environment_seed": 1000046,
   "episodes": 200,
@@ -4229,7 +4232,10 @@
         "total_reward": 8.143105506896973
       }
     ],
-    "mean_reward": 3.826926786452532
+    "mean_reward": 3.826926786452532,
+    "mean_reward_per_step": 0.39739634334917256,
+    "mean_steps_per_episode": 9.63,
+    "mean_total_reward_per_episode": 3.826926786452532
   },
   "reward_model": "synthetic_v1",
   "seed": 43
