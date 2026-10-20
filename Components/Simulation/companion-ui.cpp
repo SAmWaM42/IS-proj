@@ -4,6 +4,9 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <cstdio>
+#include <memory>
+#include <nlohmann/json.hpp>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -12,6 +15,29 @@
 #include <stdexcept>
 
 namespace {
+using nlohmann::json;
+
+std::string quoteShell(const std::string& value) {
+    std::string quoted(1, static_cast<char>(39));
+    for (char ch : value) {
+        if (static_cast<unsigned char>(ch) == 39) quoted += "'\\''";
+        else quoted += ch;
+    }
+    quoted += static_cast<char>(39);
+    return quoted;
+}
+
+std::string callNlp(const std::string& script, const std::string& input) {
+    const std::string payload = json{{"text", input}}.dump();
+    const std::string command = "printf %s " + quoteShell(payload) + " | python3 " +
+                                quoteShell(script) + " 2>/dev/null";
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
+    if (!pipe) return {};
+    std::string output;
+    char buffer[512];
+    while (fgets(buffer, sizeof(buffer), pipe.get())) output += buffer;
+    return output;
+}
 const sf::Color kBackground(239, 243, 247);
 const sf::Color kPanel(255, 255, 255);
 const sf::Color kInk(35, 42, 52);
@@ -118,34 +144,58 @@ void CompanionUI::processInteraction(const std::string& label,
     saveSession();
 }
 
-void CompanionUI::processTextInteraction(const std::string& text) {
+std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward) {
+    observation = EnvironmentObservation{0, 1, 0, 0, 0.45f};
+    reward = 0.25f;
+    const std::string output = callNlp(nlpScript, text);
+    try {
+        if (!output.empty()) {
+            const auto parsed = json::parse(output);
+            const std::string intent = parsed.value("intent", std::string("unknown"));
+            observation = EnvironmentObservation{
+                parsed.value("goal_state", 0), parsed.value("target_proximity", 1),
+                parsed.value("task_status", 0), 0, parsed.value("signal_strength", 0.45f)};
+            reward = parsed.value("reward", 0.25f);
+            nlpMethod = parsed.value("method", std::string("unknown"));
+            return intent;
+        }
+    } catch (const std::exception&) {
+        // Continue with a local fallback if Python is missing or returns invalid JSON.
+    }
     std::string lowered = text;
     std::transform(lowered.begin(), lowered.end(), lowered.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    EnvironmentObservation observation{0, 1, 0, 0, 0.45f};
-    float reward = 0.25f;
-    if (lowered.find("fetch") != std::string::npos || lowered.find("ball") != std::string::npos ||
-        lowered.find("bring") != std::string::npos || lowered.find("get ") != std::string::npos) {
-        observation = EnvironmentObservation{1, 1, 1, 1, 0.85f};
-        reward = 0.65f;
-    } else if (lowered.find("noise") != std::string::npos || lowered.find("scared") != std::string::npos ||
-               lowered.find("loud") != std::string::npos) {
-        observation = EnvironmentObservation{2, 0, 0, 0, 0.95f};
-        reward = 0.0f;
-    } else if (lowered.find("rest") != std::string::npos || lowered.find("tired") != std::string::npos ||
-               lowered.find("quiet") != std::string::npos) {
-        observation = EnvironmentObservation{2, 2, 0, 0, 0.20f};
-        reward = 0.25f;
-    } else if (lowered.find("bad") != std::string::npos || lowered.find("stop") != std::string::npos ||
-               lowered.find("annoy") != std::string::npos) {
-        observation = EnvironmentObservation{0, 1, 2, 0, 0.45f};
-        reward = -1.0f;
-    } else if (lowered.find("good") != std::string::npos || lowered.find("praise") != std::string::npos ||
-               lowered.find("well done") != std::string::npos) {
-        observation = EnvironmentObservation{0, 0, 1, 0, 0.75f};
-        reward = 1.0f;
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    nlpMethod = "C++ keyword fallback";
+    if (lowered.find("stop") != std::string::npos || lowered.find("annoy") != std::string::npos ||
+        lowered.find("don't") != std::string::npos || lowered.find("do not") != std::string::npos) {
+        observation = EnvironmentObservation{0, 1, 2, 0, 0.45f}; reward = -1.0f; return "negative_feedback";
     }
-    processInteraction(text, observation, reward);
+    if (lowered.find("fetch") != std::string::npos || lowered.find("ball") != std::string::npos ||
+        lowered.find("bring") != std::string::npos || lowered.find("retrieve") != std::string::npos) {
+        observation = EnvironmentObservation{1, 1, 1, 0, 0.85f}; reward = 0.65f; return "request";
+    }
+    if (lowered.find("noise") != std::string::npos || lowered.find("scared") != std::string::npos ||
+        lowered.find("loud") != std::string::npos) {
+        observation = EnvironmentObservation{2, 0, 0, 0, 0.95f}; reward = 0.0f; return "disturbance";
+    }
+    if (lowered.find("rest") != std::string::npos || lowered.find("tired") != std::string::npos ||
+        lowered.find("quiet") != std::string::npos) {
+        observation = EnvironmentObservation{2, 2, 0, 0, 0.20f}; reward = 0.25f; return "rest";
+    }
+    if (lowered.find("good") != std::string::npos || lowered.find("praise") != std::string::npos ||
+        lowered.find("well done") != std::string::npos) {
+        observation = EnvironmentObservation{0, 0, 1, 0, 0.75f}; reward = 1.0f; return "praise";
+    }
+    if (lowered.find("hello") != std::string::npos || lowered.find("hi") != std::string::npos ||
+        lowered.find("hey") != std::string::npos) return "greeting";
+    return "unknown";
+}
+
+void CompanionUI::processTextInteraction(const std::string& text) {
+    EnvironmentObservation observation;
+    float reward = 0.25f;
+    const std::string intent = interpretIntent(text, observation, reward);
+    processInteraction(text + " [" + intent + " / " + nlpMethod + "]", observation, reward);
 }
 
 void CompanionUI::handleClick(sf::Vector2f point) {
