@@ -418,6 +418,16 @@ bool testProposedAgentAvoidsRejectedAction() {
     const std::string nextAction = agent.selectAction(greeting);
     return firstAction == "GREETING" && nextAction == "NUZZLE";
 }
+bool testTaskAndSignalAreEncoded() {
+    state base = makeState(1, distance::CLOSE, Level::MEDIUM, Level::LOW, Level::MEDIUM, Level::LOW, 1, 0.0f);
+    base.task_status = 0;
+    base.signal_strength_bucket = 0;
+    state taskVariant = base;
+    taskVariant.task_status = 1;
+    state signalVariant = base;
+    signalVariant.signal_strength_bucket = 2;
+    return base.encode() != taskVariant.encode() && base.encode() != signalVariant.encode();
+}
 bool testPersistence() {
     const std::filesystem::path savePath = std::filesystem::temp_directory_path() / "is2_qtable_test.txt";
 
@@ -1316,6 +1326,7 @@ bool runBaselineValidation() {
     results.push_back({"Basic Q update", "PASS", testBasicQUpdate(), "baseline"});
     results.push_back({"Unseen state handling", "PASS", testUnseenStateHandling(), "baseline"});
     results.push_back({"Intent-appropriate fallback actions", "PASS", testContextualFallbackMatchesIntent(), "policy"});
+    results.push_back({"Task and signal state encoding", "PASS", testTaskAndSignalAreEncoded(), "state"});
     results.push_back({"Proposed agent adapts after negative feedback", "PASS", testProposedAgentAdaptsAfterNegativeFeedback(), "affect"});
     results.push_back({"Proposed agent avoids rejected action", "PASS", testProposedAgentAvoidsRejectedAction(), "memory"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
