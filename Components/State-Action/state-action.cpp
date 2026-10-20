@@ -969,11 +969,14 @@ void ProposedAgent::setLearningEnabled(bool enabled) {
 }
 
 std::string ProposedAgent::selectAction(const EnvironmentObservation& observation) {
+    session_context.current_intent = observation.goal_state;
+    session_context.target_proximity = observation.target_proximity;
+    session_context.user_status = observation.user_status;
     runtime_context.session_context = session_context;
     runtime_context.affective_state = affective_state;
     runtime_context.memory_summary = buildMemorySummary(memory_records, "");
     current_state = makeRuntimeState(runtime_context);
-    current_state.encoded_user_input = static_cast<float>(observation.task_status);
+    current_state.encoded_user_input = static_cast<float>(observation.goal_state);
 
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
