@@ -157,7 +157,9 @@ void CompanionUI::drawCompanion(float x, float y) {
             {static_cast<int>(std::min(col * frameWidth, size.x - 1)),
              static_cast<int>(std::min(row * frameHeight, size.y - 1))},
             {static_cast<int>(frameWidth), static_cast<int>(frameHeight)}));
-        dog.setScale({2.0f, 2.0f});
+        const float targetHeight = 68.0f;
+        const float scale = targetHeight / static_cast<float>(frameHeight);
+        dog.setScale({scale, scale});
         dog.setPosition({x, y});
         window.draw(dog);
     } else {
