@@ -148,6 +148,8 @@ public:
     explicit BaselineAgent(const EnvironmentConfig& config = EnvironmentConfig{});
 
     void reset();
+    void setExplorationRate(float epsilon);
+    void setLearningEnabled(bool enabled);
     std::string selectAction(const EnvironmentObservation& observation);
     void applyOutcome(const EnvironmentObservation& observation,
                       const std::string& action,
@@ -173,6 +175,8 @@ public:
     explicit ProposedAgent(const EnvironmentConfig& config = EnvironmentConfig{});
 
     void reset();
+    void setExplorationRate(float epsilon);
+    void setLearningEnabled(bool enabled);
     std::string selectAction(const EnvironmentObservation& observation);
     void applyOutcome(const EnvironmentObservation& observation,
                       const std::string& action,
