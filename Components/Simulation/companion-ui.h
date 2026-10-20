@@ -19,6 +19,9 @@ private:
 
     sf::RenderWindow window;
     sf::Font font;
+    sf::Texture dogTexture;
+    bool dogTextureLoaded = false;
+    sf::Clock frameClock;
     std::string policyDirectory;
     std::string outputDirectory;
     Screen screen = Screen::Simulation;
@@ -39,6 +42,9 @@ private:
     float userX = 220.0f;
     float userY = 350.0f;
     bool sceneVisible = true;
+    bool controlsVisible = true;
+    bool dogMoving = false;
+    int animationFrame = 0;
     bool animationActive = false;
     float animationClock = 0.0f;
     std::string nlpMethod = "not used";
@@ -47,6 +53,7 @@ private:
     std::string interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward);
     void updateAnimation(float elapsedSeconds);
     void drawCompanion(float x, float y);
+    void drawBackdrop(float x, float y, float width, float height);
 
     void processInteraction(const std::string& label, const EnvironmentObservation& observation,
                             float feedbackReward);
