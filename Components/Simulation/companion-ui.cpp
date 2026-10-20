@@ -338,6 +338,21 @@ void CompanionUI::executeInteraction(const std::string& label,
     latestStimulus = label;
     latestBaselineAction = baseline.selectAction(observation);
     latestProposedAction = proposed.selectAction(observation);
+    const std::size_t baselineStateBeforeOutcome = baseline.getCurrentState().encode();
+    const std::size_t proposedStateBeforeOutcome = proposed.getCurrentState().encode();
+    nlohmann::json memoryCandidates = nlohmann::json::array();
+    for (const auto& memory : proposed.getMemoryRecords()) {
+        if (memory.raw_fact.subject == latestProposedAction ||
+            memory.raw_fact.relation == "prefers" || memory.raw_fact.relation == "dislikes") {
+            memoryCandidates.push_back({
+                {"subject", memory.raw_fact.subject},
+                {"relation", memory.raw_fact.relation},
+                {"object", memory.raw_fact.object},
+                {"confidence", memory.confidence},
+                {"observation_count", memory.observation_count}
+            });
+        }
+    }
     animationActive = true;
     animationClock = 0.0f;
     animationFrame = 0;
@@ -376,9 +391,14 @@ void CompanionUI::executeInteraction(const std::string& label,
             {"signal_strength", observation.signal_strength}
         };
         row["baseline"] = {{"action", latestBaselineAction}, {"reward", baselineOutcome.reward},
+                           {"state_before_outcome", baselineStateBeforeOutcome},
+                           {"state_after_outcome", baseline.getCurrentState().encode()},
                            {"learning_update_enabled", false}};
         row["proposed"] = {
             {"action", latestProposedAction}, {"reward", proposedOutcome.reward},
+            {"state_before_outcome", proposedStateBeforeOutcome},
+            {"state_after_outcome", proposed.getCurrentState().encode()},
+            {"memory_candidates", memoryCandidates},
             {"learning_update_enabled", false},
             {"memory_count_before", memoryCountBefore},
             {"memory_count_after", proposed.getMemoryRecords().size()},
