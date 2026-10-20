@@ -403,6 +403,35 @@ bool testProposedAgentAdaptsAfterNegativeFeedback() {
     const std::string nextAction = agent.selectAction(disturbance);
     return firstAction == "BARK" && nextAction == "ACT_CONFUSED";
 }
+bool testMemoryRetentionAfterInterveningInteractions() {
+    EnvironmentConfig config;
+    ProposedAgent agent(config);
+    agent.setExplorationRate(0.0f);
+    agent.setLearningEnabled(false);
+    EnvironmentObservation disturbance{2, 0, 0, 0, 0.95f};
+    const std::string firstAction = agent.selectAction(disturbance);
+    ActionOutcome negative;
+    negative.reward = -1.0f;
+    negative.terminal = true;
+    negative.outcome_tag = "negative";
+    agent.applyOutcome(disturbance, firstAction, negative);
+
+    const EnvironmentObservation greeting{0, 1, 0, 0, 0.55f};
+    ActionOutcome positive;
+    positive.reward = 1.0f;
+    positive.terminal = true;
+    positive.outcome_tag = "positive";
+    for (int i = 0; i < 4; ++i) {
+        const std::string action = agent.selectAction(greeting);
+        agent.applyOutcome(greeting, action, positive);
+    }
+
+    const std::string laterAction = agent.selectAction(disturbance);
+    return firstAction == "BARK" &&
+           laterAction == "ACT_CONFUSED" &&
+           !agent.getMemoryRecords().empty();
+}
+
 bool testProposedAgentAvoidsRejectedAction() {
     EnvironmentConfig config;
     config.seed = 13;
@@ -1455,6 +1484,7 @@ bool runBaselineValidation() {
     results.push_back({"Task and signal state encoding", "PASS", testTaskAndSignalAreEncoded(), "state"});
     results.push_back({"Proposed agent adapts after negative feedback", "PASS", testProposedAgentAdaptsAfterNegativeFeedback(), "affect"});
     results.push_back({"Proposed agent avoids rejected action", "PASS", testProposedAgentAvoidsRejectedAction(), "memory"});
+    results.push_back({"Memory retention after intervening interactions", "PASS", testMemoryRetentionAfterInterveningInteractions(), "memory"});
     results.push_back({"Memory confidence follows outcome history", "PASS", testProposedMemoryConfidenceTracksOutcome(), "memory"});
     results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
     results.push_back({"Negative feedback updates all affect dimensions", "PASS", testNegativeFeedbackUpdatesAffectDimensions(), "affect"});
