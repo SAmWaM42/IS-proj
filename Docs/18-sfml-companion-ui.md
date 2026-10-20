@@ -42,3 +42,19 @@ After building locally:
 - [ ] Closing the window writes `artifacts/simulation/simulation-session.json` and Q-table copies.
 
 A successful source write is not evidence that these checks have passed; run them locally before presenting the interface as verified.
+
+## NLP and sprite follow-up
+
+The free-text path now invokes `Components/NLP/nlp_intent_service.py` and parses its JSON intent, observation fields, reward signal, and method label. The Python adapter uses spaCy with `en_core_web_sm` if available; otherwise it reports a keyword fallback. The C++ UI also has a fallback if the service cannot be invoked. The service is started per submitted message, so this first version prioritizes a simple integration contract over latency.
+
+The simulation window is taller (1280x900), and the Simulation navigation includes Hide Controls / Show Controls. Hiding controls expands the visible yard area. The UI loads the bundled `Data/Assets/DogMegaPackFree/DogMegaPackFree/Dogs.png` sheet, draws a sprite in place of the circle companion, advances frames while an action is active, and changes sprite-sheet row based on the proposed agent's action category.
+
+Before considering this finished, verify locally:
+- [ ] Install spaCy and `en_core_web_sm`; confirm the view reports `spacy` for a typed interaction.
+- [ ] Uninstall/disable spaCy temporarily; confirm fallback works and is labelled.
+- [ ] Check the actual `Dogs.png` layout against the assumed 4x4 grid. If the sheet is arranged as static dog variants rather than animation frames, adjust the frame rectangles to the asset's real layout rather than describing the grid as a validated animation.
+- [ ] Check sprite rows against each action visually; the current mapping is a best-effort initial mapping.
+- [ ] Confirm all controls remain clickable at the new 900px window height.
+- [ ] Build with `cmake --build build` and run `./build/IS-2 --sim`.
+
+The NLP adapter is intent classification, not open-ended dialogue generation. Rewards remain predefined development signals, so do not interpret them as user feedback measurements.
