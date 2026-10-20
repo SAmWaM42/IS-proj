@@ -1151,8 +1151,9 @@ void ProposedAgent::reset() {
     session_context = SessionContext{};
     session_context.current_action = "IDLE";
     session_context.last_timestamp = currentTimeStamp();
-    affective_state = AffectiveState{};
-    memory_records.clear();
+    // Memory and affect persist across UI sessions by design. Reset only
+    // transient session/history state; the UI's explicit Clear Memory action
+    // is the only operation that deletes persisted user-specific memory.
     interaction_history.clear();
     runtime_context = RuntimeContext{};
     current_state = makeState(
@@ -1210,20 +1211,44 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     session_context.last_timestamp = currentTimeStamp();
     affective_state.updateFromFeedback(outcome.reward, outcome.reward > 0.0f, outcome.reward < 0.0f);
 
-    record memory_entry;
-    memory_entry.raw_fact.subject = action;
-    memory_entry.raw_fact.relation = "response_to_action";
-    memory_entry.raw_fact.object = outcome.reward < -0.05f ? "negative" :
-                                   (outcome.reward > 0.05f ? "positive" : "neutral");
-    memory_entry.confidence = std::clamp(observation.signal_strength, 0.0f, 1.0f);
-    memory_entry.generalization_factor = 0.5f;
-    memory_entry.current_context = record::USER_SPECIFIC;
-    memory_entry.source = record::OBSERVATION;
-    memory_entry.observation_count = 1;
-    memory_entry.last_updated = session_context.last_timestamp;
-    memory_entry.relevance = std::clamp(std::abs(outcome.reward) + 0.25f, 0.0f, 1.0f);
-    memory_entry.recency = std::clamp(observation.signal_strength, 0.0f, 1.0f);
-    memory_records.push_back(memory_entry);
+    // Confidence estimates observed success, not input signal strength.
+    // Repeated outcomes for the same action/context update one record instead
+    // of creating an unbounded sequence of equally weighted duplicates.
+    const std::string outcomeClass = outcome.reward > 0.05f ? "positive" :
+                                     outcome.reward < -0.05f ? "negative" : "neutral";
+    auto memoryIt = std::find_if(memory_records.begin(), memory_records.end(),
+        [&](const record& existing) {
+            return existing.raw_fact.subject == action &&
+                   existing.raw_fact.relation == "response_to_action" &&
+                   existing.raw_fact.object == outcomeClass;
+        });
+    const float successfulSignal = outcome.reward > 0.05f ? 1.0f : 0.0f;
+    if (memoryIt == memory_records.end()) {
+        record memory_entry;
+        memory_entry.raw_fact.subject = action;
+        memory_entry.raw_fact.relation = "response_to_action";
+        memory_entry.raw_fact.object = outcomeClass;
+        memory_entry.confidence = successfulSignal;
+        memory_entry.generalization_factor = 0.5f;
+        memory_entry.current_context = record::USER_SPECIFIC;
+        memory_entry.source = record::OBSERVATION;
+        memory_entry.observation_count = 1;
+        memory_entry.last_updated = session_context.last_timestamp;
+        memory_entry.relevance = std::clamp(std::abs(outcome.reward), 0.0f, 1.0f);
+        memory_entry.recency = 1.0f;
+        memory_records.push_back(memory_entry);
+    } else {
+        const int priorCount = std::max(1, memoryIt->observation_count);
+        memoryIt->confidence = std::clamp(
+            (memoryIt->confidence * static_cast<float>(priorCount) + successfulSignal) /
+            static_cast<float>(priorCount + 1), 0.0f, 1.0f);
+        memoryIt->observation_count = priorCount + 1;
+        memoryIt->last_updated = session_context.last_timestamp;
+        memoryIt->relevance = std::clamp(
+            (memoryIt->relevance * static_cast<float>(priorCount) +
+             std::abs(outcome.reward)) / static_cast<float>(priorCount + 1), 0.0f, 1.0f);
+        memoryIt->recency = 1.0f;
+    }
 
     runtime_context.session_context = session_context;
     runtime_context.affective_state = affective_state;
@@ -1253,10 +1278,20 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
 
 void ProposedAgent::loadPersistentState(const std::string& path) {
     q_policy.loadQTable(path);
+    const std::string prefix = path + ".";
+    if (std::filesystem::exists(prefix + "memory.json"))
+        memory_records = loadMemoryRecords(prefix + "memory.json");
+    if (std::filesystem::exists(prefix + "affect.json"))
+        affective_state = loadAffectiveState(prefix + "affect.json");
 }
 
 void ProposedAgent::savePersistentState(const std::string& path) {
     q_policy.saveQTable(path);
+    const std::string prefix = path + ".";
+    const bool memorySaved = saveMemoryRecords(prefix + "memory.json", memory_records);
+    const bool affectSaved = saveAffectiveState(prefix + "affect.json", affective_state);
+    if (!memorySaved || !affectSaved)
+        throw std::runtime_error("Unable to persist proposed-agent memory/affect sidecar files");
 }
 
 const state& ProposedAgent::getCurrentState() const {
