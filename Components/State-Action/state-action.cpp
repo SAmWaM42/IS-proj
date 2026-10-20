@@ -997,6 +997,27 @@ float scoreActionAgainstObservation(const std::string& action, const Environment
 std::string contextualAction(const EnvironmentObservation& observation,
                              const AffectiveState* affect = nullptr,
                              const std::vector<record>* memories = nullptr) {
+    // Explicit semantic preferences are consulted before generic fallbacks.
+    if (memories != nullptr) {
+        for (auto it = memories->rbegin(); it != memories->rend(); ++it) {
+            if (it->confidence < 0.4f) continue;
+            if (observation.goal_state == 1 && observation.task_status == 1 &&
+                observation.target_proximity <= 1 && it->raw_fact.object == "FETCH") {
+                if (it->raw_fact.relation == "prefers_action") return "FETCH";
+                if (it->raw_fact.relation == "dislikes_action") return "ACT_CONFUSED";
+            }
+            if (observation.goal_state == 2 && observation.signal_strength >= 0.80f &&
+                it->raw_fact.object == "BARK") {
+                if (it->raw_fact.relation == "prefers_action") return "BARK";
+                if (it->raw_fact.relation == "dislikes_action") return "ACT_CONFUSED";
+            }
+            if (observation.goal_state == 2 && observation.task_status == 0 &&
+                observation.signal_strength < 0.80f && it->raw_fact.object == "SLEEP_LAY") {
+                if (it->raw_fact.relation == "prefers_action") return "SLEEP_LAY";
+                if (it->raw_fact.relation == "dislikes_action") return "WANDER";
+            }
+        }
+    }
     // goal_state: 0=social greeting, 1=explicit task/request, 2=unexpected event/rest.
     if (observation.goal_state == 0) {
         if (observation.user_status == 0) return "GREETING";
@@ -1372,6 +1393,37 @@ const AffectiveState& ProposedAgent::getAffectiveState() const {
 
 void ProposedAgent::clearMemory() {
     memory_records.clear();
+}
+
+void ProposedAgent::recordUserPreference(const std::string& action, bool likes) {
+    const std::string relation = likes ? "prefers_action" : "dislikes_action";
+    auto existing = std::find_if(memory_records.begin(), memory_records.end(),
+        [&](const record& item) {
+            return item.raw_fact.subject == "user" &&
+                   item.raw_fact.relation == relation &&
+                   item.raw_fact.object == action;
+        });
+    if (existing != memory_records.end()) {
+        existing->confidence = std::clamp(existing->confidence + 0.15f, 0.0f, 1.0f);
+        existing->observation_count += 1;
+        existing->last_updated = currentTimeStamp();
+        existing->recency = 1.0f;
+        existing->source = record::USER_STATEMENT;
+        return;
+    }
+    record preference;
+    preference.raw_fact.subject = "user";
+    preference.raw_fact.relation = relation;
+    preference.raw_fact.object = action;
+    preference.confidence = 0.75f; // Explicit statement; outcome evidence adjusts this later.
+    preference.generalization_factor = 0.5f;
+    preference.current_context = record::USER_SPECIFIC;
+    preference.source = record::USER_STATEMENT;
+    preference.observation_count = 1;
+    preference.last_updated = currentTimeStamp();
+    preference.relevance = 1.0f;
+    preference.recency = 1.0f;
+    memory_records.push_back(preference);
 }
 
 AgentComparisonRun runAgentComparison(const EnvironmentConfig& config, int steps) {
