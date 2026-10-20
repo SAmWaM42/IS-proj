@@ -26,7 +26,7 @@
 
 The interactive UI still sends the same external observation and reward signal to both agents. Since the current UI does not simulate action-dependent world transitions, this is an equivalent-input paired comparison, not yet a dynamic cloned-world simulation. The training runner also replays the same observation sequence for both agents, with each agent receiving its own action-dependent reward.
 
-The proposed model's current persistent memory is primarily **action-outcome memory** (`action -> positive/negative/neutral response`). This is useful for testing rejection and behavioural adaptation, but it is not yet a complete semantic preference-memory pipeline that extracts statements such as “I prefer fetch” and retrieves them after unrelated interactions. That remains a required follow-up before claiming the full context-retention objective has been implemented.
+Basic semantic preference memory is now supported for explicit text patterns such as “I prefer fetch/ball”, “I dislike barking/noise”, and “I prefer rest/sleep”. The UI carries detected preferences in the FIFO queue, records them only when that interaction reaches execution, persists them, and consults them during action selection. This is deliberately a narrow rule-based first pass, not general semantic understanding; the NLP service does not yet return structured preference facts itself.
 
 ## Validation status
 
@@ -40,7 +40,7 @@ No claim is made that this revision compiles or passes tests: the changes were p
 
 ## Remaining work before the study is considered research-ready
 
-- Implement explicit semantic preference extraction and retrieval, including a controlled preference-after-intervening-interactions test.
+- Expand the initial rule-based preference extraction into a tested structured NLP result, including negation/ambiguity cases and a wider range of preferences.
 - Log the exact memory record(s) actually used by action selection, not just candidate records.
 - Add tests for queue FIFO/exactly-once processing, paired scenario invariance, deterministic evaluation traces, and log failure handling.
 - Decide how persistent memory is isolated by participant/user identity in study mode. A single global memory file must not silently mix different participants' histories.
