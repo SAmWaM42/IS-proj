@@ -4,7 +4,7 @@ Status: headless training/evaluation and an initial SFML participant-study proto
 
 ## Goal
 
-Build a reproducible synthetic experiment around the existing C++ baseline and proposed agents before adding participant-facing interaction. The baseline and proposed agent must receive equivalent environment events; only the proposed agent may use memory- and affect-derived state.
+Build a reproducible synthetic experiment around the existing C++ baseline and proposed agents, then collect separate participant feedback through a controlled interaction interface. The baseline and proposed agent must receive equivalent environment events; only the proposed agent may use memory- and affect-derived state.
 
 ## Current repository constraints
 
@@ -55,10 +55,10 @@ The UI requires trained Q-tables, presents A/B conditions in randomised order, r
 
 The JSON output is anonymous by design and stored under the git-ignored `artifacts/study/` directory. It includes scenario responses, ratings, and a condition key; keep these files restricted. This implementation does not replace institutional ethics approval or a supervisor-approved consent process. Pilot it with test data before collecting real responses.
 
-1. Build a user-facing interaction flow that can run either agent against the same bounded scenario.
-2. Keep participant questionnaire responses separate from training rewards and synthetic-user labels.
-3. Record consent status, anonymous session ID, agent condition, scenario, event sequence, and questionnaire responses only as required by the study protocol.
-4. Do not claim perceived believability from synthetic reward or synthetic-user engagement. Believability must be assessed through the planned participant evaluation and an explicit measure.
+1. [Prototype implemented] Build a user-facing interaction flow that can run either agent against the same bounded scenario.
+2. [Implemented] Keep questionnaire responses separate from the reward signal used to update agent state.
+3. [Implemented, subject to study review] Record consent status, anonymous session ID, condition, scenario/event sequence, and questionnaire responses.
+4. [Required] Do not claim perceived believability from synthetic reward or synthetic-user engagement. Believability must be assessed through the planned participant evaluation and an explicit measure.
 
 ### Phase 3 — Optional shared policy experiment
 
