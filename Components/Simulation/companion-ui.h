@@ -61,7 +61,7 @@ private:
     bool animationActive = false;
     float animationClock = 0.0f;
     float actionDisplayTimer = 0.0f;
-    struct QueuedInteraction { std::string label; EnvironmentObservation observation; float reward; };
+    struct QueuedInteraction { std::string label; EnvironmentObservation observation; float reward; std::string preference; bool preferencePositive = true; };
     std::deque<QueuedInteraction> interactionBuffer;
     void enqueueInteraction(const std::string& label, const EnvironmentObservation& observation, float reward);
 
@@ -74,9 +74,11 @@ private:
     void drawBackdrop(float x, float y, float width, float height);
 
     void processInteraction(const std::string& label, const EnvironmentObservation& observation,
-                            float feedbackReward);
+                            float feedbackReward, const std::string& preference = "",
+                            bool preferencePositive = true);
     void executeInteraction(const std::string& label, const EnvironmentObservation& observation,
-                            float feedbackReward);
+                            float feedbackReward, const std::string& preference = "",
+                            bool preferencePositive = true);
     void processTextInteraction(const std::string& text);
     void handleClick(sf::Vector2f point);
     void draw();
