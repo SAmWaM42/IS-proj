@@ -1316,6 +1316,27 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
         memoryIt->recency = 1.0f;
     }
 
+    // Update confidence in stored preferences from subsequent outcomes.
+    // A preferred action should receive positive feedback; avoiding a disliked
+    // action should also receive positive feedback.
+    for (auto& preference : memory_records) {
+        if (preference.raw_fact.subject != "user" ||
+            (preference.raw_fact.relation != "prefers_action" &&
+             preference.raw_fact.relation != "dislikes_action")) continue;
+        const bool selectedPreferred = preference.raw_fact.relation == "prefers_action"
+            ? action == preference.raw_fact.object
+            : action != preference.raw_fact.object;
+        const bool outcomeSuccess = selectedPreferred ? outcome.reward > 0.05f : outcome.reward < -0.05f;
+        const float successSignal = outcomeSuccess ? 1.0f : 0.0f;
+        const int priorCount = std::max(1, preference.observation_count);
+        preference.confidence = std::clamp(
+            (preference.confidence * static_cast<float>(priorCount) + successSignal) /
+            static_cast<float>(priorCount + 1), 0.0f, 1.0f);
+        preference.observation_count = priorCount + 1;
+        preference.last_updated = session_context.last_timestamp;
+        preference.recency = 1.0f;
+    }
+
     runtime_context.session_context = session_context;
     runtime_context.affective_state = affective_state;
     runtime_context.memory_summary = buildMemorySummary(memory_records, action);
