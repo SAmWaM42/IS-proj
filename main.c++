@@ -5,6 +5,7 @@
 #include "Components/Environment/environment.h"
 #include "Components/State-Action/state-action.h"
 #include "Components/Training/training.h"
+#include "Components/Study/study.h"
 
 namespace {
 bool parsePositiveInt(const char* value, int& result) {
@@ -35,6 +36,8 @@ void printUsage(const char* executable) {
 int main(int argc, char** argv) {
     std::string mode;
     std::string outputDirectory = "artifacts/training";
+    std::string studyOutputDirectory = "artifacts/study";
+    std::string policyDirectory = "artifacts/training";
     int episodes = 200;
     int steps = 40;
     int seed = 42;
@@ -56,7 +59,7 @@ int main(int argc, char** argv) {
             printUsage(argv[0]);
             return 0;
         }
-        if (arg == "--self-test" || arg == "--train" || arg == "--validate" || arg == "--compare") {
+        if (arg == "--self-test" || arg == "--train" || arg == "--validate" || arg == "--compare" || arg == "--study") {
             if (!mode.empty()) {
                 std::cerr << "Choose exactly one experiment mode.\n";
                 return 2;
@@ -64,7 +67,7 @@ int main(int argc, char** argv) {
             mode = arg == "--self-test" ? "self-test" : arg.substr(2);
             continue;
         }
-        if (arg == "--episodes" || arg == "--steps" || arg == "--seed" || arg == "--out") {
+        if (arg == "--episodes" || arg == "--steps" || arg == "--seed" || arg == "--out" || arg == "--study-out" || arg == "--policy-dir") {
             if (i + 1 >= argc) {
                 std::cerr << arg << " requires a value.\n";
                 printUsage(argv[0]);
@@ -73,6 +76,10 @@ int main(int argc, char** argv) {
             const char* value = argv[++i];
             if (arg == "--out") {
                 outputDirectory = value;
+            } else if (arg == "--study-out") {
+                studyOutputDirectory = value;
+            } else if (arg == "--policy-dir") {
+                policyDirectory = value;
             } else {
                 int parsed = 0;
                 if (!parsePositiveInt(value, parsed)) {
@@ -102,6 +109,10 @@ int main(int argc, char** argv) {
         }
         std::cout << "Component validation passed.\n";
         return 0;
+    }
+
+    if (mode == "study") {
+        return runParticipantStudy(policyDirectory, studyOutputDirectory) ? 0 : 1;
     }
 
     if (mode == "train" && !explicitEpisodes) {
