@@ -232,33 +232,34 @@ void CompanionUI::run() {
 }
 
 void CompanionUI::updateAnimation(float elapsedSeconds) {
-    actionDisplayTimer = std::max(0.0f, actionDisplayTimer - elapsedSeconds);
-    if (!animationActive) {
-        if (actionDisplayTimer <= 0.0f && !interactionBuffer.empty()) {
-            const auto next = interactionBuffer.front();
-            interactionBuffer.pop_front();
-            executeInteraction(next.label, next.observation, next.reward);
-            actionDisplayTimer = 0.85f;
-        }
-        return;
-    }
-    animationClock += elapsedSeconds;
-    const bool resting = latestProposedAction == "SLEEP_LAY";
-    const bool walking = latestProposedAction == "FETCH" || latestProposedAction == "WANDER";
-    if (resting || walking) {
+    if (actionDisplayTimer > 0.0f) {
+        actionDisplayTimer = std::max(0.0f, actionDisplayTimer - elapsedSeconds);
+        animationClock += elapsedSeconds;
         if (animationClock >= 0.16f) {
             animationClock = 0.0f;
-            animationFrame = (animationFrame + 1) % 7;
+            const std::vector<std::unique_ptr<sf::Texture>>* frames = &idleFrames;
+            if (latestProposedAction == "FETCH" || latestProposedAction == "WANDER") frames = &walkFrames;
+            else if (latestProposedAction == "SLEEP_LAY") frames = &sleepFrames;
+            else if (latestProposedAction == "BARK" || latestProposedAction == "ACT_CONFUSED") frames = &barkFrames;
+            else if (latestProposedAction == "NUZZLE" || latestProposedAction == "GREETING") frames = &sitFrames;
+            else if (latestProposedAction == "INSIST") frames = &layFrames;
+            const std::size_t count = std::max<std::size_t>(1, frames->size());
+            animationFrame = (animationFrame + 1) % static_cast<int>(count);
         }
-    } else {
-        animationFrame = 0;
-        animationClock = 0.0f;
+        if (latestProposedAction == "FETCH" || latestProposedAction == "WANDER") {
+            const float direction = latestProposedAction == "FETCH" ? 1.0f : -1.0f;
+            agentX += direction * elapsedSeconds * 70.0f;
+            agentX = std::clamp(agentX, 320.0f, 950.0f);
+        }
+        if (actionDisplayTimer <= 0.0f) {
+            animationActive = false;
+            animationFrame = 0;
+        }
     }
-    if (walking) {
-        const float direction = latestProposedAction == "FETCH" ? 1.0f : -1.0f;
-        agentX += direction * elapsedSeconds * 90.0f;
-        if (agentX > 950.0f) agentX = 360.0f;
-        if (agentX < 320.0f) agentX = 760.0f;
+    if (actionDisplayTimer <= 0.0f && !interactionBuffer.empty()) {
+        const auto next = interactionBuffer.front();
+        interactionBuffer.pop_front();
+        executeInteraction(next.label, next.observation, next.reward);
     }
 }
 
@@ -311,11 +312,10 @@ void CompanionUI::executeInteraction(const std::string& label,
     latestStimulus = label;
     latestBaselineAction = baseline.selectAction(observation);
     latestProposedAction = proposed.selectAction(observation);
-    animationActive = latestProposedAction == "FETCH" ||
-                      latestProposedAction == "WANDER" ||
-                      latestProposedAction == "SLEEP_LAY";
+    animationActive = true;
     animationClock = 0.0f;
     animationFrame = 0;
+    actionDisplayTimer = 0.85f;
 
     ActionOutcome baselineOutcome;
     baselineOutcome.reward = feedbackRewardValue;
