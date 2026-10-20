@@ -403,6 +403,21 @@ bool testProposedAgentAdaptsAfterNegativeFeedback() {
     const std::string nextAction = agent.selectAction(disturbance);
     return firstAction == "BARK" && nextAction == "ACT_CONFUSED";
 }
+bool testProposedAgentAvoidsRejectedAction() {
+    EnvironmentConfig config;
+    config.seed = 13;
+    ProposedAgent agent(config);
+    agent.setExplorationRate(0.0f);
+    agent.setLearningEnabled(false);
+    EnvironmentObservation greeting;
+    greeting.goal_state = 0; greeting.user_status = 0; greeting.target_proximity = 1; greeting.task_status = 0; greeting.signal_strength = 0.55f;
+    const std::string firstAction = agent.selectAction(greeting);
+    ActionOutcome negative;
+    negative.reward = -1.0f; negative.terminal = true; negative.outcome_tag = "participant_negative";
+    agent.applyOutcome(greeting, firstAction, negative);
+    const std::string nextAction = agent.selectAction(greeting);
+    return firstAction == "GREETING" && nextAction == "NUZZLE";
+}
 bool testPersistence() {
     const std::filesystem::path savePath = std::filesystem::temp_directory_path() / "is2_qtable_test.txt";
 
@@ -1302,6 +1317,7 @@ bool runBaselineValidation() {
     results.push_back({"Unseen state handling", "PASS", testUnseenStateHandling(), "baseline"});
     results.push_back({"Intent-appropriate fallback actions", "PASS", testContextualFallbackMatchesIntent(), "policy"});
     results.push_back({"Proposed agent adapts after negative feedback", "PASS", testProposedAgentAdaptsAfterNegativeFeedback(), "affect"});
+    results.push_back({"Proposed agent avoids rejected action", "PASS", testProposedAgentAvoidsRejectedAction(), "memory"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
     results.push_back({"Seeded exploration reproducibility", "PASS", testSeededExplorationIsReproducible(), "training"});
