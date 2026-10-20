@@ -145,19 +145,22 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
 void CompanionUI::drawCompanion(float x, float y) {
     if (dogTextureLoaded) {
         const sf::Vector2u size = dogTexture.getSize();
-        const unsigned int frameWidth = std::max(1u, size.x / 4u);
+        const unsigned int frameWidth = std::max(1u, size.x / 7u);
         const unsigned int frameHeight = std::max(1u, size.y / 4u);
-        unsigned int row = 0;
-        if (latestProposedAction == "FETCH" || latestProposedAction == "WANDER") row = 1;
-        else if (latestProposedAction == "SLEEP_LAY") row = 2;
-        else if (latestProposedAction == "BARK" || latestProposedAction == "ACT_CONFUSED") row = 3;
-        const unsigned int col = animationActive ? static_cast<unsigned int>(animationFrame) : 0u;
+        // Dogs.png is arranged as seven columns by four pose/breed rows.
+        // Row 0 is a standing/walking cycle; row 1 is a lying/resting cycle.
+        // Rows 2-3 are alternate dog sprites, not action categories.
+        const bool resting = latestProposedAction == "SLEEP_LAY";
+        const unsigned int row = resting ? 1u : 0u;
+        const unsigned int frameCount = 7u;
+        const unsigned int col = animationActive
+            ? static_cast<unsigned int>(animationFrame) % frameCount : 0u;
         sf::Sprite dog(dogTexture);
         dog.setTextureRect(sf::IntRect(
             {static_cast<int>(std::min(col * frameWidth, size.x - 1)),
              static_cast<int>(std::min(row * frameHeight, size.y - 1))},
             {static_cast<int>(frameWidth), static_cast<int>(frameHeight)}));
-        const float targetHeight = 68.0f;
+        const float targetHeight = 54.0f;
         const float scale = targetHeight / static_cast<float>(frameHeight);
         dog.setScale({scale, scale});
         dog.setPosition({x, y});
