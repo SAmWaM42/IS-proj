@@ -17,3 +17,5 @@ build/
 .vscode/
 *.user
 .DS_Store
+# Participant study data is local research data; do not commit it.
+artifacts/study/
