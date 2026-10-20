@@ -417,43 +417,71 @@ void CompanionUI::drawNavigation() {
     drawText("ANIMAL AGENT / SFML", 760, 22, 15, kMuted);
 }
 
+void CompanionUI::drawBackdrop(float x, float y, float width, float height) {
+    // free.png is a transparent object atlas (plants, house, tree, flowers and
+    // garden produce), not a seamless grass tile sheet. Build a yard base and
+    // place its actual transparent sprites on top instead of stretching the atlas.
+    sf::RectangleShape lawn({width, height});
+    lawn.setPosition({x, y});
+    lawn.setFillColor(sf::Color(122, 145, 78));
+    window.draw(lawn);
+
+    auto sprite = [&](sf::IntRect source, sf::Vector2f position, float scale) {
+        if (!environmentTextureLoaded) return;
+        sf::Sprite item(environmentTexture);
+        item.setTextureRect(source);
+        item.setScale({scale, scale});
+        item.setPosition(position);
+        window.draw(item);
+    };
+
+    // A winding dirt track provides a clear interaction area in the yard.
+    sf::ConvexShape path;
+    path.setPointCount(6);
+    path.setPoint(0, {x + width * 0.28f, y + height});
+    path.setPoint(1, {x + width * 0.43f, y + height});
+    path.setPoint(2, {x + width * 0.60f, y + height * 0.52f});
+    path.setPoint(3, {x + width * 0.56f, y + height * 0.43f});
+    path.setPoint(4, {x + width * 0.48f, y + height * 0.52f});
+    path.setPoint(5, {x + width * 0.36f, y + height * 0.77f});
+    path.setFillColor(sf::Color(160, 135, 83));
+    window.draw(path);
+
+    // The house and tree are cropped from the supplied atlas using source
+    // pixel rectangles, preserving transparency and aspect ratio.
+    sprite(sf::IntRect({0, 48}, {64, 64}), {x + width - 205.0f, y + 18.0f}, 2.35f);
+    sprite(sf::IntRect({144, 48}, {32, 32}), {x + width - 270.0f, y + 16.0f}, 2.2f);
+
+    // Decorative shrub patches around the perimeter (atlas source crops).
+    sprite(sf::IntRect({0, 0}, {32, 32}), {x + 24.0f, y + 12.0f}, 2.0f);
+    sprite(sf::IntRect({48, 0}, {32, 24}), {x + 205.0f, y + 12.0f}, 1.8f);
+    sprite(sf::IntRect({96, 0}, {32, 24}), {x + width * 0.43f, y + 16.0f}, 1.8f);
+    sprite(sf::IntRect({144, 0}, {32, 24}), {x + width * 0.62f, y + 18.0f}, 1.8f);
+
+    // Small flowers and garden plants make the scene read as a backyard.
+    for (int i = 0; i < 9; ++i) {
+        const int flowerX = (i % 4) * 16;
+        sprite(sf::IntRect({flowerX, 112}, {16, 16}),
+               {x + 18.0f + static_cast<float>(i) * 25.0f, y + height - 38.0f}, 1.15f);
+    }
+    for (int i = 0; i < 5; ++i) {
+        sprite(sf::IntRect({112 + (i % 3) * 16, 128}, {16, 16}),
+               {x + width - 220.0f + static_cast<float>(i) * 27.0f, y + height - 72.0f}, 1.25f);
+    }
+}
+
 void CompanionUI::drawSimulationScreen() {
     drawText("MAIN SIMULATION", 30, 75, 26, kInk);
     drawText("Both policies receive the same interpreted interaction.", 30, 106, 15, kMuted);
     const float sceneHeight = controlsVisible ? 390.0f : 710.0f;
     sf::RectangleShape scene({1218, sceneHeight});
     scene.setPosition({30, 135});
-    scene.setFillColor(sf::Color(190, 220, 176));
-    scene.setOutlineColor(sf::Color(150, 190, 140));
+    scene.setFillColor(sf::Color(122, 145, 78));
+    scene.setOutlineColor(sf::Color(83, 104, 55));
     scene.setOutlineThickness(1);
     window.draw(scene);
-    sf::RectangleShape lawn({1218, sceneHeight * 0.62f});
-    lawn.setPosition({30, 135 + sceneHeight * 0.38f});
-    lawn.setFillColor(sf::Color(145, 195, 125));
-    window.draw(lawn);
-    sf::RectangleShape path({500, 70});
-    path.setPosition({350, 135 + sceneHeight * 0.65f});
-    path.setFillColor(sf::Color(215, 194, 151));
-    window.draw(path);
-    sf::RectangleShape house({150, 105});
-    house.setPosition({1040, 160});
-    house.setFillColor(sf::Color(225, 210, 188));
-    window.draw(house);
-    sf::ConvexShape roof;
-    roof.setPointCount(3);
-    roof.setPoint(0, {1025, 165});
-    roof.setPoint(1, {1115, 105});
-    roof.setPoint(2, {1205, 165});
-    roof.setFillColor(sf::Color(157, 91, 77));
-    window.draw(roof);
-    sf::CircleShape tree(32);
-    tree.setPosition({85, 170});
-    tree.setFillColor(sf::Color(64, 135, 75));
-    window.draw(tree);
-    sf::RectangleShape trunk({13, 58});
-    trunk.setPosition({105, 220});
-    trunk.setFillColor(sf::Color(112, 82, 54));
-    window.draw(trunk);
+    drawBackdrop(30, 135, 1218, sceneHeight);
+
     sf::CircleShape person(18);
     person.setPosition({userX, userY + 30});
     person.setFillColor(sf::Color(216, 122, 110));
@@ -479,6 +507,7 @@ void CompanionUI::drawSimulationScreen() {
     drawButton("Send", 1030, 755, 120, 48);
     drawText("Enter to send | Esc to quit", 850, 815, 13, kMuted);
 }
+
 void CompanionUI::drawAgentStateScreen() {
     drawText("AGENT STATE", 30, 75, 26, kInk);
     drawText("Current context, affect and retrieved memory", 30, 106, 15, kMuted);
