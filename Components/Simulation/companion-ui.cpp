@@ -18,8 +18,6 @@ const sf::Color kInk(35, 42, 52);
 const sf::Color kMuted(105, 115, 128);
 const sf::Color kBlue(58, 112, 170);
 const sf::Color kGreen(71, 145, 106);
-const sf::Color kAmber(214, 154, 65);
-const sf::Color kRed(190, 85, 85);
 
 std::string describeAction(const std::string& action) {
     if (action == "FETCH") return "Fetches the nearby object";
