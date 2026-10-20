@@ -994,7 +994,9 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
 
     state next_state = makeRuntimeState(runtime_context);
     next_state.affect_trend = summarizeAffectTrend(affective_state, levelFromValue(session_context.energy_level));
-    q_policy.update(current_state, action, outcome.reward, next_state);
+    if (learning_enabled) {
+        q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
+    }
 
     InteractionEvent event;
     event.timestamp = session_context.last_timestamp;
