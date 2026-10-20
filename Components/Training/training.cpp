@@ -189,8 +189,6 @@ bool runTrainingExperiment(const std::string& mode,
     nlohmann::json proposedEpisodes = nlohmann::json::array();
     double baselineRewardSum = 0.0;
     double proposedRewardSum = 0.0;
-    double baselineRewardPerStepSum = 0.0;
-    double proposedRewardPerStepSum = 0.0;
     double baselineStepSum = 0.0;
     double proposedStepSum = 0.0;
     int baselineCompletions = 0;
@@ -215,8 +213,6 @@ bool runTrainingExperiment(const std::string& mode,
 
         baselineRewardSum += baselineMetrics.total_reward;
         proposedRewardSum += proposedMetrics.total_reward;
-        baselineRewardPerStepSum += baselineMetrics.steps > 0 ? baselineMetrics.total_reward / baselineMetrics.steps : 0.0;
-        proposedRewardPerStepSum += proposedMetrics.steps > 0 ? proposedMetrics.total_reward / proposedMetrics.steps : 0.0;
         baselineStepSum += baselineMetrics.steps;
         proposedStepSum += proposedMetrics.steps;
         baselineCompletions += baselineMetrics.completed ? 1 : 0;
@@ -239,13 +235,13 @@ bool runTrainingExperiment(const std::string& mode,
     }
 
     summary["baseline"]["mean_total_reward_per_episode"] = baselineRewardSum / episodes;
-    summary["baseline"]["mean_reward_per_step"] = baselineRewardPerStepSum / episodes;
+    summary["baseline"]["mean_reward_per_step"] = baselineStepSum > 0.0 ? baselineRewardSum / baselineStepSum : 0.0;
     summary["baseline"]["mean_steps_per_episode"] = baselineStepSum / episodes;
     summary["baseline"]["mean_reward"] = baselineRewardSum / episodes; // Backwards-compatible alias.
     summary["baseline"]["completion_rate"] = static_cast<double>(baselineCompletions) / episodes;
     summary["baseline"]["episodes"] = baselineEpisodes;
     summary["proposed"]["mean_total_reward_per_episode"] = proposedRewardSum / episodes;
-    summary["proposed"]["mean_reward_per_step"] = proposedRewardPerStepSum / episodes;
+    summary["proposed"]["mean_reward_per_step"] = proposedStepSum > 0.0 ? proposedRewardSum / proposedStepSum : 0.0;
     summary["proposed"]["mean_steps_per_episode"] = proposedStepSum / episodes;
     summary["proposed"]["mean_reward"] = proposedRewardSum / episodes; // Backwards-compatible alias.
     summary["proposed"]["completion_rate"] = static_cast<double>(proposedCompletions) / episodes;
