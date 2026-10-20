@@ -22,6 +22,12 @@ private:
     sf::Font font;
     sf::Texture dogTexture;
     sf::Texture environmentTexture;
+    std::vector<std::unique_ptr<sf::Texture>> idleFrames;
+    std::vector<std::unique_ptr<sf::Texture>> walkFrames;
+    std::vector<std::unique_ptr<sf::Texture>> sitFrames;
+    std::vector<std::unique_ptr<sf::Texture>> layFrames;
+    std::vector<std::unique_ptr<sf::Texture>> sleepFrames;
+    std::vector<std::unique_ptr<sf::Texture>> barkFrames;
     bool dogTextureLoaded = false;
     bool environmentTextureLoaded = false;
     sf::Clock frameClock;
@@ -64,6 +70,8 @@ private:
     void drawBackdrop(float x, float y, float width, float height);
 
     void processInteraction(const std::string& label, const EnvironmentObservation& observation,
+                            float feedbackReward);
+    void executeInteraction(const std::string& label, const EnvironmentObservation& observation,
                             float feedbackReward);
     void processTextInteraction(const std::string& text);
     void handleClick(sf::Vector2f point);
