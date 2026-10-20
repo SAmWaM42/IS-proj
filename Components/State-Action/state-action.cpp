@@ -1253,6 +1253,29 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     session_context.user_status = observation.user_status;
     const std::string fallback = contextualAction(observation, &affective_state, &memory_records);
     std::string selected = q_policy.chooseAction(current_state, fallback);
+    // Explicit, sufficiently confident preferences take precedence over a
+    // learned action when the current scenario directly matches the preference.
+    for (auto it = memory_records.rbegin(); it != memory_records.rend(); ++it) {
+        if (it->confidence < 0.4f) continue;
+        if (observation.goal_state == 1 && observation.task_status == 1 &&
+            observation.target_proximity <= 1 && it->raw_fact.object == "FETCH") {
+            if (it->raw_fact.relation == "prefers_action") selected = "FETCH";
+            else if (it->raw_fact.relation == "dislikes_action") selected = "ACT_CONFUSED";
+            if (it->raw_fact.relation == "prefers_action" || it->raw_fact.relation == "dislikes_action") break;
+        }
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f &&
+            it->raw_fact.object == "BARK") {
+            if (it->raw_fact.relation == "prefers_action") selected = "BARK";
+            else if (it->raw_fact.relation == "dislikes_action") selected = "ACT_CONFUSED";
+            if (it->raw_fact.relation == "prefers_action" || it->raw_fact.relation == "dislikes_action") break;
+        }
+        if (observation.goal_state == 2 && observation.task_status == 0 &&
+            observation.signal_strength < 0.80f && it->raw_fact.object == "SLEEP_LAY") {
+            if (it->raw_fact.relation == "prefers_action") selected = "SLEEP_LAY";
+            else if (it->raw_fact.relation == "dislikes_action") selected = "WANDER";
+            if (it->raw_fact.relation == "prefers_action" || it->raw_fact.relation == "dislikes_action") break;
+        }
+    }
     if (wasActionRejected(selected, memory_records)) {
         selected = alternativeAfterRejection(selected);
     }
