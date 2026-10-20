@@ -417,7 +417,7 @@ bool runParticipantStudy(const std::string& policyDirectory,
             case Screen::Complete:
                 drawFrame(window, font, "Thank you",
                     {"The session is complete.",
-                     "Your anonymous responses have been saved.",
+                     studyDataSaved ? "Your anonymous responses have been saved." : "Warning: responses could not be saved; tell the researcher.",
                      "Session code: " + sessionId,
                      "The condition key is retained for analysis.",
                      "Press Enter to close this window."});
