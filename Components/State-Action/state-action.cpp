@@ -1127,6 +1127,7 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
     event.state_summary = "baseline_observation";
     event.affect_signal = std::clamp(observation.signal_strength, 0.0f, 1.0f);
     interaction_history.push_back(event);
+    current_state = next_state;
 }
 
 void BaselineAgent::loadPersistentState(const std::string& path) {
