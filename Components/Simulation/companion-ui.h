@@ -38,6 +38,15 @@ private:
     float agentY = 320.0f;
     float userX = 220.0f;
     float userY = 350.0f;
+    bool sceneVisible = true;
+    bool animationActive = false;
+    float animationClock = 0.0f;
+    std::string nlpMethod = "not used";
+    std::string assetsDirectory = "assets";
+    std::string nlpScript = "Components/NLP/nlp_intent_service.py";
+    std::string interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward);
+    void updateAnimation(float elapsedSeconds);
+    void drawCompanion(float x, float y);
 
     void processInteraction(const std::string& label, const EnvironmentObservation& observation,
                             float feedbackReward);
