@@ -368,6 +368,41 @@ bool testUnseenStateHandling() {
     return std::find(kActions.begin(), kActions.end(), action) != kActions.end();
 }
 
+bool testContextualFallbackMatchesIntent() {
+    EnvironmentConfig config;
+    config.seed = 7;
+    BaselineAgent agent(config);
+    agent.setExplorationRate(0.0f);
+    EnvironmentObservation greeting;
+    greeting.goal_state = 0; greeting.user_status = 0; greeting.target_proximity = 1; greeting.task_status = 0; greeting.signal_strength = 0.45f;
+    const bool greetingOk = agent.selectAction(greeting) == "GREETING";
+    EnvironmentObservation request;
+    request.goal_state = 1; request.user_status = 1; request.target_proximity = 1; request.task_status = 1; request.signal_strength = 0.90f;
+    const bool requestOk = agent.selectAction(request) == "FETCH";
+    EnvironmentObservation disturbance;
+    disturbance.goal_state = 2; disturbance.user_status = 0; disturbance.target_proximity = 0; disturbance.task_status = 0; disturbance.signal_strength = 0.95f;
+    const bool disturbanceOk = agent.selectAction(disturbance) == "BARK";
+    EnvironmentObservation rest = disturbance;
+    rest.signal_strength = 0.20f;
+    const bool restOk = agent.selectAction(rest) == "SLEEP_LAY";
+    return greetingOk && requestOk && disturbanceOk && restOk;
+}
+
+bool testProposedAgentAdaptsAfterNegativeFeedback() {
+    EnvironmentConfig config;
+    config.seed = 11;
+    ProposedAgent agent(config);
+    agent.setExplorationRate(0.0f);
+    agent.setLearningEnabled(false);
+    EnvironmentObservation disturbance;
+    disturbance.goal_state = 2; disturbance.user_status = 0; disturbance.target_proximity = 0; disturbance.task_status = 0; disturbance.signal_strength = 0.95f;
+    const std::string firstAction = agent.selectAction(disturbance);
+    ActionOutcome negative;
+    negative.reward = -1.0f; negative.terminal = true; negative.outcome_tag = "participant_negative";
+    agent.applyOutcome(disturbance, firstAction, negative);
+    const std::string nextAction = agent.selectAction(disturbance);
+    return firstAction == "BARK" && nextAction == "ACT_CONFUSED";
+}
 bool testPersistence() {
     const std::filesystem::path savePath = std::filesystem::temp_directory_path() / "is2_qtable_test.txt";
 
@@ -1242,6 +1277,8 @@ bool runBaselineValidation() {
     std::vector<TestResultRecord> results;
     results.push_back({"Basic Q update", "PASS", testBasicQUpdate(), "baseline"});
     results.push_back({"Unseen state handling", "PASS", testUnseenStateHandling(), "baseline"});
+    results.push_back({"Intent-appropriate fallback actions", "PASS", testContextualFallbackMatchesIntent(), "policy"});
+    results.push_back({"Proposed agent adapts after negative feedback", "PASS", testProposedAgentAdaptsAfterNegativeFeedback(), "affect"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
     results.push_back({"Seeded exploration reproducibility", "PASS", testSeededExplorationIsReproducible(), "training"});
