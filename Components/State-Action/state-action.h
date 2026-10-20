@@ -203,6 +203,7 @@ public:
     const std::vector<record>& getMemoryRecords() const;
     const AffectiveState& getAffectiveState() const;
     void clearMemory();
+    void recordUserPreference(const std::string& action, bool likes);
 
 private:
     EnvironmentConfig config;
