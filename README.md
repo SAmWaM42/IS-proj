@@ -28,7 +28,7 @@ Both agents share the same environment and action definitions during the first e
 
 ## Current status
 
-Development status: Baseline + runtime comparison harness + headless synthetic experiment CLI
+Development status: Baseline + headless synthetic experiment CLI + participant study prototype
 
 The project is currently in a stable staged prototype phase. The original baseline learning loop remains validated, and the implementation has progressed beyond the purely tabular baseline to include bounded memory/affect integration, persistence, and a minimal SFML-backed runtime environment.
 
@@ -42,7 +42,8 @@ Verified milestones:
 - Persistence and rest-state aggregation are implemented for Q-table, memory records, affective state, session context, interaction history, and low-confidence aggregated facts.
 - A minimal backyard simulation shell has been added using SFML, with policy-driven random stimuli and on-screen state display.
 - A baseline-vs-proposed comparison harness has been scaffolded and executed under a shared environment contract.
-- A headless synthetic training/evaluation runner is available through `--train`, `--validate`, and `--compare`; it writes per-step JSONL logs and episode summaries.
+- A headless synthetic training/evaluation runner is available through `--train`, `--validate`, and `--compare`; it writes mode-specific per-step JSONL logs and episode summaries.
+- A keyboard-driven participant-study prototype is available through `--study`, with randomized A/B condition order, fixed shared scenarios, participant feedback, and a separate questionnaire.
 - Terminal transitions no longer bootstrap from next-state Q-values, and policy exploration uses a per-agent seed derived from the experiment configuration.
 - A machine-readable validation report is stored in [Docs/test-results.json](Docs/test-results.json).
 
@@ -61,9 +62,21 @@ Build the project with the existing CMake setup, then run:
 ./IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training
 ```
 
-Training saves `baseline.qtable` and `proposed.qtable`. Validation and comparison load those checkpoints, disable exploration and policy updates, and use an evaluation scenario seed offset from the supplied seed. Step logs are written to `baseline_steps.jsonl` and `proposed_steps.jsonl`; a mode-specific JSON summary is also written.
+Training saves `baseline.qtable` and `proposed.qtable`. Validation and comparison load those checkpoints, disable exploration and policy updates, and use an evaluation scenario seed offset from the supplied seed. Step logs are written to `<mode>_baseline_steps.jsonl` and `<mode>_proposed_steps.jsonl`, preventing later runs from overwriting earlier mode logs; a mode-specific JSON summary is also written.
 
-These are synthetic engineering diagnostics only. The reward model does not measure believability, and the participant-facing interaction/questionnaire workflow and optional policy-sharing experiment are not yet implemented. Build and test the branch before relying on generated results.
+These are synthetic engineering diagnostics only. The reward model does not measure believability. Build and test the branch before relying on generated results.
+
+### Participant study prototype
+
+After training the policies, launch the SFML study interface:
+
+```sh
+./build/IS-2 --study --policy-dir artifacts/training --study-out artifacts/study
+```
+
+The interface presents two blinded conditions (A/B) in random order, uses the same five scenarios for both, records positive/neutral/negative/no-response feedback, and asks four 1–5 ratings after each condition. Policy learning is disabled during participant sessions; feedback can update the proposed agent's affect and memory state, while the questionnaire ratings remain separate from the agent's reward signal.
+
+Participant data is written as an anonymous session JSON file under `artifacts/study/`, which is git-ignored. The file includes the condition key for later analysis, so treat it as restricted research data. This prototype does not replace supervisor/institutional ethics approval, an approved consent process, or a piloted questionnaire. Do not collect real participant data until those requirements are met.
 
 ## Architecture
 
