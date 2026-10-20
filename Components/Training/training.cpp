@@ -36,25 +36,40 @@ EnvironmentObservation makeObservation(std::mt19937& rng) {
 }
 
 float rewardFor(const std::string& action, const EnvironmentObservation& observation) {
-    float reward = -0.05f;
-    if (action == "FETCH") {
-        reward += observation.task_status == 1 ? 0.65f : -0.10f;
-        reward += observation.signal_strength * 0.35f;
-        reward += observation.target_proximity <= 1 ? 0.15f : -0.10f;
-    } else if (action == "GREETING") {
-        reward += observation.user_status == 1 ? 0.55f : 0.05f;
-    } else if (action == "NUZZLE") {
-        reward += observation.user_status == 1 && observation.target_proximity == 0 ? 0.45f : -0.20f;
-    } else if (action == "ACT_CONFUSED") {
-        reward += observation.signal_strength > 0.80f ? 0.15f : -0.15f;
-    } else if (action == "SLEEP_LAY") {
-        reward += observation.task_status == 0 ? 0.35f : -0.15f;
-    } else if (action == "BARK") {
-        reward += observation.signal_strength > 0.85f ? 0.10f : -0.25f;
-    } else if (action == "INSIST") {
-        reward += observation.user_status == 1 && observation.task_status == 1 ? 0.10f : -0.25f;
-    } else if (action == "WANDER") {
-        reward += observation.target_proximity >= 2 ? 0.10f : -0.10f;
+    // Reward is conditioned on the interaction intent, not just generic environment values.
+    float reward = -0.10f;
+    switch (observation.goal_state) {
+        case 0: // Social approach
+            if (action == "GREETING") reward += observation.user_status == 0 ? 0.85f : 0.65f;
+            else if (action == "NUZZLE") reward += observation.target_proximity == 0 && observation.user_status != 2 ? 0.75f : -0.20f;
+            else if (action == "BARK") reward -= 0.30f;
+            else if (action == "FETCH" || action == "INSIST") reward -= 0.45f;
+            else if (action == "WANDER") reward -= 0.10f;
+            break;
+        case 1: // Explicit request / task
+            if (action == "FETCH") {
+                reward += observation.task_status == 1 ? 0.75f : -0.55f;
+                reward += observation.target_proximity <= 1 ? 0.25f : -0.30f;
+                reward += observation.signal_strength * 0.10f;
+            } else if (action == "ACT_CONFUSED") reward += observation.task_status == 0 ? 0.15f : -0.20f;
+            else if (action == "WANDER") reward += observation.target_proximity >= 2 ? 0.10f : -0.15f;
+            else reward -= 0.35f;
+            break;
+        case 2: // Disturbance / rest
+        default:
+            if (observation.signal_strength >= 0.80f) {
+                if (action == "ACT_CONFUSED") reward += 0.55f;
+                else if (action == "BARK") reward += 0.35f;
+                else if (action == "INSIST" || action == "FETCH") reward -= 0.45f;
+            } else if (observation.task_status == 0) {
+                if (action == "SLEEP_LAY") reward += 0.65f;
+                else if (action == "WANDER") reward += 0.15f;
+                else if (action == "FETCH" || action == "INSIST") reward -= 0.35f;
+            } else {
+                if (action == "ACT_CONFUSED") reward += 0.20f;
+                else if (action == "WANDER") reward += 0.10f;
+            }
+            break;
     }
     return std::clamp(reward, -1.0f, 1.0f);
 }
@@ -76,8 +91,10 @@ EpisodeMetrics runEpisode(Agent& agent,
         const auto& observation = observations[step];
         const std::string action = agent.selectAction(observation);
         const float reward = rewardFor(action, observation);
-        const bool completed = action == "FETCH" &&
+        const bool completed = observation.goal_state == 1 &&
+                               action == "FETCH" &&
                                observation.task_status == 1 &&
+                               observation.target_proximity <= 1 &&
                                observation.signal_strength >= 0.72f;
         const bool terminal = completed || step + 1 == observations.size();
 
