@@ -9,8 +9,8 @@ Build a reproducible synthetic experiment around the existing C++ baseline and p
 ## Current repository constraints
 
 - The current `runAgentComparison` is a short comparison harness, not yet a full evolving environment or a statistically meaningful experiment.
-- `EnvironmentConfig::seed` exists, but the complete agent/policy path must be audited for deterministic random-number generation before seeded reproducibility can be claimed.
-- `ActionOutcome` carries terminal information, while the Q-learning update API currently does not expose a terminal flag. Terminal transitions must not bootstrap from a next-state value.
+- The headless training path now seeds each agent's exploration RNG and uses a seeded environment generator. The separate SFML runtime still has its own time-seeded random stimuli and is not covered by that guarantee.
+- Terminal transitions are now passed into Q-learning updates so terminal targets do not bootstrap from next-state values; the self-test checks this behavior.
 - The SFML `BackyardSimulation` currently owns a separate policy and reward path. The experiment harness should be headless and must not depend on opening an SFML window.
 - Existing validation checks cover component contracts; they do not by themselves establish that a policy improves over training or that users perceive it as believable.
 
@@ -23,7 +23,7 @@ Build a reproducible synthetic experiment around the existing C++ baseline and p
 - Each condition writes step-level JSONL logs; each run writes an episode-level JSON summary.
 - Q-learning updates now accept a terminal flag, seeded exploration is per-agent, and a validation check covers seeded exploration and baseline feature isolation.
 
-This is a first headless experiment slice, not a complete participant study. The synthetic reward function is deliberately a development proxy and must not be presented as perceived believability. The participant-facing interface/questionnaire and optional shared-policy experiment remain unimplemented. Build/test execution against the branch still needs to be confirmed.
+This is a first headless experiment slice, not a complete participant study. The synthetic reward function is deliberately a development proxy and must not be presented as perceived believability. The participant-facing interface/questionnaire and optional shared-policy experiment remain unimplemented. Build/test execution against the branch still needs to be confirmed. The checked-in `Docs/test-results.json` is not automatically refreshed by these commits; run `./IS-2 --self-test` after building to regenerate it.
 
 ## Delivery order
 
