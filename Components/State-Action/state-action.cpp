@@ -528,7 +528,7 @@ state makeRuntimeState(const RuntimeContext& runtimeContext) {
 }
 
 std::size_t state::encode() const {
-    return mixEncode(
+    const std::size_t base = mixEncode(
         environmentCondition,
         energy,
         stress,
@@ -539,6 +539,10 @@ std::size_t state::encode() const {
         memory,
         memory_bias,
         affect_trend);
+    const int boundedTask = std::clamp(task_status, 0, 1);
+    const int boundedSignal = std::clamp(signal_strength_bucket, 0, 2);
+    return (base * 2u + static_cast<std::size_t>(boundedTask)) * 3u +
+           static_cast<std::size_t>(boundedSignal);
 }
 
 QTable::QTable(double learningRate, double discountFactor)
@@ -993,9 +997,13 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
         Level::LOW,
         observation.user_status,
         0.0f);
-    current_state = candidate;
+    state observedState = candidate;
+    observedState.task_status = observation.task_status;
+    observedState.signal_strength_bucket =
+        observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
+    current_state = observedState;
     session_context.current_action = q_policy.chooseAction(
-        candidate, contextualAction(observation));
+        observedState, contextualAction(observation));
     return session_context.current_action;
 }
 
@@ -1011,6 +1019,9 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
         Level::LOW,
         observation.user_status,
         0.0f);
+    next_state.task_status = observation.task_status;
+    next_state.signal_strength_bucket =
+        observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
 
     if (learning_enabled) {
         q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
@@ -1094,6 +1105,9 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     runtime_context.memory_summary = buildMemorySummary(memory_records, "");
     current_state = makeRuntimeState(runtime_context);
     current_state.encoded_user_input = static_cast<float>(observation.goal_state);
+    current_state.task_status = observation.task_status;
+    current_state.signal_strength_bucket =
+        observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
 
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
@@ -1134,6 +1148,9 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
 
     state next_state = makeRuntimeState(runtime_context);
     next_state.affect_trend = summarizeAffectTrend(affective_state, levelFromValue(session_context.energy_level));
+    next_state.task_status = observation.task_status;
+    next_state.signal_strength_bucket =
+        observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
     if (learning_enabled) {
         q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
     }
