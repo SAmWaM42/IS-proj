@@ -16,7 +16,10 @@ public:
     void run();
 
 private:
-    enum class Screen { Simulation, AgentState, Comparison };
+    enum class Screen { AgentSelection, Simulation, AgentState, Comparison };
+    bool agentAIsProposed = false;
+    char selectedAgentCode = 'A';
+    bool selectedAgentIsProposed = false;
 
     sf::RenderWindow window;
     sf::Font font;
@@ -77,6 +80,7 @@ private:
     void handleClick(sf::Vector2f point);
     void draw();
     void drawNavigation();
+    void drawAgentSelectionScreen();
     void drawSimulationScreen();
     void drawAgentStateScreen();
     void drawComparisonScreen();
