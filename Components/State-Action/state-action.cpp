@@ -1089,6 +1089,13 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
 void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
                                 const std::string& action,
                                 const ActionOutcome& outcome) {
+    applyOutcome(observation, action, outcome, observation);
+}
+
+void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
+                                const std::string& action,
+                                const ActionOutcome& outcome,
+                                const EnvironmentObservation& nextObservation) {
     state next_state = makeState(
         session_context.current_intent,
         proximityFromValue(observation.target_proximity),
@@ -1204,6 +1211,13 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
 void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
                                 const std::string& action,
                                 const ActionOutcome& outcome) {
+    applyOutcome(observation, action, outcome, observation);
+}
+
+void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
+                                const std::string& action,
+                                const ActionOutcome& outcome,
+                                const EnvironmentObservation& nextObservation) {
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
