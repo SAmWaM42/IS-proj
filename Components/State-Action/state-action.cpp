@@ -977,6 +977,25 @@ std::string contextualAction(const EnvironmentObservation& observation,
     return "ACT_CONFUSED";
 }
 
+bool wasActionRejected(const std::string& action, const std::vector<record>& memories) {
+    for (auto it = memories.rbegin(); it != memories.rend(); ++it) {
+        if (it->raw_fact.relation == "response_to_action" && it->raw_fact.subject == action) {
+            return it->raw_fact.object == "negative";
+        }
+    }
+    return false;
+}
+
+std::string alternativeAfterRejection(const std::string& action) {
+    if (action == "GREETING") return "NUZZLE";
+    if (action == "NUZZLE") return "GREETING";
+    if (action == "BARK") return "ACT_CONFUSED";
+    if (action == "ACT_CONFUSED") return "WANDER";
+    if (action == "FETCH") return "ACT_CONFUSED";
+    if (action == "INSIST") return "WANDER";
+    if (action == "SLEEP_LAY") return "WANDER";
+    return "GREETING";
+}
 std::string currentTimeStamp() {
     const auto now = std::chrono::system_clock::now();
     const auto timer = std::chrono::system_clock::to_time_t(now);
@@ -1147,8 +1166,12 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
-    session_context.current_action = q_policy.chooseAction(
-        current_state, contextualAction(observation, &affective_state, &memory_records));
+    const std::string fallback = contextualAction(observation, &affective_state, &memory_records);
+    std::string selected = q_policy.chooseAction(current_state, fallback);
+    if (wasActionRejected(selected, memory_records)) {
+        selected = alternativeAfterRejection(selected);
+    }
+    session_context.current_action = selected;
     return session_context.current_action;
 }
 
