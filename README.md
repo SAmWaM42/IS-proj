@@ -56,10 +56,10 @@ The current implementation deliberately keeps the policy layer stable and explai
 Build the project with the existing CMake setup, then run:
 
 ```sh
-./IS-2 --self-test
-./IS-2 --train --episodes 1000 --steps 40 --seed 42 --out artifacts/training
-./IS-2 --validate --episodes 200 --steps 40 --seed 43 --out artifacts/training
-./IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training
+./build/IS-2 --self-test
+./build/IS-2 --train --episodes 1000 --steps 40 --seed 42 --out artifacts/training
+./build/IS-2 --validate --episodes 200 --steps 40 --seed 43 --out artifacts/training
+./build/IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training
 ```
 
 Training saves `baseline.qtable` and `proposed.qtable`. Validation and comparison load those checkpoints, disable exploration and policy updates, and use an evaluation scenario seed offset from the supplied seed. Step logs are written to `<mode>_baseline_steps.jsonl` and `<mode>_proposed_steps.jsonl`, preventing later runs from overwriting earlier mode logs; a mode-specific JSON summary is also written.
