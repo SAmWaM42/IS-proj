@@ -221,15 +221,21 @@ void CompanionUI::run() {
 void CompanionUI::updateAnimation(float elapsedSeconds) {
     if (!animationActive) return;
     animationClock += elapsedSeconds;
-    if (animationClock >= 0.16f) {
+    const bool resting = latestProposedAction == "SLEEP_LAY";
+    const bool walking = latestProposedAction == "FETCH" || latestProposedAction == "WANDER";
+    if (resting || walking) {
+        if (animationClock >= 0.16f) {
+            animationClock = 0.0f;
+            animationFrame = (animationFrame + 1) % 7;
+        }
+    } else {
+        animationFrame = 0;
         animationClock = 0.0f;
-        animationFrame = (animationFrame + 1) % 7;
     }
-    if (latestProposedAction == "FETCH" || latestProposedAction == "NUZZLE" ||
-        latestProposedAction == "GREETING" || latestProposedAction == "WANDER") {
-        const float direction = (latestProposedAction == "NUZZLE" || latestProposedAction == "GREETING") ? -1.0f : 1.0f;
+    if (walking) {
+        const float direction = latestProposedAction == "FETCH" ? 1.0f : -1.0f;
         agentX += direction * elapsedSeconds * 90.0f;
-        if (agentX > 900.0f) agentX = 380.0f;
+        if (agentX > 950.0f) agentX = 360.0f;
         if (agentX < 320.0f) agentX = 760.0f;
     }
 }
@@ -244,8 +250,13 @@ void CompanionUI::drawCompanion(float x, float y) {
         // Rows 2-3 are alternate dog sprites, not action categories.
         const bool resting = latestProposedAction == "SLEEP_LAY";
         const unsigned int row = resting ? 1u : 0u;
+        // Only the walking and sleeping rows are genuine cycles in this sheet.
+        // Other actions use the first neutral frame rather than a false animation.
         const unsigned int frameCount = 7u;
-        const unsigned int col = animationActive
+        const bool animated = latestProposedAction == "FETCH" ||
+                              latestProposedAction == "WANDER" ||
+                              latestProposedAction == "SLEEP_LAY";
+        const unsigned int col = animated && animationActive
             ? static_cast<unsigned int>(animationFrame) % frameCount : 0u;
         sf::Sprite dog(dogTexture);
         dog.setTextureRect(sf::IntRect(
@@ -272,7 +283,9 @@ void CompanionUI::processInteraction(const std::string& label,
     latestStimulus = label;
     latestBaselineAction = baseline.selectAction(observation);
     latestProposedAction = proposed.selectAction(observation);
-    animationActive = true;
+    animationActive = latestProposedAction == "FETCH" ||
+                      latestProposedAction == "WANDER" ||
+                      latestProposedAction == "SLEEP_LAY";
     animationClock = 0.0f;
     animationFrame = 0;
 
