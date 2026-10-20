@@ -1360,6 +1360,66 @@ AgentComparisonRun runAgentComparison(const EnvironmentConfig& config, int steps
     return run;
 }
 
+bool testProposedMemoryConfidenceTracksOutcome() {
+    EnvironmentConfig config;
+    ProposedAgent agent(config);
+    agent.setLearningEnabled(false);
+    agent.setExplorationRate(0.0f);
+    EnvironmentObservation observation{0, 1, 0, 0, 0.55f};
+    ActionOutcome positive;
+    positive.reward = 1.0f;
+    positive.terminal = true;
+    positive.outcome_tag = "positive";
+    agent.applyOutcome(observation, "GREETING", positive);
+    ActionOutcome negative;
+    negative.reward = -1.0f;
+    negative.terminal = true;
+    negative.outcome_tag = "negative";
+    agent.applyOutcome(observation, "GREETING", negative);
+    const auto& records = agent.getMemoryRecords();
+    return records.size() == 1 &&
+           records.front().raw_fact.object == "negative" &&
+           nearlyEqual(records.front().confidence, 0.5, 1e-5) &&
+           records.front().observation_count == 2;
+}
+
+bool testProposedMemoryPersistsAcrossResetAndDisk() {
+    const auto dir = std::filesystem::temp_directory_path() / "is2_proposed_persistence_test";
+    std::filesystem::create_directories(dir);
+    const auto policyPath = (dir / "proposed.qtable").string();
+    EnvironmentConfig config;
+    ProposedAgent original(config);
+    original.setLearningEnabled(false);
+    ActionOutcome outcome;
+    outcome.reward = 1.0f;
+    outcome.terminal = true;
+    outcome.outcome_tag = "positive";
+    original.applyOutcome(EnvironmentObservation{0, 1, 0, 0, 0.55f}, "GREETING", outcome);
+    original.reset();
+    if (original.getMemoryRecords().empty()) return false;
+    original.savePersistentState(policyPath);
+    ProposedAgent restored(config);
+    restored.loadPersistentState(policyPath);
+    const bool loaded = restored.getMemoryRecords().size() == original.getMemoryRecords().size() &&
+        restored.getAffectiveState().affinity == original.getAffectiveState().affinity;
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+    return loaded;
+}
+
+bool testNegativeFeedbackUpdatesAffectDimensions() {
+    AffectiveState affect;
+    const float arousalBefore = affect.arousal;
+    const float stressBefore = affect.stress;
+    const float affinityBefore = affect.affinity;
+    affect.updateFromFeedback(-1.0f, false, true);
+    return affect.valence == AffectValence::NEGATIVE &&
+           affect.arousal < arousalBefore &&
+           affect.stress > stressBefore &&
+           affect.affinity < affinityBefore &&
+           affect.energy == AffectEnergy::LOW;
+}
+
 bool runBaselineValidation() {
     std::vector<TestResultRecord> results;
     results.push_back({"Basic Q update", "PASS", testBasicQUpdate(), "baseline"});
@@ -1368,6 +1428,9 @@ bool runBaselineValidation() {
     results.push_back({"Task and signal state encoding", "PASS", testTaskAndSignalAreEncoded(), "state"});
     results.push_back({"Proposed agent adapts after negative feedback", "PASS", testProposedAgentAdaptsAfterNegativeFeedback(), "affect"});
     results.push_back({"Proposed agent avoids rejected action", "PASS", testProposedAgentAvoidsRejectedAction(), "memory"});
+    results.push_back({"Memory confidence follows outcome history", "PASS", testProposedMemoryConfidenceTracksOutcome(), "memory"});
+    results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
+    results.push_back({"Negative feedback updates all affect dimensions", "PASS", testNegativeFeedbackUpdatesAffectDimensions(), "affect"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
     results.push_back({"Seeded exploration reproducibility", "PASS", testSeededExplorationIsReproducible(), "training"});
