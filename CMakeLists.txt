@@ -10,6 +10,7 @@ add_executable(IS-2
    Components/State-Action/state-action.cpp
    Components/Memory/memory.cpp
    Components/Environment/environment.cpp
+   Components/Training/training.cpp
 )
 
 target_include_directories(IS-2 PRIVATE
@@ -18,6 +19,7 @@ target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}/Components/Environment
    ${CMAKE_SOURCE_DIR}/Components/Memory
    ${CMAKE_SOURCE_DIR}/Components/State-Action
+   ${CMAKE_SOURCE_DIR}/Components/Training
 )
 
 target_link_libraries(IS-2 PRIVATE
