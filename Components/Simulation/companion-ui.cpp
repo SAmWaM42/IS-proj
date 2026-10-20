@@ -162,6 +162,10 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
       outputDirectory(outputDirectoryValue),
       baseline(EnvironmentConfig{}),
       proposed(EnvironmentConfig{}) {
+    baseline.setLearningEnabled(false);
+    proposed.setLearningEnabled(false);
+    baseline.setExplorationRate(0.0f);
+    proposed.setExplorationRate(0.0f);
     std::random_device conditionRandom;
     agentAIsProposed = (conditionRandom() % 2u) == 0u;
     if (!font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
@@ -235,22 +239,23 @@ void CompanionUI::run() {
 }
 
 void CompanionUI::updateAnimation(float elapsedSeconds) {
+    const std::string& visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
     if (actionDisplayTimer > 0.0f) {
         actionDisplayTimer = std::max(0.0f, actionDisplayTimer - elapsedSeconds);
         animationClock += elapsedSeconds;
         if (animationClock >= 0.16f) {
             animationClock = 0.0f;
             const std::vector<std::unique_ptr<sf::Texture>>* frames = &idleFrames;
-            if (latestProposedAction == "FETCH" || latestProposedAction == "WANDER") frames = &walkFrames;
-            else if (latestProposedAction == "SLEEP_LAY") frames = &sleepFrames;
-            else if (latestProposedAction == "BARK" || latestProposedAction == "ACT_CONFUSED") frames = &barkFrames;
-            else if (latestProposedAction == "NUZZLE" || latestProposedAction == "GREETING") frames = &sitFrames;
-            else if (latestProposedAction == "INSIST") frames = &layFrames;
+            if (visibleAction == "FETCH" || visibleAction == "WANDER") frames = &walkFrames;
+            else if (visibleAction == "SLEEP_LAY") frames = &sleepFrames;
+            else if (visibleAction == "BARK" || visibleAction == "ACT_CONFUSED") frames = &barkFrames;
+            else if (visibleAction == "NUZZLE" || visibleAction == "GREETING") frames = &sitFrames;
+            else if (visibleAction == "INSIST") frames = &layFrames;
             const std::size_t count = std::max<std::size_t>(1, frames->size());
             animationFrame = (animationFrame + 1) % static_cast<int>(count);
         }
-        if (latestProposedAction == "FETCH" || latestProposedAction == "WANDER") {
-            const float direction = latestProposedAction == "FETCH" ? 1.0f : -1.0f;
+        if (visibleAction == "FETCH" || visibleAction == "WANDER") {
+            const float direction = visibleAction == "FETCH" ? 1.0f : -1.0f;
             agentX += direction * elapsedSeconds * 70.0f;
             agentX = std::clamp(agentX, 320.0f, 950.0f);
         }
@@ -267,12 +272,13 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
 }
 
 void CompanionUI::drawCompanion(float x, float y) {
+    const std::string& visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
     const std::vector<std::unique_ptr<sf::Texture>>* frames = &idleFrames;
-    if (latestProposedAction == "FETCH" || latestProposedAction == "WANDER") frames = &walkFrames;
-    else if (latestProposedAction == "SLEEP_LAY") frames = &sleepFrames;
-    else if (latestProposedAction == "BARK" || latestProposedAction == "ACT_CONFUSED") frames = &barkFrames;
-    else if (latestProposedAction == "NUZZLE" || latestProposedAction == "GREETING") frames = &sitFrames;
-    else if (latestProposedAction == "INSIST") frames = &layFrames;
+    if (visibleAction == "FETCH" || visibleAction == "WANDER") frames = &walkFrames;
+    else if (visibleAction == "SLEEP_LAY") frames = &sleepFrames;
+    else if (visibleAction == "BARK" || visibleAction == "ACT_CONFUSED") frames = &barkFrames;
+    else if (visibleAction == "NUZZLE" || visibleAction == "GREETING") frames = &sitFrames;
+    else if (visibleAction == "INSIST") frames = &layFrames;
     if (!frames->empty()) {
         const std::size_t index = animationActive ? static_cast<std::size_t>(animationFrame) % frames->size() : 0u;
         sf::Sprite dog(*(*frames)[index]);
@@ -561,8 +567,8 @@ void CompanionUI::drawSimulationScreen() {
     drawText("YOU", userX - 3, userY + 67, 12, kInk);
     drawCompanion(agentX, agentY);
     drawText("COMPANION", agentX - 12, agentY + 64, 12, kInk);
-    drawText("Proposed action: " + latestProposedAction, 50, 150, 16, kGreen);
-    drawText("Baseline action: " + latestBaselineAction, 50, 176, 15, kBlue);
+    const std::string visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
+    drawText(std::string("Agent ") + selectedAgentCode + " action: " + visibleAction, 50, 150, 16, kGreen);
     drawText("Input interpretation: " + nlpMethod, 50, 202, 14, kMuted);
     if (!controlsVisible) {
         drawText("Controls hidden - use Show Controls to interact", 50, 235, 16, kInk);
@@ -583,6 +589,7 @@ void CompanionUI::drawSimulationScreen() {
 void CompanionUI::drawAgentStateScreen() {
     drawText("AGENT STATE", 30, 75, 26, kInk);
     drawText("Current context, affect and retrieved memory", 30, 106, 15, kMuted);
+    drawButton("Clear Memory Files", 930, 750, 280, 44);
     auto panel = [&](float x, float y, float w, float h) {
         sf::RectangleShape r({w, h}); r.setPosition({x, y}); r.setFillColor(kPanel);
         r.setOutlineColor(sf::Color(220, 225, 232)); r.setOutlineThickness(1); window.draw(r);
@@ -652,10 +659,14 @@ void CompanionUI::drawComparisonScreen() {
 
 void CompanionUI::draw() {
     window.clear(kBackground);
-    drawNavigation();
-    if (screen == Screen::Simulation) drawSimulationScreen();
-    else if (screen == Screen::AgentState) drawAgentStateScreen();
-    else drawComparisonScreen();
+    if (screen == Screen::AgentSelection) {
+        drawAgentSelectionScreen();
+    } else {
+        drawNavigation();
+        if (screen == Screen::Simulation) drawSimulationScreen();
+        else if (screen == Screen::AgentState) drawAgentStateScreen();
+        else drawComparisonScreen();
+    }
     window.display();
 }
 
@@ -678,6 +689,8 @@ void CompanionUI::saveSession() {
             return;
         }
         out << session.dump(2) << '\n';
+        baseline.savePersistentState((directory / "baseline-session.qtable").string());
+        proposed.savePersistentState((std::filesystem::path(policyDirectory) / "proposed.qtable").string());
         baseline.savePersistentState((directory / "baseline-session.qtable").string());
         proposed.savePersistentState((directory / "proposed-session.qtable").string());
     } catch (const std::exception& e) {
