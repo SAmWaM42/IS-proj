@@ -75,7 +75,6 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
         throw std::runtime_error("Unable to load DejaVuSans.ttf. Install DejaVu fonts or update companion-ui.cpp.");
     }
     window.setFramerateLimit(60);
-    window.setMinimumSize({960u, 640u});
     const std::string dogSheet = "Data/Assets/DogMegaPackFree/DogMegaPackFree/Dogs.png";
     dogTextureLoaded = dogTexture.loadFromFile(dogSheet);
     if (dogTextureLoaded) {
