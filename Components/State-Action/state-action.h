@@ -168,6 +168,7 @@ private:
     SessionContext session_context;
     std::vector<InteractionEvent> interaction_history;
     state current_state;
+    bool learning_enabled = true;
 };
 
 class ProposedAgent {
@@ -200,6 +201,7 @@ private:
     std::vector<InteractionEvent> interaction_history;
     RuntimeContext runtime_context;
     state current_state;
+    bool learning_enabled = true;
 };
 
 struct AgentComparisonRun {
