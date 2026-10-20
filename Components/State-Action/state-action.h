@@ -104,7 +104,7 @@ public:
     QTable(double learningRate, double discountFactor);
 
     double getQValue(std::size_t state, std::string action) const;
-    void update(std::size_t state, std::string action, double reward, std::size_t nextState);
+    void update(std::size_t state, std::string action, double reward, std::size_t nextState, bool terminal = false);
     std::string chooseAction(std::size_t state);
 
     void save(const std::string& filename);
@@ -131,7 +131,7 @@ public:
 
     void setActions(const std::vector<std::string>& actions);
     std::string chooseAction(const state& stateRef) const;
-    void update(const state& current_state, const std::string& action, float reward, const state& next_state);
+    void update(const state& current_state, const std::string& action, float reward, const state& next_state, bool terminal = false);
 
     void setEpsilon(float epsilon);
     float getEpsilon() const;
