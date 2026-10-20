@@ -1580,6 +1580,30 @@ bool testProposedMemoryPersistsAcrossResetAndDisk() {
     return loaded;
 }
 
+bool testOutcomeUsesExplicitNextObservation() {
+    EnvironmentConfig config;
+    BaselineAgent baseline(config);
+    ProposedAgent proposed(config);
+    baseline.setLearningEnabled(false);
+    proposed.setLearningEnabled(false);
+    const EnvironmentObservation current{0, 1, 0, 0, 0.45f};
+    const EnvironmentObservation next{1, 0, 1, 1, 0.90f};
+    const std::string baselineAction = baseline.selectAction(current);
+    const std::string proposedAction = proposed.selectAction(current);
+    ActionOutcome outcome;
+    outcome.reward = 0.5f;
+    outcome.terminal = false;
+    outcome.outcome_tag = "transition_test";
+    baseline.applyOutcome(current, baselineAction, outcome, next);
+    proposed.applyOutcome(current, proposedAction, outcome, next);
+    const auto& b = baseline.getCurrentState();
+    const auto& p = proposed.getCurrentState();
+    return b.encoded_user_input == static_cast<float>(next.goal_state) &&
+           p.encoded_user_input == static_cast<float>(next.goal_state) &&
+           b.task_status == next.task_status && p.task_status == next.task_status &&
+           b.signal_strength_bucket == 2 && p.signal_strength_bucket == 2;
+}
+
 bool testNegativeFeedbackUpdatesAffectDimensions() {
     AffectiveState affect;
     const float arousalBefore = affect.arousal;
@@ -1606,6 +1630,7 @@ bool runBaselineValidation() {
     results.push_back({"Memory confidence follows outcome history", "PASS", testProposedMemoryConfidenceTracksOutcome(), "memory"});
     results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
     results.push_back({"Negative feedback updates all affect dimensions", "PASS", testNegativeFeedbackUpdatesAffectDimensions(), "affect"});
+    results.push_back({"Outcome uses explicit next observation", "PASS", testOutcomeUsesExplicitNextObservation(), "training"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
     results.push_back({"Seeded exploration reproducibility", "PASS", testSeededExplorationIsReproducible(), "training"});
