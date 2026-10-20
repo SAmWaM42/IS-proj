@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <random>
 #include <stdexcept>
 #include <thread>
 #include <mutex>
@@ -161,6 +162,8 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
       outputDirectory(outputDirectoryValue),
       baseline(EnvironmentConfig{}),
       proposed(EnvironmentConfig{}) {
+    std::random_device conditionRandom;
+    agentAIsProposed = (conditionRandom() % 2u) == 0u;
     if (!font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
         throw std::runtime_error("Unable to load DejaVuSans.ttf. Install DejaVu fonts or update companion-ui.cpp.");
     }
@@ -391,11 +394,29 @@ void CompanionUI::processTextInteraction(const std::string& text) {
 
 void CompanionUI::handleClick(sf::Vector2f point) {
     const float x = point.x, y = point.y;
+    if (screen == Screen::AgentSelection) {
+        if (y >= 300 && y <= 380) {
+            selectedAgentCode = x < 640.0f ? 'A' : 'B';
+            selectedAgentIsProposed = selectedAgentCode == 'A' ? agentAIsProposed : !agentAIsProposed;
+            screen = Screen::Simulation;
+            appendLog(std::string("Loaded blind condition ") + selectedAgentCode);
+        }
+        return;
+    }
     if (y >= 14 && y <= 58) {
         if (x < 180) screen = Screen::Simulation;
         else if (x < 360) screen = Screen::AgentState;
         else if (x < 540) screen = Screen::Comparison;
         else if (x > 1030) controlsVisible = !controlsVisible;
+        return;
+    }
+    if (screen == Screen::AgentState && x >= 930 && y >= 750 && y <= 810) {
+        proposed.clearMemory();
+        std::error_code ec;
+        const auto prefix = std::filesystem::path(policyDirectory) / "proposed.qtable";
+        std::filesystem::remove(prefix.string() + ".memory.json", ec);
+        if (ec) appendLog("Memory file deletion failed: " + ec.message());
+        else appendLog("Persistent memory cleared by user request.");
         return;
     }
     if (screen != Screen::Simulation) return;
@@ -448,6 +469,16 @@ void CompanionUI::drawBar(const std::string& label, float value, float x, float 
 void CompanionUI::appendLog(const std::string& value) {
     eventLog.push_back(value);
     if (eventLog.size() > 12) eventLog.erase(eventLog.begin());
+}
+
+void CompanionUI::drawAgentSelectionScreen() {
+    drawText("CHOOSE COMPANION", 60, 120, 30, kInk);
+    drawText("Select A or B. The interface does not disclose the model behind either label.", 60, 170, 17, kMuted);
+    drawText("The A/B assignment is randomised for this application session.", 60, 205, 15, kMuted);
+    drawButton("Load Agent A", 180, 300, 400, 80, selectedAgentCode == 'A');
+    drawButton("Load Agent B", 700, 300, 400, 80, selectedAgentCode == 'B');
+    drawText("Memory persists between sessions for the proposed model.", 180, 430, 16, kMuted);
+    drawText("The research condition remains hidden from the participant-facing screen.", 180, 460, 16, kMuted);
 }
 
 void CompanionUI::drawNavigation() {
