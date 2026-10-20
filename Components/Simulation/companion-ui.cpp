@@ -196,19 +196,6 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
         appendLog("Dog sprite sheet unavailable; using vector companion fallback.");
     }
     std::filesystem::create_directories(outputDirectory);
-    {
-        nlohmann::json manifest;
-        manifest["schema_version"] = 1;
-        manifest["mode"] = "interactive_simulation";
-        manifest["policy_updates_enabled"] = false;
-        manifest["selected_condition"] = std::string(1, selectedAgentCode);
-        manifest["condition_key"] = {
-            {"A", agentAIsProposed ? "proposed" : "baseline"},
-            {"B", agentAIsProposed ? "baseline" : "proposed"}
-        };
-        std::ofstream manifestOut(std::filesystem::path(outputDirectory) / "run-manifest.json");
-        if (manifestOut) manifestOut << manifest.dump(2) << '\\n';
-    }
     const auto basePath = std::filesystem::path(policyDirectory) / "baseline.qtable";
     const auto proposedPath = std::filesystem::path(policyDirectory) / "proposed.qtable";
     if (std::filesystem::exists(basePath)) baseline.loadPersistentState(basePath.string());
@@ -393,7 +380,7 @@ void CompanionUI::executeInteraction(const std::string& label,
             }}
         };
         std::ofstream log(std::filesystem::path(outputDirectory) / "interaction-events.jsonl", std::ios::app);
-        if (log) log << row.dump() << '\\n';
+        if (log) log << row.dump() << '\n';
         else appendLog("WARNING: interaction event log could not be written.");
     }
     saveSession();
@@ -456,9 +443,30 @@ void CompanionUI::processTextInteraction(const std::string& text) {
 void CompanionUI::handleClick(sf::Vector2f point) {
     const float x = point.x, y = point.y;
     if (screen == Screen::AgentSelection) {
+        if (y >= 530 && y <= 600 && x >= 180 && x <= 580) {
+            proposed.clearMemory();
+            std::error_code ec;
+            const auto memoryPath = std::filesystem::path(policyDirectory) / "proposed.qtable.memory.json";
+            std::filesystem::remove(memoryPath, ec);
+            appendLog(ec ? "Memory file deletion failed: " + ec.message() : "Persistent memory cleared.");
+            return;
+        }
         if (y >= 300 && y <= 380) {
             selectedAgentCode = x < 640.0f ? 'A' : 'B';
             selectedAgentIsProposed = selectedAgentCode == 'A' ? agentAIsProposed : !agentAIsProposed;
+            {
+                nlohmann::json manifest;
+                manifest["schema_version"] = 1;
+                manifest["mode"] = "interactive_simulation";
+                manifest["policy_updates_enabled"] = false;
+                manifest["selected_condition"] = std::string(1, selectedAgentCode);
+                manifest["condition_key"] = {
+                    {"A", agentAIsProposed ? "proposed" : "baseline"},
+                    {"B", agentAIsProposed ? "baseline" : "proposed"}
+                };
+                std::ofstream manifestOut(std::filesystem::path(outputDirectory) / "run-manifest.json");
+                if (manifestOut) manifestOut << manifest.dump(2) << '\n';
+            }
             screen = Screen::Simulation;
             appendLog(std::string("Loaded blind condition ") + selectedAgentCode);
         }
@@ -466,8 +474,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
     }
     if (y >= 14 && y <= 58) {
         if (x < 180) screen = Screen::Simulation;
-        else if (x < 360) screen = Screen::AgentState;
-        else if (x < 540) screen = Screen::Comparison;
+        else if (x < 330) screen = Screen::AgentSelection;
         else if (x > 1030) controlsVisible = !controlsVisible;
         return;
     }
@@ -540,13 +547,16 @@ void CompanionUI::drawAgentSelectionScreen() {
     drawButton("Load Agent B", 700, 300, 400, 80, selectedAgentCode == 'B');
     drawText("Memory persists between sessions for the proposed model.", 180, 430, 16, kMuted);
     drawText("The research condition remains hidden from the participant-facing screen.", 180, 460, 16, kMuted);
+    drawButton("Clear Persistent Memory", 180, 540, 400, 54);
+    drawText("This deletes the proposed agent's saved memory file; it does not delete its policy.", 180, 610, 14, kMuted);
 }
 
 void CompanionUI::drawNavigation() {
     drawButton("Simulation", 28, 12, 145, 42, screen == Screen::Simulation);
-    drawButton("Agent State", 185, 12, 145, 42, screen == Screen::AgentState);
-    drawButton("Comparison", 342, 12, 145, 42, screen == Screen::Comparison);
-    if (screen == Screen::Simulation) drawButton(controlsVisible ? "Hide Controls" : "Show Controls", 1030, 12, 180, 42);
+    if (screen == Screen::Simulation)
+        drawButton("Change Agent", 185, 12, 145, 42);
+    if (screen == Screen::Simulation)
+        drawButton(controlsVisible ? "Hide Controls" : "Show Controls", 1030, 12, 180, 42);
     drawText("ANIMAL AGENT / SFML", 760, 22, 15, kMuted);
 }
 
