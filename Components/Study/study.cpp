@@ -315,8 +315,14 @@ bool runParticipantStudy(const std::string& policyDirectory,
                     }
                 }
             } else if (screen == Screen::Survey) {
-                if (key >= sf::Keyboard::Key::Num1 && key <= sf::Keyboard::Key::Num5) {
-                    survey[surveyIndex].rating = static_cast<int>(key) - static_cast<int>(sf::Keyboard::Key::Num0);
+                int rating = 0;
+                if (key == sf::Keyboard::Key::Num1) rating = 1;
+                else if (key == sf::Keyboard::Key::Num2) rating = 2;
+                else if (key == sf::Keyboard::Key::Num3) rating = 3;
+                else if (key == sf::Keyboard::Key::Num4) rating = 4;
+                else if (key == sf::Keyboard::Key::Num5) rating = 5;
+                if (rating != 0) {
+                    survey[surveyIndex].rating = rating;
                     if (surveyIndex + 1 < survey.size()) {
                         ++surveyIndex;
                     } else {
