@@ -1219,8 +1219,7 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     auto memoryIt = std::find_if(memory_records.begin(), memory_records.end(),
         [&](const record& existing) {
             return existing.raw_fact.subject == action &&
-                   existing.raw_fact.relation == "response_to_action" &&
-                   existing.raw_fact.object == outcomeClass;
+                   existing.raw_fact.relation == "response_to_action";
         });
     const float successfulSignal = outcome.reward > 0.05f ? 1.0f : 0.0f;
     if (memoryIt == memory_records.end()) {
@@ -1242,6 +1241,7 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
         memoryIt->confidence = std::clamp(
             (memoryIt->confidence * static_cast<float>(priorCount) + successfulSignal) /
             static_cast<float>(priorCount + 1), 0.0f, 1.0f);
+        memoryIt->raw_fact.object = outcomeClass;
         memoryIt->observation_count = priorCount + 1;
         memoryIt->last_updated = session_context.last_timestamp;
         memoryIt->relevance = std::clamp(
