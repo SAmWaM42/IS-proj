@@ -724,6 +724,39 @@ void QLearning::loadTrainingData(const std::string&) {
     // intentionally left as no-op for the minimal prototype
 }
 
+bool testEvaluationDoesNotUpdatePolicy() {
+    const std::filesystem::path dir = std::filesystem::temp_directory_path() / "is2_eval_policy_test";
+    std::filesystem::create_directories(dir);
+    const std::filesystem::path beforePath = dir / "before.qtable";
+    const std::filesystem::path afterPath = dir / "after.qtable";
+
+    BaselineAgent agent;
+    agent.setLearningEnabled(false);
+    agent.setExplorationRate(0.0f);
+    agent.savePersistentState(beforePath.string());
+
+    EnvironmentObservation observation;
+    observation.goal_state = 1;
+    observation.target_proximity = 0;
+    observation.user_status = 1;
+    observation.task_status = 1;
+    observation.signal_strength = 0.9f;
+    const std::string action = agent.selectAction(observation);
+    ActionOutcome outcome;
+    outcome.reward = 1.0f;
+    outcome.terminal = true;
+    outcome.outcome_tag = "evaluation_test";
+    agent.applyOutcome(observation, action, outcome);
+    agent.savePersistentState(afterPath.string());
+
+    std::ifstream beforeFile(beforePath);
+    std::ifstream afterFile(afterPath);
+    const std::string before((std::istreambuf_iterator<char>(beforeFile)), std::istreambuf_iterator<char>());
+    const std::string after((std::istreambuf_iterator<char>(afterFile)), std::istreambuf_iterator<char>());
+    std::filesystem::remove_all(dir);
+    return before == after;
+}
+
 bool testBaselineExcludesMemoryAndAffectInputs() {
     EnvironmentConfig config;
     BaselineAgent agent(config);
@@ -1126,6 +1159,7 @@ bool runBaselineValidation() {
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
     results.push_back({"Seeded exploration reproducibility", "PASS", testSeededExplorationIsReproducible(), "training"});
     results.push_back({"Baseline excludes memory and affect inputs", "PASS", testBaselineExcludesMemoryAndAffectInputs(), "training"});
+    results.push_back({"Evaluation does not update policy", "PASS", testEvaluationDoesNotUpdatePolicy(), "training"});
     results.push_back({"Memory/affect encoding", "PASS", testMemoryAffectStateEncoding(), "state"});
     results.push_back({"Context summary state changes", "PASS", testContextSummaryChangesState(), "state"});
     results.push_back({"Live memory summary state changes", "PASS", testLiveMemorySummariesChangeState(), "memory"});
