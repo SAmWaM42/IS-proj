@@ -70,6 +70,8 @@ struct state
     float encoded_user_input = 0.0f;
     int memory_bias = 0;
     int affect_trend = 0;
+    int task_status = 0;
+    int signal_strength_bucket = 1;
 
     std::size_t encode() const;
 };
