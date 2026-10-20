@@ -701,7 +701,20 @@ std::string QLearning::chooseAction(const state& stateRef,
         }
     }
 
-    return getBestAction(stateRef);
+    // Ignore zero-valued actions that have never been learned in this state.
+    // Otherwise an unvisited action's implicit Q=0 can beat all learned negative
+    // values and accidentally send the agent back to the first action.
+    const auto& learnedActions = stateIt->second;
+    std::string bestAction;
+    double bestValue = 0.0;
+    for (const auto& action : actions) {
+        const auto found = learnedActions.find(action);
+        if (found != learnedActions.end() && found->second > bestValue) {
+            bestValue = found->second;
+            bestAction = action;
+        }
+    }
+    return bestAction.empty() ? contextualFallback : bestAction;
 }
 
 void QLearning::update(const state& current_state, const std::string& action, float reward, const state& next_state, bool terminal) {
