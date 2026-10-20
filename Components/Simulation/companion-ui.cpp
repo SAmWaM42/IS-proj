@@ -825,7 +825,7 @@ void CompanionUI::saveSession() {
         }
         out << session.dump(2) << '\n';
         baseline.savePersistentState((directory / "baseline-session.qtable").string());
-        proposed.savePersistentState((std::filesystem::path(policyDirectory) / "proposed.qtable").string());
+        proposed.savePersistentContext((std::filesystem::path(policyDirectory) / "proposed.qtable").string());
     } catch (const std::exception& e) {
         std::cerr << "Unable to save simulation session: " << e.what() << '\n';
     }
