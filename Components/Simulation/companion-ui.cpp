@@ -467,7 +467,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
             appendLog(ec ? "Memory file deletion failed: " + ec.message() : "Persistent memory cleared.");
             return;
         }
-        if (y >= 300 && y <= 380) {
+        if (y >= 300 && y <= 380 && ((x >= 180 && x <= 580) || (x >= 700 && x <= 1100))) {
             selectedAgentCode = x < 640.0f ? 'A' : 'B';
             selectedAgentIsProposed = selectedAgentCode == 'A' ? agentAIsProposed : !agentAIsProposed;
             {
@@ -774,8 +774,6 @@ void CompanionUI::saveSession() {
         out << session.dump(2) << '\n';
         baseline.savePersistentState((directory / "baseline-session.qtable").string());
         proposed.savePersistentState((std::filesystem::path(policyDirectory) / "proposed.qtable").string());
-        baseline.savePersistentState((directory / "baseline-session.qtable").string());
-        proposed.savePersistentState((directory / "proposed-session.qtable").string());
     } catch (const std::exception& e) {
         std::cerr << "Unable to save simulation session: " << e.what() << '\n';
     }
