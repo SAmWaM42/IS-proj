@@ -1288,7 +1288,14 @@ void ProposedAgent::loadPersistentState(const std::string& path) {
 void ProposedAgent::savePersistentState(const std::string& path) {
     q_policy.saveQTable(path);
     const std::string prefix = path + ".";
-    const bool memorySaved = saveMemoryRecords(prefix + "memory.json", memory_records);
+    bool memorySaved = true;
+    if (memory_records.empty()) {
+        std::error_code ec;
+        std::filesystem::remove(prefix + "memory.json", ec);
+        memorySaved = !ec;
+    } else {
+        memorySaved = saveMemoryRecords(prefix + "memory.json", memory_records);
+    }
     const bool affectSaved = saveAffectiveState(prefix + "affect.json", affective_state);
     if (!memorySaved || !affectSaved)
         throw std::runtime_error("Unable to persist proposed-agent memory/affect sidecar files");
