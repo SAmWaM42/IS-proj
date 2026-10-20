@@ -1,0 +1,4236 @@
+{
+  "baseline": {
+    "completion_rate": 0.87,
+    "episodes": [
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 5
+        },
+        "completed": true,
+        "episode": 0,
+        "steps": 9,
+        "total_reward": 5.03377628326416
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 3,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 1,
+        "steps": 7,
+        "total_reward": 2.6499998569488525
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 6,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 2,
+        "steps": 11,
+        "total_reward": 3.6999998092651367
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 3,
+        "steps": 6,
+        "total_reward": 2.5999999046325684
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 4,
+        "steps": 4,
+        "total_reward": 2.049999952316284
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 16,
+          "WANDER": 15
+        },
+        "completed": false,
+        "episode": 5,
+        "steps": 40,
+        "total_reward": 13.105302810668945
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 6,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 6,
+        "steps": 21,
+        "total_reward": 8.675094604492188
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 5,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 7,
+        "steps": 16,
+        "total_reward": 6.735500335693359
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 5,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 8,
+        "steps": 16,
+        "total_reward": 5.972569465637207
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 1,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 9,
+        "steps": 14,
+        "total_reward": 6.356842994689941
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 10,
+        "steps": 8,
+        "total_reward": 3.5409905910491943
+      },
+      {
+        "action_counts": {
+          "FETCH": 11,
+          "GREETING": 15,
+          "WANDER": 14
+        },
+        "completed": false,
+        "episode": 11,
+        "steps": 40,
+        "total_reward": 14.744797706604004
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 12,
+        "steps": 8,
+        "total_reward": 2.928586959838867
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 13,
+        "steps": 7,
+        "total_reward": 1.7543195486068726
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 11,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 14,
+        "steps": 28,
+        "total_reward": 9.568845748901367
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 6,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 15,
+        "steps": 11,
+        "total_reward": 4.221174240112305
+      },
+      {
+        "action_counts": {
+          "FETCH": 10,
+          "GREETING": 18,
+          "WANDER": 12
+        },
+        "completed": false,
+        "episode": 16,
+        "steps": 40,
+        "total_reward": 12.674513816833496
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 18,
+          "WANDER": 15
+        },
+        "completed": false,
+        "episode": 17,
+        "steps": 40,
+        "total_reward": 13.547100067138672
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 6
+        },
+        "completed": true,
+        "episode": 18,
+        "steps": 9,
+        "total_reward": 4.329049110412598
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 5,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 19,
+        "steps": 8,
+        "total_reward": 3.5999999046325684
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 8,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 20,
+        "steps": 17,
+        "total_reward": 6.983489513397217
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 3,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 21,
+        "steps": 9,
+        "total_reward": 3.566614866256714
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 4,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 22,
+        "steps": 11,
+        "total_reward": 4.444839954376221
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 23,
+        "steps": 4,
+        "total_reward": 1.5499999523162842
+      },
+      {
+        "action_counts": {
+          "FETCH": 17,
+          "GREETING": 11,
+          "WANDER": 12
+        },
+        "completed": false,
+        "episode": 24,
+        "steps": 40,
+        "total_reward": 13.867086410522461
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 10,
+          "WANDER": 10
+        },
+        "completed": true,
+        "episode": 25,
+        "steps": 29,
+        "total_reward": 9.324188232421875
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 26,
+        "steps": 5,
+        "total_reward": 2.2453300952911377
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 27,
+        "steps": 7,
+        "total_reward": 2.7995686531066895
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 17,
+          "WANDER": 10
+        },
+        "completed": false,
+        "episode": 28,
+        "steps": 40,
+        "total_reward": 13.065814018249512
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 7,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 29,
+        "steps": 19,
+        "total_reward": 7.210742950439453
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 13,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 30,
+        "steps": 27,
+        "total_reward": 12.482060432434082
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 9,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 31,
+        "steps": 20,
+        "total_reward": 5.866977691650391
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 5,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 32,
+        "steps": 12,
+        "total_reward": 5.309816360473633
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 33,
+        "steps": 2,
+        "total_reward": 1.1847755908966064
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 11,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 34,
+        "steps": 28,
+        "total_reward": 10.387144088745117
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 5,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 35,
+        "steps": 15,
+        "total_reward": 7.110916614532471
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 5,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 36,
+        "steps": 16,
+        "total_reward": 5.013203144073486
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 15,
+          "WANDER": 9
+        },
+        "completed": true,
+        "episode": 37,
+        "steps": 32,
+        "total_reward": 11.270034790039063
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 12,
+          "WANDER": 19
+        },
+        "completed": false,
+        "episode": 38,
+        "steps": 40,
+        "total_reward": 12.310035705566406
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 15,
+          "WANDER": 13
+        },
+        "completed": false,
+        "episode": 39,
+        "steps": 40,
+        "total_reward": 10.425451278686523
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 8,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 40,
+        "steps": 22,
+        "total_reward": 6.747537612915039
+      },
+      {
+        "action_counts": {
+          "FETCH": 11,
+          "GREETING": 16,
+          "WANDER": 13
+        },
+        "completed": false,
+        "episode": 41,
+        "steps": 40,
+        "total_reward": 14.250389099121094
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 42,
+        "steps": 2,
+        "total_reward": 0.8793836832046509
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 43,
+        "steps": 2,
+        "total_reward": 1.0143067836761475
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 44,
+        "steps": 9,
+        "total_reward": 2.4512503147125244
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 3,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 45,
+        "steps": 12,
+        "total_reward": 7.0445170402526855
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 5,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 46,
+        "steps": 17,
+        "total_reward": 6.477862358093262
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 47,
+        "steps": 3,
+        "total_reward": 1.3102548122406006
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 9,
+          "WANDER": 9
+        },
+        "completed": true,
+        "episode": 48,
+        "steps": 30,
+        "total_reward": 10.80006217956543
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 3
+        },
+        "completed": true,
+        "episode": 49,
+        "steps": 5,
+        "total_reward": 3.070216655731201
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 50,
+        "steps": 4,
+        "total_reward": 2.064753293991089
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 51,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 19,
+          "WANDER": 12
+        },
+        "completed": false,
+        "episode": 52,
+        "steps": 40,
+        "total_reward": 13.245744705200195
+      },
+      {
+        "action_counts": {
+          "FETCH": 11,
+          "GREETING": 12,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 53,
+        "steps": 28,
+        "total_reward": 10.589811325073242
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 54,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 12,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 55,
+        "steps": 24,
+        "total_reward": 10.025603294372559
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 56,
+        "steps": 6,
+        "total_reward": 3.9467129707336426
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 8,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 57,
+        "steps": 15,
+        "total_reward": 5.435740947723389
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 58,
+        "steps": 5,
+        "total_reward": 1.6374189853668213
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 11,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 59,
+        "steps": 22,
+        "total_reward": 7.212120532989502
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 19,
+          "WANDER": 13
+        },
+        "completed": false,
+        "episode": 60,
+        "steps": 40,
+        "total_reward": 9.976311683654785
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 10,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 61,
+        "steps": 24,
+        "total_reward": 9.485867500305176
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 2
+        },
+        "completed": true,
+        "episode": 62,
+        "steps": 3,
+        "total_reward": 2.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 10,
+          "GREETING": 20,
+          "WANDER": 10
+        },
+        "completed": false,
+        "episode": 63,
+        "steps": 40,
+        "total_reward": 12.864620208740234
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 1,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 64,
+        "steps": 5,
+        "total_reward": 1.6500000953674316
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 8,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 65,
+        "steps": 22,
+        "total_reward": 8.26315689086914
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 66,
+        "steps": 4,
+        "total_reward": 1.5599740743637085
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 67,
+        "steps": 2,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 68,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 11,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 69,
+        "steps": 26,
+        "total_reward": 9.394495964050293
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 2,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 70,
+        "steps": 14,
+        "total_reward": 4.422584533691406
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 10,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 71,
+        "steps": 21,
+        "total_reward": 5.595094203948975
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 6,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 72,
+        "steps": 12,
+        "total_reward": 4.746659278869629
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 9,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 73,
+        "steps": 12,
+        "total_reward": 5.592539310455322
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 1,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 74,
+        "steps": 10,
+        "total_reward": 4.27005672454834
+      },
+      {
+        "action_counts": {
+          "FETCH": 11,
+          "GREETING": 15,
+          "WANDER": 10
+        },
+        "completed": true,
+        "episode": 75,
+        "steps": 36,
+        "total_reward": 12.947256088256836
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 6,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 76,
+        "steps": 17,
+        "total_reward": 3.94442081451416
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 1,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 77,
+        "steps": 12,
+        "total_reward": 5.197442054748535
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 78,
+        "steps": 7,
+        "total_reward": 2.2715113162994385
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 4,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 79,
+        "steps": 12,
+        "total_reward": 2.887289524078369
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 8,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 80,
+        "steps": 22,
+        "total_reward": 7.731521129608154
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 81,
+        "steps": 3,
+        "total_reward": 1.0499999523162842
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 82,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 10,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 83,
+        "steps": 19,
+        "total_reward": 7.408123016357422
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 10,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 84,
+        "steps": 21,
+        "total_reward": 8.021100997924805
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 85,
+        "steps": 3,
+        "total_reward": 1.3362278938293457
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 8,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 86,
+        "steps": 15,
+        "total_reward": 5.563319206237793
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 4,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 87,
+        "steps": 11,
+        "total_reward": 3.347907781600952
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 7,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 88,
+        "steps": 17,
+        "total_reward": 8.226546287536621
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 7,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 89,
+        "steps": 19,
+        "total_reward": 6.974864482879639
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 5,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 90,
+        "steps": 20,
+        "total_reward": 5.790106296539307
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 5,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 91,
+        "steps": 8,
+        "total_reward": 2.2805068492889404
+      },
+      {
+        "action_counts": {
+          "FETCH": 10,
+          "GREETING": 13,
+          "WANDER": 13
+        },
+        "completed": true,
+        "episode": 92,
+        "steps": 36,
+        "total_reward": 11.78412914276123
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 2,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 93,
+        "steps": 9,
+        "total_reward": 3.1285340785980225
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 94,
+        "steps": 4,
+        "total_reward": 1.0503736734390259
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 95,
+        "steps": 6,
+        "total_reward": 2.110995292663574
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 13,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 96,
+        "steps": 29,
+        "total_reward": 10.477067947387695
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 97,
+        "steps": 2,
+        "total_reward": 0.8296007513999939
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 1,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 98,
+        "steps": 9,
+        "total_reward": 1.8355460166931152
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 99,
+        "steps": 6,
+        "total_reward": 2.9602127075195313
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 14,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 100,
+        "steps": 32,
+        "total_reward": 11.567724227905273
+      },
+      {
+        "action_counts": {
+          "FETCH": 14,
+          "GREETING": 15,
+          "WANDER": 11
+        },
+        "completed": false,
+        "episode": 101,
+        "steps": 40,
+        "total_reward": 14.132185935974121
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 9,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 102,
+        "steps": 20,
+        "total_reward": 6.038445472717285
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 10,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 103,
+        "steps": 20,
+        "total_reward": 6.437671184539795
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 6,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 104,
+        "steps": 10,
+        "total_reward": 5.776871681213379
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 15,
+          "WANDER": 9
+        },
+        "completed": true,
+        "episode": 105,
+        "steps": 36,
+        "total_reward": 13.320828437805176
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 6,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 106,
+        "steps": 19,
+        "total_reward": 6.634052753448486
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 107,
+        "steps": 4,
+        "total_reward": 2.392472505569458
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 12,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 108,
+        "steps": 25,
+        "total_reward": 10.015149116516113
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 8,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 109,
+        "steps": 18,
+        "total_reward": 8.981361389160156
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 110,
+        "steps": 8,
+        "total_reward": 3.684403419494629
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 111,
+        "steps": 1,
+        "total_reward": 0.8146717548370361
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 5,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 112,
+        "steps": 11,
+        "total_reward": 3.3991646766662598
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 1,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 113,
+        "steps": 5,
+        "total_reward": 1.6500000953674316
+      },
+      {
+        "action_counts": {
+          "FETCH": 14,
+          "GREETING": 11,
+          "WANDER": 10
+        },
+        "completed": true,
+        "episode": 114,
+        "steps": 35,
+        "total_reward": 12.484417915344238
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 13,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 115,
+        "steps": 25,
+        "total_reward": 10.683947563171387
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 12,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 116,
+        "steps": 20,
+        "total_reward": 8.342466354370117
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 2
+        },
+        "completed": true,
+        "episode": 117,
+        "steps": 6,
+        "total_reward": 3.0706770420074463
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 17,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 118,
+        "steps": 28,
+        "total_reward": 9.30805778503418
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 8,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 119,
+        "steps": 18,
+        "total_reward": 8.895435333251953
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 3,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 120,
+        "steps": 8,
+        "total_reward": 2.9612791538238525
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 18,
+          "WANDER": 10
+        },
+        "completed": false,
+        "episode": 121,
+        "steps": 40,
+        "total_reward": 12.813743591308594
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 9,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 122,
+        "steps": 18,
+        "total_reward": 4.899999618530273
+      },
+      {
+        "action_counts": {
+          "FETCH": 10,
+          "GREETING": 12,
+          "WANDER": 16
+        },
+        "completed": true,
+        "episode": 123,
+        "steps": 38,
+        "total_reward": 12.424520492553711
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 5,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 124,
+        "steps": 11,
+        "total_reward": 2.4671428203582764
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 5
+        },
+        "completed": true,
+        "episode": 125,
+        "steps": 9,
+        "total_reward": 3.3814897537231445
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 6,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 126,
+        "steps": 14,
+        "total_reward": 5.709460258483887
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 127,
+        "steps": 4,
+        "total_reward": 2.3866047859191895
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 5,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 128,
+        "steps": 17,
+        "total_reward": 6.276232719421387
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 12,
+          "WANDER": 14
+        },
+        "completed": true,
+        "episode": 129,
+        "steps": 35,
+        "total_reward": 10.36284065246582
+      },
+      {
+        "action_counts": {
+          "FETCH": 14,
+          "GREETING": 13,
+          "WANDER": 13
+        },
+        "completed": false,
+        "episode": 130,
+        "steps": 40,
+        "total_reward": 15.634194374084473
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 131,
+        "steps": 5,
+        "total_reward": 2.0999999046325684
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 16,
+          "WANDER": 11
+        },
+        "completed": false,
+        "episode": 132,
+        "steps": 40,
+        "total_reward": 14.213239669799805
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 9,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 133,
+        "steps": 12,
+        "total_reward": 4.6430559158325195
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 8,
+          "WANDER": 9
+        },
+        "completed": true,
+        "episode": 134,
+        "steps": 26,
+        "total_reward": 8.568119049072266
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 9,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 135,
+        "steps": 25,
+        "total_reward": 8.545692443847656
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 15,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 136,
+        "steps": 25,
+        "total_reward": 9.721661567687988
+      },
+      {
+        "action_counts": {
+          "FETCH": 18,
+          "GREETING": 6,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 137,
+        "steps": 28,
+        "total_reward": 9.493185997009277
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 3,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 138,
+        "steps": 8,
+        "total_reward": 3.962329387664795
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 11,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 139,
+        "steps": 31,
+        "total_reward": 8.369438171386719
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 2,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 140,
+        "steps": 9,
+        "total_reward": 2.606064796447754
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 141,
+        "steps": 7,
+        "total_reward": 2.836747646331787
+      },
+      {
+        "action_counts": {
+          "FETCH": 10,
+          "GREETING": 14,
+          "WANDER": 16
+        },
+        "completed": false,
+        "episode": 142,
+        "steps": 40,
+        "total_reward": 11.519862174987793
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 5,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 143,
+        "steps": 20,
+        "total_reward": 6.703052043914795
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 144,
+        "steps": 2,
+        "total_reward": 1.5
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 5,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 145,
+        "steps": 13,
+        "total_reward": 6.229478359222412
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 3,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 146,
+        "steps": 11,
+        "total_reward": 3.2486565113067627
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 8,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 147,
+        "steps": 17,
+        "total_reward": 6.674825668334961
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 16,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 148,
+        "steps": 26,
+        "total_reward": 8.108745574951172
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 149,
+        "steps": 4,
+        "total_reward": 1.7493185997009277
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 6,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 150,
+        "steps": 14,
+        "total_reward": 5.785871982574463
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 2,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 151,
+        "steps": 9,
+        "total_reward": 2.6852574348449707
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 3
+        },
+        "completed": true,
+        "episode": 152,
+        "steps": 4,
+        "total_reward": 2.5
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 16,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 153,
+        "steps": 27,
+        "total_reward": 10.954679489135742
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 8,
+          "WANDER": 15
+        },
+        "completed": true,
+        "episode": 154,
+        "steps": 32,
+        "total_reward": 8.854585647583008
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 155,
+        "steps": 3,
+        "total_reward": 2.379371166229248
+      },
+      {
+        "action_counts": {
+          "FETCH": 15,
+          "GREETING": 6,
+          "WANDER": 10
+        },
+        "completed": true,
+        "episode": 156,
+        "steps": 31,
+        "total_reward": 12.743369102478027
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 157,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 158,
+        "steps": 3,
+        "total_reward": 1.5499999523162842
+      },
+      {
+        "action_counts": {
+          "FETCH": 15,
+          "GREETING": 11,
+          "WANDER": 14
+        },
+        "completed": false,
+        "episode": 159,
+        "steps": 40,
+        "total_reward": 11.378487586975098
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 5,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 160,
+        "steps": 17,
+        "total_reward": 6.80993127822876
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 161,
+        "steps": 3,
+        "total_reward": 1.218106746673584
+      },
+      {
+        "action_counts": {
+          "FETCH": 16,
+          "GREETING": 14,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 162,
+        "steps": 37,
+        "total_reward": 16.843658447265625
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 11,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 163,
+        "steps": 28,
+        "total_reward": 11.182525634765625
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 164,
+        "steps": 8,
+        "total_reward": 1.5356606245040894
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 4,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 165,
+        "steps": 20,
+        "total_reward": 8.540969848632813
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 166,
+        "steps": 11,
+        "total_reward": 4.655839920043945
+      },
+      {
+        "action_counts": {
+          "FETCH": 14,
+          "GREETING": 14,
+          "WANDER": 12
+        },
+        "completed": false,
+        "episode": 167,
+        "steps": 40,
+        "total_reward": 13.547357559204102
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 168,
+        "steps": 4,
+        "total_reward": 1.600000023841858
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 3,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 169,
+        "steps": 7,
+        "total_reward": 3.521442413330078
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 170,
+        "steps": 4,
+        "total_reward": 1.610613226890564
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 13,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 171,
+        "steps": 32,
+        "total_reward": 13.452428817749023
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 4,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 172,
+        "steps": 17,
+        "total_reward": 4.821789264678955
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 1,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 173,
+        "steps": 11,
+        "total_reward": 4.13665246963501
+      },
+      {
+        "action_counts": {
+          "FETCH": 16,
+          "GREETING": 12,
+          "WANDER": 12
+        },
+        "completed": false,
+        "episode": 174,
+        "steps": 40,
+        "total_reward": 11.586880683898926
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 175,
+        "steps": 5,
+        "total_reward": 1.7092047929763794
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 176,
+        "steps": 2,
+        "total_reward": 1.5
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 5
+        },
+        "completed": true,
+        "episode": 177,
+        "steps": 11,
+        "total_reward": 3.644343614578247
+      },
+      {
+        "action_counts": {
+          "FETCH": 10,
+          "GREETING": 6,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 178,
+        "steps": 20,
+        "total_reward": 6.331451892852783
+      },
+      {
+        "action_counts": {
+          "FETCH": 14,
+          "GREETING": 13,
+          "WANDER": 13
+        },
+        "completed": true,
+        "episode": 179,
+        "steps": 40,
+        "total_reward": 12.287314414978027
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 3,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 180,
+        "steps": 7,
+        "total_reward": 2.9932196140289307
+      },
+      {
+        "action_counts": {
+          "FETCH": 18,
+          "GREETING": 8,
+          "WANDER": 13
+        },
+        "completed": true,
+        "episode": 181,
+        "steps": 39,
+        "total_reward": 13.888383865356445
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 11,
+          "WANDER": 9
+        },
+        "completed": true,
+        "episode": 182,
+        "steps": 28,
+        "total_reward": 9.952393531799316
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 4,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 183,
+        "steps": 15,
+        "total_reward": 5.613748550415039
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 184,
+        "steps": 6,
+        "total_reward": 3.07432222366333
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 185,
+        "steps": 5,
+        "total_reward": 1.9326317310333252
+      },
+      {
+        "action_counts": {
+          "FETCH": 10,
+          "GREETING": 17,
+          "WANDER": 13
+        },
+        "completed": false,
+        "episode": 186,
+        "steps": 40,
+        "total_reward": 12.067388534545898
+      },
+      {
+        "action_counts": {
+          "FETCH": 15,
+          "GREETING": 15,
+          "WANDER": 9
+        },
+        "completed": true,
+        "episode": 187,
+        "steps": 39,
+        "total_reward": 15.241532325744629
+      },
+      {
+        "action_counts": {
+          "FETCH": 11,
+          "GREETING": 13,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 188,
+        "steps": 32,
+        "total_reward": 11.853618621826172
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 10,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 189,
+        "steps": 15,
+        "total_reward": 7.163135528564453
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 19,
+          "WANDER": 9
+        },
+        "completed": false,
+        "episode": 190,
+        "steps": 40,
+        "total_reward": 13.33590030670166
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 6,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 191,
+        "steps": 12,
+        "total_reward": 5.191380023956299
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 4,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 192,
+        "steps": 11,
+        "total_reward": 5.7791571617126465
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 2
+        },
+        "completed": true,
+        "episode": 193,
+        "steps": 4,
+        "total_reward": 1.2112786769866943
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 4,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 194,
+        "steps": 18,
+        "total_reward": 6.484580039978027
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 17,
+          "WANDER": 10
+        },
+        "completed": false,
+        "episode": 195,
+        "steps": 40,
+        "total_reward": 14.606579780578613
+      },
+      {
+        "action_counts": {
+          "FETCH": 17,
+          "GREETING": 14,
+          "WANDER": 9
+        },
+        "completed": false,
+        "episode": 196,
+        "steps": 40,
+        "total_reward": 12.47934341430664
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 4,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 197,
+        "steps": 11,
+        "total_reward": 3.8398070335388184
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 17,
+          "WANDER": 11
+        },
+        "completed": false,
+        "episode": 198,
+        "steps": 40,
+        "total_reward": 14.30522346496582
+      },
+      {
+        "action_counts": {
+          "FETCH": 14,
+          "GREETING": 13,
+          "WANDER": 13
+        },
+        "completed": false,
+        "episode": 199,
+        "steps": 40,
+        "total_reward": 11.79283332824707
+      }
+    ],
+    "mean_reward": 6.486507212817669
+  },
+  "environment_seed": 1000046,
+  "episodes": 200,
+  "max_steps_per_episode": 40,
+  "mode": "validate",
+  "note": "Synthetic reward is not a measure of perceived believability.",
+  "proposed": {
+    "completion_rate": 0.99,
+    "episodes": [
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 0,
+        "steps": 9,
+        "total_reward": 5.565334320068359
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 1,
+        "steps": 5,
+        "total_reward": 1.0368669033050537
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 2,
+        "steps": 6,
+        "total_reward": 1.7278144359588623
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 3,
+        "steps": 6,
+        "total_reward": 2.3873331546783447
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 4,
+        "steps": 2,
+        "total_reward": 1.7156404256820679
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 5,
+        "steps": 5,
+        "total_reward": 1.6709167957305908
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 6,
+        "steps": 15,
+        "total_reward": 7.518157482147217
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 2,
+          "SLEEP_LAY": 1
+        },
+        "completed": true,
+        "episode": 7,
+        "steps": 16,
+        "total_reward": 5.925856590270996
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 8,
+        "steps": 1,
+        "total_reward": 0.8333094120025635
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 9,
+        "steps": 9,
+        "total_reward": 5.163958549499512
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 10,
+        "steps": 8,
+        "total_reward": 2.644227981567383
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 11,
+        "steps": 3,
+        "total_reward": 1.9673748016357422
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "SLEEP_LAY": 1
+        },
+        "completed": true,
+        "episode": 12,
+        "steps": 5,
+        "total_reward": 2.233461380004883
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 13,
+        "steps": 7,
+        "total_reward": 2.8179619312286377
+      },
+      {
+        "action_counts": {
+          "FETCH": 19,
+          "GREETING": 1,
+          "SLEEP_LAY": 2,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 14,
+        "steps": 26,
+        "total_reward": 8.5775785446167
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 15,
+        "steps": 7,
+        "total_reward": 1.5959912538528442
+      },
+      {
+        "action_counts": {
+          "FETCH": 31,
+          "GREETING": 1,
+          "WANDER": 8
+        },
+        "completed": false,
+        "episode": 16,
+        "steps": 40,
+        "total_reward": 12.747908592224121
+      },
+      {
+        "action_counts": {
+          "FETCH": 15,
+          "GREETING": 2,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 17,
+        "steps": 20,
+        "total_reward": 9.84390640258789
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 2,
+          "SLEEP_LAY": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 18,
+        "steps": 9,
+        "total_reward": 3.1095755100250244
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1,
+          "NUZZLE": 1,
+          "SLEEP_LAY": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 19,
+        "steps": 8,
+        "total_reward": 3.227822780609131
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 20,
+        "steps": 16,
+        "total_reward": 8.476480484008789
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "SLEEP_LAY": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 21,
+        "steps": 9,
+        "total_reward": 2.997647285461426
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 22,
+        "steps": 11,
+        "total_reward": 5.328455924987793
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 23,
+        "steps": 4,
+        "total_reward": 1.8340822458267212
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 24,
+        "steps": 15,
+        "total_reward": 8.38647747039795
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 25,
+        "steps": 5,
+        "total_reward": 1.9757890701293945
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 26,
+        "steps": 5,
+        "total_reward": 1.9473381042480469
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 27,
+        "steps": 7,
+        "total_reward": 2.4458205699920654
+      },
+      {
+        "action_counts": {
+          "FETCH": 11,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 28,
+        "steps": 14,
+        "total_reward": 2.749265670776367
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 29,
+        "steps": 10,
+        "total_reward": 3.485833168029785
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 30,
+        "steps": 2,
+        "total_reward": 1.2501413822174072
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 31,
+        "steps": 11,
+        "total_reward": 3.7137606143951416
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 32,
+        "steps": 12,
+        "total_reward": 6.185007572174072
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 33,
+        "steps": 2,
+        "total_reward": 1.1847755908966064
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "FETCH": 22,
+          "GREETING": 1,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 34,
+        "steps": 28,
+        "total_reward": 10.046121597290039
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 2
+        },
+        "completed": true,
+        "episode": 35,
+        "steps": 15,
+        "total_reward": 9.898161888122559
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 36,
+        "steps": 5,
+        "total_reward": 2.1940367221832275
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 37,
+        "steps": 6,
+        "total_reward": 2.615204095840454
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 38,
+        "steps": 8,
+        "total_reward": 2.5041675567626953
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 39,
+        "steps": 7,
+        "total_reward": 1.8422762155532837
+      },
+      {
+        "action_counts": {
+          "FETCH": 16,
+          "SLEEP_LAY": 3,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 40,
+        "steps": 22,
+        "total_reward": 4.597450256347656
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 2,
+          "SLEEP_LAY": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 41,
+        "steps": 12,
+        "total_reward": 4.070221900939941
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 42,
+        "steps": 2,
+        "total_reward": 0.8793836832046509
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 43,
+        "steps": 2,
+        "total_reward": 1.0143067836761475
+      },
+      {
+        "action_counts": {
+          "FETCH": 9
+        },
+        "completed": true,
+        "episode": 44,
+        "steps": 9,
+        "total_reward": 2.352172374725342
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 45,
+        "steps": 12,
+        "total_reward": 6.413144588470459
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 46,
+        "steps": 8,
+        "total_reward": 2.3070268630981445
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 47,
+        "steps": 3,
+        "total_reward": 1.3102548122406006
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 48,
+        "steps": 4,
+        "total_reward": 2.2736895084381104
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 49,
+        "steps": 10,
+        "total_reward": 2.261112689971924
+      },
+      {
+        "action_counts": {
+          "FETCH": 4
+        },
+        "completed": true,
+        "episode": 50,
+        "steps": 4,
+        "total_reward": 1.830117106437683
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 51,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 8,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 52,
+        "steps": 20,
+        "total_reward": 8.313675880432129
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 2,
+          "SLEEP_LAY": 1
+        },
+        "completed": true,
+        "episode": 53,
+        "steps": 11,
+        "total_reward": 3.280872344970703
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 54,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 17,
+          "GREETING": 3,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 55,
+        "steps": 24,
+        "total_reward": 9.598050117492676
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 56,
+        "steps": 6,
+        "total_reward": 3.9467129707336426
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 3,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 57,
+        "steps": 15,
+        "total_reward": 4.987945079803467
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 58,
+        "steps": 5,
+        "total_reward": 1.3707642555236816
+      },
+      {
+        "action_counts": {
+          "FETCH": 14,
+          "GREETING": 2,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 59,
+        "steps": 20,
+        "total_reward": 6.197824001312256
+      },
+      {
+        "action_counts": {
+          "FETCH": 27,
+          "GREETING": 5,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 60,
+        "steps": 37,
+        "total_reward": 12.521327018737793
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 4,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 61,
+        "steps": 13,
+        "total_reward": 6.7907633781433105
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 2
+        },
+        "completed": true,
+        "episode": 62,
+        "steps": 3,
+        "total_reward": 2.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "SLEEP_LAY": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 63,
+        "steps": 8,
+        "total_reward": 2.538423538208008
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 64,
+        "steps": 2,
+        "total_reward": 0.8639228343963623
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "GREETING": 2,
+          "SLEEP_LAY": 1,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 65,
+        "steps": 20,
+        "total_reward": 5.849257946014404
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 66,
+        "steps": 4,
+        "total_reward": 1.5599740743637085
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 67,
+        "steps": 2,
+        "total_reward": 1.6349893808364868
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 68,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 69,
+        "steps": 6,
+        "total_reward": 2.3921561241149902
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "FETCH": 11,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 70,
+        "steps": 14,
+        "total_reward": 5.068305015563965
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 71,
+        "steps": 6,
+        "total_reward": 1.9575958251953125
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 2
+        },
+        "completed": true,
+        "episode": 72,
+        "steps": 3,
+        "total_reward": 1.7710564136505127
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 73,
+        "steps": 8,
+        "total_reward": 4.664881706237793
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 74,
+        "steps": 10,
+        "total_reward": 5.022521018981934
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 75,
+        "steps": 2,
+        "total_reward": 1.1571924686431885
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 76,
+        "steps": 17,
+        "total_reward": 6.532150745391846
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 77,
+        "steps": 12,
+        "total_reward": 4.696746826171875
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 78,
+        "steps": 6,
+        "total_reward": 0.8226462006568909
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 79,
+        "steps": 6,
+        "total_reward": 2.5595550537109375
+      },
+      {
+        "action_counts": {
+          "FETCH": 15,
+          "GREETING": 3,
+          "SLEEP_LAY": 1,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 80,
+        "steps": 22,
+        "total_reward": 8.41588020324707
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 81,
+        "steps": 3,
+        "total_reward": 1.6738567352294922
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 82,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 2
+        },
+        "completed": true,
+        "episode": 83,
+        "steps": 4,
+        "total_reward": 2.5580649375915527
+      },
+      {
+        "action_counts": {
+          "FETCH": 14,
+          "GREETING": 6,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 84,
+        "steps": 21,
+        "total_reward": 8.432350158691406
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 85,
+        "steps": 3,
+        "total_reward": 1.3362278938293457
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 86,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 87,
+        "steps": 6,
+        "total_reward": 2.161936044692993
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 4
+        },
+        "completed": true,
+        "episode": 88,
+        "steps": 17,
+        "total_reward": 8.23660659790039
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 4,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 89,
+        "steps": 19,
+        "total_reward": 7.601851463317871
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 90,
+        "steps": 3,
+        "total_reward": 1.909613847732544
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "SLEEP_LAY": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 91,
+        "steps": 8,
+        "total_reward": 3.148714303970337
+      },
+      {
+        "action_counts": {
+          "FETCH": 21,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 92,
+        "steps": 24,
+        "total_reward": 6.524963855743408
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 93,
+        "steps": 5,
+        "total_reward": 2.23616361618042
+      },
+      {
+        "action_counts": {
+          "FETCH": 4
+        },
+        "completed": true,
+        "episode": 94,
+        "steps": 4,
+        "total_reward": 0.8205933570861816
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 95,
+        "steps": 6,
+        "total_reward": 2.110995292663574
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 96,
+        "steps": 10,
+        "total_reward": 1.3989465236663818
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 97,
+        "steps": 2,
+        "total_reward": 0.8296007513999939
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 98,
+        "steps": 9,
+        "total_reward": 2.1291608810424805
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 99,
+        "steps": 6,
+        "total_reward": 4.4307098388671875
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 100,
+        "steps": 2,
+        "total_reward": 1.0499999523162842
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "FETCH": 23,
+          "GREETING": 4,
+          "SLEEP_LAY": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 101,
+        "steps": 30,
+        "total_reward": 11.443122863769531
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 102,
+        "steps": 1,
+        "total_reward": 0.7771120071411133
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 2,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 103,
+        "steps": 20,
+        "total_reward": 6.415931224822998
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 104,
+        "steps": 10,
+        "total_reward": 5.078242301940918
+      },
+      {
+        "action_counts": {
+          "FETCH": 16,
+          "GREETING": 7,
+          "SLEEP_LAY": 1,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 105,
+        "steps": 27,
+        "total_reward": 11.72793960571289
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 106,
+        "steps": 9,
+        "total_reward": 4.029021263122559
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 1,
+          "SLEEP_LAY": 1
+        },
+        "completed": true,
+        "episode": 107,
+        "steps": 4,
+        "total_reward": 2.7508764266967773
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 2,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 108,
+        "steps": 12,
+        "total_reward": 3.702075242996216
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 109,
+        "steps": 13,
+        "total_reward": 7.196197509765625
+      },
+      {
+        "action_counts": {
+          "FETCH": 8
+        },
+        "completed": true,
+        "episode": 110,
+        "steps": 8,
+        "total_reward": 3.028470516204834
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "SLEEP_LAY": 1
+        },
+        "completed": true,
+        "episode": 111,
+        "steps": 2,
+        "total_reward": 0.800000011920929
+      },
+      {
+        "action_counts": {
+          "FETCH": 6
+        },
+        "completed": true,
+        "episode": 112,
+        "steps": 6,
+        "total_reward": 0.4373314082622528
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 113,
+        "steps": 5,
+        "total_reward": 2.2698049545288086
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 114,
+        "steps": 4,
+        "total_reward": 1.699188232421875
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 115,
+        "steps": 3,
+        "total_reward": 1.2979004383087158
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 116,
+        "steps": 9,
+        "total_reward": 3.690967321395874
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 117,
+        "steps": 6,
+        "total_reward": 3.006666421890259
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 5,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 118,
+        "steps": 19,
+        "total_reward": 5.107855319976807
+      },
+      {
+        "action_counts": {
+          "FETCH": 14,
+          "GREETING": 2,
+          "SLEEP_LAY": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 119,
+        "steps": 18,
+        "total_reward": 8.87005615234375
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 120,
+        "steps": 8,
+        "total_reward": 5.083311080932617
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 121,
+        "steps": 10,
+        "total_reward": 3.8536148071289063
+      },
+      {
+        "action_counts": {
+          "FETCH": 5
+        },
+        "completed": true,
+        "episode": 122,
+        "steps": 5,
+        "total_reward": 1.3882267475128174
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 123,
+        "steps": 8,
+        "total_reward": 3.740142583847046
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 124,
+        "steps": 3,
+        "total_reward": 1.889932632446289
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 125,
+        "steps": 9,
+        "total_reward": 2.2039616107940674
+      },
+      {
+        "action_counts": {
+          "FETCH": 10,
+          "GREETING": 3
+        },
+        "completed": true,
+        "episode": 126,
+        "steps": 13,
+        "total_reward": 7.5698347091674805
+      },
+      {
+        "action_counts": {
+          "FETCH": 4
+        },
+        "completed": true,
+        "episode": 127,
+        "steps": 4,
+        "total_reward": 2.1855337619781494
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 128,
+        "steps": 12,
+        "total_reward": 4.179759502410889
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 129,
+        "steps": 5,
+        "total_reward": 0.9376375675201416
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 130,
+        "steps": 12,
+        "total_reward": 4.962616920471191
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 131,
+        "steps": 4,
+        "total_reward": 2.093632221221924
+      },
+      {
+        "action_counts": {
+          "FETCH": 10,
+          "GREETING": 1,
+          "SLEEP_LAY": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 132,
+        "steps": 15,
+        "total_reward": 5.205209255218506
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 133,
+        "steps": 7,
+        "total_reward": 2.6871590614318848
+      },
+      {
+        "action_counts": {
+          "FETCH": 11,
+          "GREETING": 3,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 134,
+        "steps": 15,
+        "total_reward": 7.238997459411621
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 135,
+        "steps": 3,
+        "total_reward": 0.900388240814209
+      },
+      {
+        "action_counts": {
+          "FETCH": 4
+        },
+        "completed": true,
+        "episode": 136,
+        "steps": 4,
+        "total_reward": 2.9121859073638916
+      },
+      {
+        "action_counts": {
+          "FETCH": 22,
+          "GREETING": 3,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 137,
+        "steps": 28,
+        "total_reward": 9.39919662475586
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 138,
+        "steps": 2,
+        "total_reward": 0.8480406999588013
+      },
+      {
+        "action_counts": {
+          "FETCH": 17,
+          "GREETING": 1,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 139,
+        "steps": 21,
+        "total_reward": 6.982729911804199
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 140,
+        "steps": 3,
+        "total_reward": 0.9285718202590942
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 141,
+        "steps": 7,
+        "total_reward": 2.8991799354553223
+      },
+      {
+        "action_counts": {
+          "FETCH": 17,
+          "GREETING": 4,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 142,
+        "steps": 25,
+        "total_reward": 7.006096839904785
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "FETCH": 10,
+          "GREETING": 1,
+          "SLEEP_LAY": 1
+        },
+        "completed": true,
+        "episode": 143,
+        "steps": 13,
+        "total_reward": 3.923285722732544
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 144,
+        "steps": 2,
+        "total_reward": 1.5
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 145,
+        "steps": 2,
+        "total_reward": 0.8608068227767944
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 146,
+        "steps": 11,
+        "total_reward": 3.502129077911377
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 147,
+        "steps": 9,
+        "total_reward": 4.68925666809082
+      },
+      {
+        "action_counts": {
+          "FETCH": 7,
+          "GREETING": 4,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 148,
+        "steps": 12,
+        "total_reward": 5.956571578979492
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "SLEEP_LAY": 1
+        },
+        "completed": true,
+        "episode": 149,
+        "steps": 4,
+        "total_reward": 1.487493634223938
+      },
+      {
+        "action_counts": {
+          "FETCH": 10,
+          "GREETING": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 150,
+        "steps": 14,
+        "total_reward": 6.5567755699157715
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "SLEEP_LAY": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 151,
+        "steps": 9,
+        "total_reward": 3.193075180053711
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 152,
+        "steps": 4,
+        "total_reward": 1.0119177103042603
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 153,
+        "steps": 6,
+        "total_reward": 1.5863368511199951
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 1,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 154,
+        "steps": 8,
+        "total_reward": 2.5690038204193115
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 155,
+        "steps": 3,
+        "total_reward": 2.379371166229248
+      },
+      {
+        "action_counts": {
+          "FETCH": 23,
+          "GREETING": 4,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 156,
+        "steps": 31,
+        "total_reward": 14.736723899841309
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 157,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 158,
+        "steps": 3,
+        "total_reward": 1.2781291007995605
+      },
+      {
+        "action_counts": {
+          "FETCH": 4
+        },
+        "completed": true,
+        "episode": 159,
+        "steps": 4,
+        "total_reward": 2.528780460357666
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 160,
+        "steps": 4,
+        "total_reward": 1.6323031187057495
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 161,
+        "steps": 3,
+        "total_reward": 1.218106746673584
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 162,
+        "steps": 8,
+        "total_reward": 3.2110538482666016
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 163,
+        "steps": 3,
+        "total_reward": 1.5499999523162842
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 164,
+        "steps": 8,
+        "total_reward": 3.0949201583862305
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 165,
+        "steps": 3,
+        "total_reward": 2.5186758041381836
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 166,
+        "steps": 2,
+        "total_reward": 0.8576955795288086
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "SLEEP_LAY": 1
+        },
+        "completed": true,
+        "episode": 167,
+        "steps": 4,
+        "total_reward": 1.822585105895996
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 168,
+        "steps": 4,
+        "total_reward": 1.8057477474212646
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 169,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 4
+        },
+        "completed": true,
+        "episode": 170,
+        "steps": 4,
+        "total_reward": 1.6581032276153564
+      },
+      {
+        "action_counts": {
+          "FETCH": 8,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 171,
+        "steps": 10,
+        "total_reward": 3.9813709259033203
+      },
+      {
+        "action_counts": {
+          "FETCH": 13,
+          "GREETING": 3,
+          "SLEEP_LAY": 1
+        },
+        "completed": true,
+        "episode": 172,
+        "steps": 17,
+        "total_reward": 6.029877185821533
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "SLEEP_LAY": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 173,
+        "steps": 11,
+        "total_reward": 4.8707356452941895
+      },
+      {
+        "action_counts": {
+          "FETCH": 24,
+          "GREETING": 3,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 174,
+        "steps": 30,
+        "total_reward": 10.742707252502441
+      },
+      {
+        "action_counts": {
+          "FETCH": 4,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 175,
+        "steps": 5,
+        "total_reward": 2.101665496826172
+      },
+      {
+        "action_counts": {
+          "FETCH": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 176,
+        "steps": 2,
+        "total_reward": 1.0499999523162842
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 177,
+        "steps": 2,
+        "total_reward": 1.1631584167480469
+      },
+      {
+        "action_counts": {
+          "FETCH": 3
+        },
+        "completed": true,
+        "episode": 178,
+        "steps": 3,
+        "total_reward": 1.1828265190124512
+      },
+      {
+        "action_counts": {
+          "FETCH": 3,
+          "GREETING": 1,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 179,
+        "steps": 6,
+        "total_reward": 1.9004262685775757
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 180,
+        "steps": 2,
+        "total_reward": 1.0392073392868042
+      },
+      {
+        "action_counts": {
+          "FETCH": 27,
+          "GREETING": 4,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 181,
+        "steps": 36,
+        "total_reward": 11.096540451049805
+      },
+      {
+        "action_counts": {
+          "FETCH": 24,
+          "GREETING": 1,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 182,
+        "steps": 28,
+        "total_reward": 8.917196273803711
+      },
+      {
+        "action_counts": {
+          "FETCH": 2
+        },
+        "completed": true,
+        "episode": 183,
+        "steps": 2,
+        "total_reward": 1.693184733390808
+      },
+      {
+        "action_counts": {
+          "FETCH": 5,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 184,
+        "steps": 6,
+        "total_reward": 3.2951772212982178
+      },
+      {
+        "action_counts": {
+          "FETCH": 1
+        },
+        "completed": true,
+        "episode": 185,
+        "steps": 1,
+        "total_reward": 1.0
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "SLEEP_LAY": 1
+        },
+        "completed": true,
+        "episode": 186,
+        "steps": 7,
+        "total_reward": 2.2335450649261475
+      },
+      {
+        "action_counts": {
+          "FETCH": 12,
+          "SLEEP_LAY": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 187,
+        "steps": 14,
+        "total_reward": 5.847805023193359
+      },
+      {
+        "action_counts": {
+          "FETCH": 16,
+          "SLEEP_LAY": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 188,
+        "steps": 18,
+        "total_reward": 3.8777260780334473
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 4,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 189,
+        "steps": 15,
+        "total_reward": 7.926365852355957
+      },
+      {
+        "action_counts": {
+          "FETCH": 33,
+          "GREETING": 5,
+          "WANDER": 2
+        },
+        "completed": false,
+        "episode": 190,
+        "steps": 40,
+        "total_reward": 16.115434646606445
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 191,
+        "steps": 12,
+        "total_reward": 3.147043466567993
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 192,
+        "steps": 8,
+        "total_reward": 2.8837437629699707
+      },
+      {
+        "action_counts": {
+          "FETCH": 2,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 193,
+        "steps": 4,
+        "total_reward": 1.3112785816192627
+      },
+      {
+        "action_counts": {
+          "FETCH": 16,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 194,
+        "steps": 18,
+        "total_reward": 7.6246562004089355
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 195,
+        "steps": 11,
+        "total_reward": 4.973316192626953
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "GREETING": 1,
+          "SLEEP_LAY": 1,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 196,
+        "steps": 12,
+        "total_reward": 4.385896682739258
+      },
+      {
+        "action_counts": {
+          "FETCH": 9,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 197,
+        "steps": 11,
+        "total_reward": 4.615375995635986
+      },
+      {
+        "action_counts": {
+          "FETCH": 14,
+          "GREETING": 5,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 198,
+        "steps": 22,
+        "total_reward": 9.89615535736084
+      },
+      {
+        "action_counts": {
+          "FETCH": 15,
+          "GREETING": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 199,
+        "steps": 18,
+        "total_reward": 8.143105506896973
+      }
+    ],
+    "mean_reward": 3.826926786452532
+  },
+  "reward_model": "synthetic_v1",
+  "seed": 43
+}

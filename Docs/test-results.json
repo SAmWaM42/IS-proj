@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-15T07:08:13Z",
+  "generated_at": "2026-10-20T02:08:31Z",
   "project": "IS-2",
   "status": "PASS",
   "summary": {
     "failed": 0,
-    "passed": 9,
-    "total": 9
+    "passed": 12,
+    "total": 12
   },
   "tests": [
     {
@@ -29,6 +29,24 @@
     {
       "category": "baseline",
       "name": "Terminal handling",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "training",
+      "name": "Seeded exploration reproducibility",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "training",
+      "name": "Baseline excludes memory and affect inputs",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "training",
+      "name": "Evaluation does not update policy",
       "passed": true,
       "status": "PASS"
     },
