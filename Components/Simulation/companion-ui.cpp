@@ -66,7 +66,7 @@ float clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
 
 CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
                          const std::string& outputDirectoryValue)
-    : window(sf::VideoMode(sf::Vector2u(1280u, 820u)), "Animal Agent | Companion Simulation"),
+    : window(sf::VideoMode(sf::Vector2u(1280u, 900u)), "Animal Agent | Companion Simulation"),
       policyDirectory(policyDirectoryValue),
       outputDirectory(outputDirectoryValue),
       baseline(EnvironmentConfig{}),
@@ -258,6 +258,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
         if (x < 180) screen = Screen::Simulation;
         else if (x < 360) screen = Screen::AgentState;
         else if (x < 540) screen = Screen::Comparison;
+        else if (x > 1030) controlsVisible = !controlsVisible;
         return;
     }
     if (screen != Screen::Simulation) return;
@@ -315,59 +316,72 @@ void CompanionUI::drawNavigation() {
     drawButton("Simulation", 28, 12, 145, 42, screen == Screen::Simulation);
     drawButton("Agent State", 185, 12, 145, 42, screen == Screen::AgentState);
     drawButton("Comparison", 342, 12, 145, 42, screen == Screen::Comparison);
-    drawText("ANIMAL AGENT  /  SFML PROTOTYPE", 760, 22, 15, kMuted);
+    if (screen == Screen::Simulation) drawButton(controlsVisible ? "Hide Controls" : "Show Controls", 1030, 12, 180, 42);
+    drawText("ANIMAL AGENT / SFML", 760, 22, 15, kMuted);
 }
 
 void CompanionUI::drawSimulationScreen() {
     drawText("MAIN SIMULATION", 30, 75, 26, kInk);
-    drawText("Interact with the companion; both policies receive the same event.", 30, 106, 15, kMuted);
-    sf::RectangleShape scene({1218, 260});
+    drawText("Both policies receive the same interpreted interaction.", 30, 106, 15, kMuted);
+    const float sceneHeight = controlsVisible ? 390.0f : 710.0f;
+    sf::RectangleShape scene({1218, sceneHeight});
     scene.setPosition({30, 135});
-    scene.setFillColor(sf::Color(217, 235, 216));
-    scene.setOutlineColor(sf::Color(196, 214, 195));
+    scene.setFillColor(sf::Color(190, 220, 176));
+    scene.setOutlineColor(sf::Color(150, 190, 140));
     scene.setOutlineThickness(1);
     window.draw(scene);
-    sf::RectangleShape path({470, 85});
-    path.setPosition({360, 310});
-    path.setFillColor(sf::Color(225, 210, 177));
+    sf::RectangleShape lawn({1218, sceneHeight * 0.62f});
+    lawn.setPosition({30, 135 + sceneHeight * 0.38f});
+    lawn.setFillColor(sf::Color(145, 195, 125));
+    window.draw(lawn);
+    sf::RectangleShape path({500, 70});
+    path.setPosition({350, 135 + sceneHeight * 0.65f});
+    path.setFillColor(sf::Color(215, 194, 151));
     window.draw(path);
-    sf::RectangleShape house({160, 100});
-    house.setPosition({1040, 155});
-    house.setFillColor(sf::Color(231, 221, 209));
+    sf::RectangleShape house({150, 105});
+    house.setPosition({1040, 160});
+    house.setFillColor(sf::Color(225, 210, 188));
     window.draw(house);
-    sf::CircleShape tree(30);
-    tree.setPosition({90, 160});
-    tree.setFillColor(sf::Color(73, 143, 88));
+    sf::ConvexShape roof;
+    roof.setPointCount(3);
+    roof.setPoint(0, {1025, 165});
+    roof.setPoint(1, {1115, 105});
+    roof.setPoint(2, {1205, 165});
+    roof.setFillColor(sf::Color(157, 91, 77));
+    window.draw(roof);
+    sf::CircleShape tree(32);
+    tree.setPosition({85, 170});
+    tree.setFillColor(sf::Color(64, 135, 75));
     window.draw(tree);
+    sf::RectangleShape trunk({13, 58});
+    trunk.setPosition({105, 220});
+    trunk.setFillColor(sf::Color(112, 82, 54));
+    window.draw(trunk);
     sf::CircleShape person(18);
-    person.setPosition({userX, userY});
+    person.setPosition({userX, userY + 30});
     person.setFillColor(sf::Color(216, 122, 110));
     window.draw(person);
-    sf::CircleShape companion(22);
-    companion.setPosition({agentX, agentY - 20});
-    companion.setFillColor(kBlue);
-    window.draw(companion);
-    drawText("YOU", userX - 5, userY + 30, 12, kInk);
-    drawText("COMPANION", agentX - 28, agentY + 8, 12, kInk);
-    drawText("Current interaction: " + latestStimulus, 50, 360, 16, kInk);
-    drawText("Baseline: " + describeAction(latestBaselineAction), 50, 386, 16, kBlue);
-    drawText("Proposed: " + describeAction(latestProposedAction), 50, 412, 16, kGreen);
-
+    drawText("YOU", userX - 3, userY + 67, 12, kInk);
+    drawCompanion(agentX, agentY);
+    drawText("COMPANION", agentX - 12, agentY + 64, 12, kInk);
+    drawText("Proposed action: " + latestProposedAction, 50, 150, 16, kGreen);
+    drawText("Baseline action: " + latestBaselineAction, 50, 176, 15, kBlue);
+    drawText("Input interpretation: " + nlpMethod, 50, 202, 14, kMuted);
+    if (!controlsVisible) {
+        drawText("Controls hidden - use Show Controls to interact", 50, 235, 16, kInk);
+        return;
+    }
     const std::array<std::string, 5> labels{{"Greet", "Fetch ball", "Praise", "Loud noise", "Rest"}};
-    const float bx = 40.0f;
-    for (std::size_t i = 0; i < labels.size(); ++i) {
-        drawButton(labels[i], bx + static_cast<float>(i) * 235.0f, 445, 215, 48);
-    }
-    drawText("Recent activity", 35, 510, 18, kInk);
-    float logY = 540;
-    for (auto it = eventLog.rbegin(); it != eventLog.rend() && logY < 675; ++it, logY += 23) {
-        drawText(*it, 45, logY, 14, kMuted);
-    }
-    drawButton(textInput.empty() ? "Type a message here, then press Enter" : textInput, 35, 700, 980, 48, textInputFocused);
-    drawButton("Send", 1030, 700, 120, 48);
-    drawText("Enter to send  |  Esc to quit", 850, 765, 13, kMuted);
+    for (std::size_t i = 0; i < labels.size(); ++i)
+        drawButton(labels[i], 40.0f + static_cast<float>(i) * 235.0f, 550, 215, 44);
+    drawText("Recent activity", 35, 610, 18, kInk);
+    float logY = 637;
+    for (auto it = eventLog.rbegin(); it != eventLog.rend() && logY < 720; ++it, logY += 20)
+        drawText(*it, 45, logY, 13, kMuted);
+    drawButton(textInput.empty() ? "Type a message here, then press Enter" : textInput, 35, 755, 980, 48, textInputFocused);
+    drawButton("Send", 1030, 755, 120, 48);
+    drawText("Enter to send | Esc to quit", 850, 815, 13, kMuted);
 }
-
 void CompanionUI::drawAgentStateScreen() {
     drawText("AGENT STATE", 30, 75, 26, kInk);
     drawText("Current context, affect and retrieved memory", 30, 106, 15, kMuted);
