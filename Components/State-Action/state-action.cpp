@@ -403,6 +403,27 @@ bool testProposedAgentAdaptsAfterNegativeFeedback() {
     const std::string nextAction = agent.selectAction(disturbance);
     return firstAction == "BARK" && nextAction == "ACT_CONFUSED";
 }
+bool testSemanticPreferenceSurvivesInterveningInteractions() {
+    EnvironmentConfig config;
+    ProposedAgent agent(config);
+    agent.setExplorationRate(0.0f);
+    agent.setLearningEnabled(false);
+    agent.recordUserPreference("BARK", false);
+
+    const EnvironmentObservation greeting{0, 1, 0, 0, 0.55f};
+    ActionOutcome positive;
+    positive.reward = 1.0f;
+    positive.terminal = true;
+    positive.outcome_tag = "positive";
+    for (int i = 0; i < 3; ++i) {
+        const std::string action = agent.selectAction(greeting);
+        agent.applyOutcome(greeting, action, positive);
+    }
+
+    const EnvironmentObservation disturbance{2, 0, 0, 0, 0.95f};
+    return agent.selectAction(disturbance) == "ACT_CONFUSED";
+}
+
 bool testMemoryRetentionAfterInterveningInteractions() {
     EnvironmentConfig config;
     ProposedAgent agent(config);
@@ -1581,6 +1602,7 @@ bool runBaselineValidation() {
     results.push_back({"Proposed agent adapts after negative feedback", "PASS", testProposedAgentAdaptsAfterNegativeFeedback(), "affect"});
     results.push_back({"Proposed agent avoids rejected action", "PASS", testProposedAgentAvoidsRejectedAction(), "memory"});
     results.push_back({"Memory retention after intervening interactions", "PASS", testMemoryRetentionAfterInterveningInteractions(), "memory"});
+    results.push_back({"Semantic preference survives intervening interactions", "PASS", testSemanticPreferenceSurvivesInterveningInteractions(), "memory"});
     results.push_back({"Memory confidence follows outcome history", "PASS", testProposedMemoryConfidenceTracksOutcome(), "memory"});
     results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
     results.push_back({"Negative feedback updates all affect dimensions", "PASS", testNegativeFeedbackUpdatesAffectDimensions(), "affect"});
