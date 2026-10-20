@@ -194,6 +194,7 @@ public:
     const std::vector<InteractionEvent>& getInteractionHistory() const;
     const std::vector<record>& getMemoryRecords() const;
     const AffectiveState& getAffectiveState() const;
+    void clearMemory();
 
 private:
     EnvironmentConfig config;
