@@ -620,8 +620,12 @@ void QTable::load(const std::string& filename) {
     }
 }
 
-QLearning::QLearning(float learningRate, float discountFactor, float epsilon)
-    : q_table(learningRate, discountFactor), learning_rate(learningRate), discount_factor(discountFactor), epsilon(epsilon) {}
+QLearning::QLearning(float learningRate, float discountFactor, float epsilon, unsigned int seed)
+    : q_table(learningRate, discountFactor),
+      learning_rate(learningRate),
+      discount_factor(discountFactor),
+      epsilon(epsilon),
+      rng(seed) {}
 
 float QLearning::getQValue(const state& stateRef, const std::string& action) const {
     return static_cast<float>(q_table.getQValue(stateRef.encode(), action));
@@ -660,7 +664,6 @@ std::string QLearning::getRandomAction(const state& stateRef) const {
     if (actions.empty()) {
         return "FETCH";
     }
-    static std::mt19937 rng(static_cast<unsigned int>(std::time(nullptr)));
     std::uniform_int_distribution<std::size_t> dist(0, actions.size() - 1);
     return actions[dist(rng)];
 }
@@ -675,7 +678,6 @@ std::string QLearning::chooseAction(const state& stateRef) const {
     }
 
     if (epsilon > 0.0f) {
-        static std::mt19937 rng(static_cast<unsigned int>(std::time(nullptr)));
         std::uniform_real_distribution<float> dist(0.0f, 1.0f);
         if (dist(rng) < epsilon) {
             return getRandomAction(stateRef);
@@ -817,7 +819,7 @@ std::string currentTimeStamp() {
 } // namespace
 
 BaselineAgent::BaselineAgent(const EnvironmentConfig& configValue)
-    : config(configValue), q_policy(0.25f, 0.8f, 0.15f) {
+    : config(configValue), q_policy(0.25f, 0.8f, 0.15f, static_cast<unsigned int>(configValue.seed)) {
     q_policy.setActions(config.actions);
     reset();
 }
@@ -905,7 +907,7 @@ const std::vector<InteractionEvent>& BaselineAgent::getInteractionHistory() cons
 }
 
 ProposedAgent::ProposedAgent(const EnvironmentConfig& configValue)
-    : config(configValue), q_policy(0.25f, 0.8f, 0.15f), affective_state{} {
+    : config(configValue), q_policy(0.25f, 0.8f, 0.15f, static_cast<unsigned int>(configValue.seed)), affective_state{} {
     q_policy.setActions(config.actions);
     reset();
 }
