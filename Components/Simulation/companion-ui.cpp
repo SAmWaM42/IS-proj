@@ -82,7 +82,7 @@ private:
     }
     std::string exchange(const std::string& line) {
         if (childInput < 0 || childOutput < 0) return {};
-        const std::string payload = line + "\\n";
+        const std::string payload = line + "\n";
         std::size_t written = 0;
         while (written < payload.size()) {
             const ssize_t n = write(childInput, payload.data() + written, payload.size() - written);
@@ -92,7 +92,7 @@ private:
         std::string response;
         char ch = 0;
         while (read(childOutput, &ch, 1) == 1) {
-            if (ch == '\\n') break;
+            if (ch == '\n') break;
             response.push_back(ch);
             if (response.size() > 65536) return {};
         }
@@ -166,6 +166,8 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     }
     window.setFramerateLimit(60);
     const std::string dogSheet = "Data/Assets/DogMegaPackFree/DogMegaPackFree/Dogs.png";
+    environmentTextureLoaded = environmentTexture.loadFromFile("Data/Assets/free version/free.png");
+    if (environmentTextureLoaded) appendLog("Loaded backyard atlas (free.png)");
     dogTextureLoaded = dogTexture.loadFromFile(dogSheet);
     if (dogTextureLoaded) {
         const auto size = dogTexture.getSize();
@@ -221,7 +223,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
     animationClock += elapsedSeconds;
     if (animationClock >= 0.16f) {
         animationClock = 0.0f;
-        animationFrame = (animationFrame + 1) % 4;
+        animationFrame = (animationFrame + 1) % 7;
     }
     if (latestProposedAction == "FETCH" || latestProposedAction == "NUZZLE" ||
         latestProposedAction == "GREETING" || latestProposedAction == "WANDER") {
@@ -250,7 +252,7 @@ void CompanionUI::drawCompanion(float x, float y) {
             {static_cast<int>(std::min(col * frameWidth, size.x - 1)),
              static_cast<int>(std::min(row * frameHeight, size.y - 1))},
             {static_cast<int>(frameWidth), static_cast<int>(frameHeight)}));
-        const float targetHeight = 54.0f;
+        const float targetHeight = 64.0f;
         const float scale = targetHeight / static_cast<float>(frameHeight);
         dog.setScale({scale, scale});
         dog.setPosition({x, y});
