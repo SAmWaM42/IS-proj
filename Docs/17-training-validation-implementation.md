@@ -1,6 +1,6 @@
 # Training and Validation Implementation Plan
 
-Status: implementation entry point for the training/validation workstream.
+Status: Phase 1 headless training/evaluation CLI added; compile/runtime verification is still required.
 
 ## Goal
 
@@ -13,6 +13,17 @@ Build a reproducible synthetic experiment around the existing C++ baseline and p
 - `ActionOutcome` carries terminal information, while the Q-learning update API currently does not expose a terminal flag. Terminal transitions must not bootstrap from a next-state value.
 - The SFML `BackyardSimulation` currently owns a separate policy and reward path. The experiment harness should be headless and must not depend on opening an SFML window.
 - Existing validation checks cover component contracts; they do not by themselves establish that a policy improves over training or that users perceive it as believable.
+
+## Implemented in the current branch
+
+- Added `Components/Training/training.h/.cpp` as a headless synthetic experiment runner.
+- Added `--train`, `--validate`, `--compare`, and `--self-test` CLI modes, plus episode, step, seed, and output-directory arguments.
+- Training runs both agents against the same pre-generated observations and synthetic reward function, with a decaying exploration rate. Q-tables are saved as `baseline.qtable` and `proposed.qtable`.
+- Validation/comparison loads those policies, disables exploration and learning, and uses an evaluation environment seed offset from the supplied seed.
+- Each condition writes step-level JSONL logs; each run writes an episode-level JSON summary.
+- Q-learning updates now accept a terminal flag, seeded exploration is per-agent, and a validation check covers seeded exploration and baseline feature isolation.
+
+This is a first headless experiment slice, not a complete participant study. The synthetic reward function is deliberately a development proxy and must not be presented as perceived believability. The participant-facing interface/questionnaire and optional shared-policy experiment remain unimplemented. Build/test execution against the branch still needs to be confirmed.
 
 ## Delivery order
 
@@ -56,4 +67,4 @@ The intended interface is:
 ./IS-2 --self-test
 ```
 
-These commands describe the target interface, not a claim that all modes are implemented yet. Each mode should be added only with tests for its stated behavior.
+The CLI modes are now wired into the branch. Run the self-tests and build before relying on experimental output; treat the synthetic metrics as engineering diagnostics, not evidence of perceived believability.
