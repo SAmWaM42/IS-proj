@@ -1,19 +1,20 @@
 {
-  "baseline_action": "SLEEP_LAY",
-  "interaction_count": 3,
+  "baseline_action": "GREETING",
+  "interaction_count": 31,
   "interactions": [
-    "Loaded dog sprite sheet (448x256)",
-    "Simulation ready. Select an interaction or enter a short message.",
+    "You: how are you [greeting / spacy]",
+    "Baseline: Greets you warmly",
+    "Proposed: Greets you warmly",
+    "You: is this just  guessing [unknown / spacy]",
+    "Baseline: Greets you warmly",
+    "Proposed: Greets you warmly",
     "You: Ask the companion to fetch the ball",
     "Baseline: Fetches the nearby object",
     "Proposed: Fetches the nearby object",
-    "You: The companion should rest",
-    "Baseline: Lies down to rest",
-    "Proposed: Lies down to rest",
-    "You: The companion should rest",
-    "Baseline: Lies down to rest",
-    "Proposed: Lies down to rest"
+    "You: wait what [unknown / spacy]",
+    "Baseline: Greets you warmly",
+    "Proposed: Greets you warmly"
   ],
-  "latest_stimulus": "The companion should rest",
-  "proposed_action": "SLEEP_LAY"
+  "latest_stimulus": "wait what [unknown / spacy]",
+  "proposed_action": "GREETING"
 }
