@@ -1097,17 +1097,17 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
                                 const ActionOutcome& outcome,
                                 const EnvironmentObservation& nextObservation) {
     state next_state = makeState(
-        session_context.current_intent,
-        proximityFromValue(observation.target_proximity),
+        nextObservation.goal_state,
+        proximityFromValue(nextObservation.target_proximity),
         levelFromValue(std::max(0, session_context.energy_level + (outcome.reward > 0.0f ? 1 : 0))),
         levelFromValue(std::max(0, session_context.stress_level + (outcome.reward < 0.0f ? 1 : 0))),
         Level::MEDIUM,
         Level::LOW,
-        observation.user_status,
+        nextObservation.user_status,
         0.0f);
-    next_state.task_status = observation.task_status;
+    next_state.task_status = nextObservation.task_status;
     next_state.signal_strength_bucket =
-        observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
+        nextObservation.signal_strength < 0.33f ? 0 : (nextObservation.signal_strength < 0.67f ? 1 : 2);
 
     if (learning_enabled) {
         q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
@@ -1267,12 +1267,16 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     runtime_context.session_context = session_context;
     runtime_context.affective_state = affective_state;
     runtime_context.memory_summary = buildMemorySummary(memory_records, action);
+    RuntimeContext nextRuntime = runtime_context;
+    nextRuntime.session_context.current_intent = nextObservation.goal_state;
+    nextRuntime.session_context.target_proximity = nextObservation.target_proximity;
+    nextRuntime.session_context.user_status = nextObservation.user_status;
 
-    state next_state = makeRuntimeState(runtime_context);
+    state next_state = makeRuntimeState(nextRuntime);
     next_state.affect_trend = summarizeAffectTrend(affective_state, levelFromValue(session_context.energy_level));
-    next_state.task_status = observation.task_status;
+    next_state.task_status = nextObservation.task_status;
     next_state.signal_strength_bucket =
-        observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
+        nextObservation.signal_strength < 0.33f ? 0 : (nextObservation.signal_strength < 0.67f ? 1 : 2);
     if (learning_enabled) {
         q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
     }
