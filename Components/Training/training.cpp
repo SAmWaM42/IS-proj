@@ -150,12 +150,12 @@ namespace
             ActionOutcome outcome;
             outcome.action_id = static_cast<int>(step);
             outcome.reward = reward;
-            // Training observations are sampled independently, so this is a contextual-bandit update.
-            // Do not bootstrap from an unrelated randomly sampled next observation.
-            outcome.terminal = true;
+            outcome.terminal = terminal;
             outcome.outcome_tag = completed ? "goal_completed" : (terminal ? "step_limit" : "interaction");
+            const EnvironmentObservation& nextObservation =
+                terminal ? observation : observations[step + 1];
 
-            agent.applyOutcome(observation, action, outcome);
+            agent.applyOutcome(observation, action, outcome, nextObservation);
 
             metrics.total_reward += reward;
             metrics.steps = static_cast<int>(step + 1);
