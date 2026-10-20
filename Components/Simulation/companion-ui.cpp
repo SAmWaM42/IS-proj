@@ -279,6 +279,13 @@ void CompanionUI::drawCompanion(float x, float y) {
 void CompanionUI::processInteraction(const std::string& label,
                                      const EnvironmentObservation& observation,
                                      float feedbackRewardValue) {
+    interactionBuffer.push_back(QueuedInteraction{label, observation, feedbackRewardValue});
+    appendLog("Queued interaction (" + std::to_string(interactionBuffer.size()) + " waiting): " + label);
+}
+
+void CompanionUI::executeInteraction(const std::string& label,
+                                     const EnvironmentObservation& observation,
+                                     float feedbackRewardValue) {
     latestObservation = observation;
     latestStimulus = label;
     latestBaselineAction = baseline.selectAction(observation);
