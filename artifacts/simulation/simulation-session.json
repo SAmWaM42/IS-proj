@@ -1,20 +1,19 @@
 {
-  "baseline_action": "NUZZLE",
-  "interaction_count": 17,
+  "baseline_action": "SLEEP_LAY",
+  "interaction_count": 3,
   "interactions": [
-    "You: Praise the companion",
-    "Baseline: Moves closer affectionately",
-    "Proposed: Moves closer affectionately",
-    "You: A sudden loud noise occurs",
-    "Baseline: Pauses, appearing uncertain",
+    "Loaded dog sprite sheet (448x256)",
+    "Simulation ready. Select an interaction or enter a short message.",
+    "You: Ask the companion to fetch the ball",
+    "Baseline: Fetches the nearby object",
+    "Proposed: Fetches the nearby object",
+    "You: The companion should rest",
+    "Baseline: Lies down to rest",
     "Proposed: Lies down to rest",
     "You: The companion should rest",
     "Baseline: Lies down to rest",
-    "Proposed: Explores the yard",
-    "You: hi",
-    "Baseline: Moves closer affectionately",
-    "Proposed: Greets you warmly"
+    "Proposed: Lies down to rest"
   ],
-  "latest_stimulus": "hi",
-  "proposed_action": "GREETING"
+  "latest_stimulus": "The companion should rest",
+  "proposed_action": "SLEEP_LAY"
 }

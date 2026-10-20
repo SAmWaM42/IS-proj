@@ -6,7 +6,7 @@
 #include <cmath>
 #include <cstdio>
 #include <memory>
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
