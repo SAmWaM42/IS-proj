@@ -4,6 +4,7 @@
 
 #include "Components/Environment/environment.h"
 #include "Components/State-Action/state-action.h"
+#include "Components/Training/training.h"
 
 namespace {
 bool parsePositiveInt(const char* value, int& result) {
@@ -22,19 +23,22 @@ bool parsePositiveInt(const char* value, int& result) {
 void printUsage(const char* executable) {
     std::cout
         << "Usage:\n"
-        << "  " << executable << " [--self-test]\n"
-        << "  " << executable << " --sim\n"
-        << "  " << executable << " --sim-history\n"
-        << "  " << executable << " --compare [--steps N]\n\n"
-        << "Note: --compare currently runs the existing shared-observation harness; "
-        << "it is not yet the full multi-episode training/evaluation pipeline.\n";
+        << "  " << executable << " --self-test\n"
+        << "  " << executable << " --train [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
+        << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
+        << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
+        << "  " << executable << " --sim | --sim-history\n\n"
+        << "Run --train before --validate or --compare. Evaluation disables exploration and learning.\n";
 }
 } // namespace
 
 int main(int argc, char** argv) {
-    int comparisonSteps = 10;
-    bool compare = false;
-    bool selfTest = false;
+    std::string mode;
+    std::string outputDirectory = "artifacts/training";
+    int episodes = 200;
+    int steps = 40;
+    int seed = 42;
+    bool explicitEpisodes = false;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -48,53 +52,64 @@ int main(int argc, char** argv) {
             simulation.runScenarioHistory();
             return 0;
         }
-        if (arg == "--self-test" || arg == "--validate") {
-            selfTest = true;
-            continue;
-        }
-        if (arg == "--compare" || arg == "compare") {
-            compare = true;
-            continue;
-        }
-        if (arg == "--steps") {
-            if (i + 1 >= argc || !parsePositiveInt(argv[++i], comparisonSteps)) {
-                std::cerr << "--steps requires a positive integer.\n";
-                printUsage(argv[0]);
-                return 2;
-            }
-            continue;
-        }
         if (arg == "--help" || arg == "-h") {
             printUsage(argv[0]);
             return 0;
         }
+        if (arg == "--self-test" || arg == "--train" || arg == "--validate" || arg == "--compare") {
+            if (!mode.empty()) {
+                std::cerr << "Choose exactly one experiment mode.\n";
+                return 2;
+            }
+            mode = arg == "--self-test" ? "self-test" : arg.substr(2);
+            continue;
+        }
+        if (arg == "--episodes" || arg == "--steps" || arg == "--seed" || arg == "--out") {
+            if (i + 1 >= argc) {
+                std::cerr << arg << " requires a value.\n";
+                printUsage(argv[0]);
+                return 2;
+            }
+            const char* value = argv[++i];
+            if (arg == "--out") {
+                outputDirectory = value;
+            } else {
+                int parsed = 0;
+                if (!parsePositiveInt(value, parsed)) {
+                    std::cerr << arg << " requires a positive integer.\n";
+                    return 2;
+                }
+                if (arg == "--episodes") {
+                    episodes = parsed;
+                    explicitEpisodes = true;
+                } else if (arg == "--steps") {
+                    steps = parsed;
+                } else {
+                    seed = parsed;
+                }
+            }
+            continue;
+        }
 
-        std::cerr << "Unknown argument: " << arg << "\n";
+        std::cerr << "Unknown argument: " << arg << '\n';
         printUsage(argv[0]);
         return 2;
     }
 
-    if (selfTest && compare) {
-        std::cerr << "--self-test and --compare cannot be used together.\n";
-        return 2;
-    }
-
-    if (compare) {
-        EnvironmentConfig config;
-        config.max_steps = comparisonSteps;
-        const auto comparison = runAgentComparison(config, comparisonSteps);
-        std::cout << "Baseline and proposed agents compared over "
-                  << comparison.tick_log.size() << " shared observations.\n";
-        std::cout << "Note: the current harness logs baseline outcomes only and uses a "
-                     "fixed observation sequence; interpret this as a component smoke test, "
-                     "not as comparative performance evidence.\n";
+    if (mode.empty() || mode == "self-test") {
+        if (!runBaselineValidation()) {
+            return 1;
+        }
+        std::cout << "Component validation passed.\n";
         return 0;
     }
 
-    if (!runBaselineValidation()) {
-        return 1;
+    if (mode == "train" && !explicitEpisodes) {
+        episodes = 1000;
     }
 
-    std::cout << "Baseline learning loop validation passed.\n";
+    if (!runTrainingExperiment(mode, episodes, steps, static_cast<unsigned int>(seed), outputDirectory)) {
+        return 1;
+    }
     return 0;
 }
