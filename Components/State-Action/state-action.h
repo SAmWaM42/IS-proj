@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <map>
 #include <memory>
+#include <random>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -119,6 +120,7 @@ private:
     float discount_factor;
     float epsilon;
     std::vector<std::string> actions;
+    mutable std::mt19937 rng;
 
     float getQValue(const state& stateRef, const std::string& action) const;
     void setQValue(const state& stateRef, const std::string& action, float value);
@@ -127,7 +129,7 @@ private:
     std::string getRandomAction(const state& stateRef) const;
 
 public:
-    QLearning(float learning_rate, float discount_factor, float epsilon);
+    QLearning(float learning_rate, float discount_factor, float epsilon, unsigned int seed = 42);
 
     void setActions(const std::vector<std::string>& actions);
     std::string chooseAction(const state& stateRef) const;
