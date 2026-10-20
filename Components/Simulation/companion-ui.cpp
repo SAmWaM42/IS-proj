@@ -177,6 +177,9 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     proposed.setLearningEnabled(false);
     baseline.setExplorationRate(0.0f);
     proposed.setExplorationRate(0.0f);
+    const auto runTicks = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    runId = "run-" + std::to_string(runTicks);
     std::random_device conditionRandom;
     agentAIsProposed = (conditionRandom() % 2u) == 0u;
     if (!font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
@@ -358,7 +361,7 @@ void CompanionUI::executeInteraction(const std::string& label,
     {
         nlohmann::json row;
         row["schema_version"] = 1;
-        row["run_id"] = "interactive-simulation";
+        row["run_id"] = runId;
         row["interaction_id"] = interactionId;
         row["sequence_index"] = interactionId - 1;
         row["timestamp"] = utcTimestamp();
@@ -392,7 +395,7 @@ void CompanionUI::executeInteraction(const std::string& label,
                 {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
             }}
         };
-        std::ofstream log(std::filesystem::path(outputDirectory) / "interaction-events.jsonl", std::ios::app);
+        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
         if (log) log << row.dump() << '\n';
         else appendLog("WARNING: interaction event log could not be written.");
     }
@@ -471,6 +474,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                 nlohmann::json manifest;
                 manifest["schema_version"] = 1;
                 manifest["mode"] = "interactive_simulation";
+                manifest["run_id"] = runId;
                 manifest["started_at"] = utcTimestamp();
                 manifest["policy_updates_enabled"] = false;
                 manifest["selected_condition"] = std::string(1, selectedAgentCode);
