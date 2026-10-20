@@ -101,7 +101,9 @@ EpisodeMetrics runEpisode(Agent& agent,
         ActionOutcome outcome;
         outcome.action_id = static_cast<int>(step);
         outcome.reward = reward;
-        outcome.terminal = terminal;
+        // Training observations are sampled independently, so this is a contextual-bandit update.
+        // Do not bootstrap from an unrelated randomly sampled next observation.
+        outcome.terminal = true;
         outcome.outcome_tag = completed ? "goal_completed" : (terminal ? "step_limit" : "interaction");
 
         agent.applyOutcome(observation, action, outcome);
