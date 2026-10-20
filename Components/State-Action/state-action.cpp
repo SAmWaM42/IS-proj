@@ -994,6 +994,7 @@ std::string contextualAction(const EnvironmentObservation& observation,
         for (auto it = memories->rbegin(); it != memories->rend(); ++it) {
             if (it->raw_fact.relation == "response_to_action" &&
                 it->raw_fact.object == "negative" &&
+                it->confidence <= 0.5f &&
                 it->raw_fact.subject == "INSIST") {
                 return "WANDER";
             }
@@ -1005,7 +1006,7 @@ std::string contextualAction(const EnvironmentObservation& observation,
 bool wasActionRejected(const std::string& action, const std::vector<record>& memories) {
     for (auto it = memories.rbegin(); it != memories.rend(); ++it) {
         if (it->raw_fact.relation == "response_to_action" && it->raw_fact.subject == action) {
-            return it->raw_fact.object == "negative";
+            return it->raw_fact.object == "negative" && it->confidence <= 0.5f;
         }
     }
     return false;
