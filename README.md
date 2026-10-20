@@ -82,6 +82,23 @@ The UI follows the Chapter 3.5.3 wireframes: **Main Simulation** provides the en
 
 The text input currently uses a small keyword-based intent mapper (fetch/request, praise, disturbance, rest, and negative feedback); it is not yet connected to the spaCy NLP service. Preset controls use fixed development reward signals, so this UI is for simulation and debugging, not a substitute for the controlled participant-study protocol. The interface saves a session summary and session Q-table copies under `artifacts/simulation/`.
 
+### NLP-enabled simulation and dog sprites
+
+The SFML `--sim` interface sends typed messages to `Components/NLP/nlp_intent_service.py`. The adapter uses spaCy's `en_core_web_sm` lemmatization when installed and reports the selected method in the simulation view; a keyword fallback is used if Python, spaCy, or the model is unavailable.
+
+Set up the optional NLP dependency in a virtual environment:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install spacy
+python -m spacy download en_core_web_sm
+```
+
+The UI currently launches `python3` by name, so ensure the desired Python environment is active before starting the application. The included dog sprite sheet is loaded from `Data/Assets/DogMegaPackFree/DogMegaPackFree/Dogs.png`; the renderer divides it into a 4-by-4 frame grid and changes animation row based on the proposed agent's selected action. If the image cannot be loaded, it falls back to the vector placeholder. The larger window and Hide Controls button provide more room for the yard view.
+
+This is an initial sprite-sheet integration: verify the source sheet's exact frame layout visually and adjust the 4-by-4 frame mapping if its cells do not correspond to animation frames. The NLP intent mapper still emits a small set of discrete intents and fixed development reward signals; it is not a general dialogue model or a validated participant-feedback mechanism.
+
 ### Participant study prototype
 
 After training the policies, launch the SFML study interface:
