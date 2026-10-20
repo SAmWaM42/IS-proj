@@ -159,11 +159,11 @@ void CompanionUI::handleClick(sf::Vector2f point) {
     if (screen != Screen::Simulation) return;
     textInputFocused = y >= 700 && y <= 750;
     if (y >= 445 && y <= 495) {
-        if (x >= 40 && x < 250) processInteraction("Greet the companion", {0, 1, 0, 0, 0.55f}, 0.65f);
-        else if (x >= 260 && x < 470) processInteraction("Ask the companion to fetch the ball", {1, 1, 1, 1, 0.85f}, 0.85f);
-        else if (x >= 480 && x < 690) processInteraction("Praise the companion", {0, 0, 1, 0, 0.75f}, 1.0f);
-        else if (x >= 700 && x < 910) processInteraction("A sudden loud noise occurs", {2, 0, 0, 0, 0.95f}, -0.15f);
-        else if (x >= 920 && x < 1130) processInteraction("The companion should rest", {2, 2, 0, 0, 0.20f}, 0.25f);
+        if (x >= 40 && x < 255) processInteraction("Greet the companion", {0, 1, 0, 0, 0.55f}, 0.65f);
+        else if (x >= 275 && x < 490) processInteraction("Ask the companion to fetch the ball", {1, 1, 1, 1, 0.85f}, 0.85f);
+        else if (x >= 510 && x < 725) processInteraction("Praise the companion", {0, 0, 1, 0, 0.75f}, 1.0f);
+        else if (x >= 745 && x < 960) processInteraction("A sudden loud noise occurs", {2, 0, 0, 0, 0.95f}, -0.15f);
+        else if (x >= 980 && x < 1200) processInteraction("The companion should rest", {2, 2, 0, 0, 0.20f}, 0.25f);
         return;
     }
     if (y >= 700 && y <= 750 && x >= 1040 && !textInput.empty()) {
