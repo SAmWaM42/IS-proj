@@ -210,6 +210,7 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
         appendLog("Dog sprite sheet unavailable; using vector companion fallback.");
     }
     std::filesystem::create_directories(outputDirectory);
+    std::filesystem::create_directories(policyDirectory);
     const auto basePath = std::filesystem::path(policyDirectory) / "baseline.qtable";
     const auto proposedPath = std::filesystem::path(policyDirectory) / "proposed.qtable";
     if (std::filesystem::exists(basePath)) baseline.loadPersistentState(basePath.string());
