@@ -219,7 +219,16 @@ void CompanionUI::run() {
 }
 
 void CompanionUI::updateAnimation(float elapsedSeconds) {
-    if (!animationActive) return;
+    actionDisplayTimer = std::max(0.0f, actionDisplayTimer - elapsedSeconds);
+    if (!animationActive) {
+        if (actionDisplayTimer <= 0.0f && !interactionBuffer.empty()) {
+            const auto next = interactionBuffer.front();
+            interactionBuffer.pop_front();
+            executeInteraction(next.label, next.observation, next.reward);
+            actionDisplayTimer = 0.85f;
+        }
+        return;
+    }
     animationClock += elapsedSeconds;
     const bool resting = latestProposedAction == "SLEEP_LAY";
     const bool walking = latestProposedAction == "FETCH" || latestProposedAction == "WANDER";
