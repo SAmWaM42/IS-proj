@@ -193,10 +193,10 @@ bool runParticipantStudy(const std::string& policyDirectory,
     std::string currentAgentKind;
     int conditionIndex = 0;
     std::size_t scenarioIndex = 0;
-    int lastFeedback = 0;
     std::array<SurveyItem, 4> survey = kSurveyTemplate;
     std::size_t surveyIndex = 0;
     nlohmann::json trialRows = nlohmann::json::array();
+    bool studyDataSaved = false;
     nlohmann::json studyData = nlohmann::json::object();
     studyData["schema_version"] = 1;
     studyData["session_id"] = sessionId;
@@ -219,6 +219,10 @@ bool runParticipantStudy(const std::string& policyDirectory,
             return false;
         }
         out << studyData.dump(2) << '\n';
+        if (!out) {
+            std::cerr << "Failed while writing study data to " << path << '\n';
+            return false;
+        }
         return true;
     };
 
@@ -281,7 +285,6 @@ bool runParticipantStudy(const std::string& policyDirectory,
                 else if (key == sf::Keyboard::Key::Num3) feedbackKey = 3;
                 else if (key == sf::Keyboard::Key::Num4) feedbackKey = 4;
                 if (feedbackKey != 0) {
-                    lastFeedback = feedbackKey;
                     const Scenario& scenario = kScenarios[scenarioIndex];
                     const float reward = feedbackReward(feedbackKey);
                     ActionOutcome outcome;
@@ -331,7 +334,7 @@ bool runParticipantStudy(const std::string& policyDirectory,
                         } else {
                             studyData["completed"] = true;
                             studyData["condition_order"] = {conditionCodes[0], conditionCodes[1]};
-                            saveStudyData();
+                            studyDataSaved = saveStudyData();
                             screen = Screen::Complete;
                         }
                     }
