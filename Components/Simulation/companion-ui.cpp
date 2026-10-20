@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <chrono>
+#include <ctime>
 #include <cmath>
 #include <cstdio>
 #include <memory>
@@ -153,6 +155,15 @@ std::string levelText(float value) {
     return "High";
 }
 float clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
+std::string utcTimestamp() {
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t value = std::chrono::system_clock::to_time_t(now);
+    std::tm utc{};
+    gmtime_r(&value, &utc);
+    char buffer[32];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc);
+    return buffer;
+}
 }
 
 CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
@@ -350,6 +361,8 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["run_id"] = "interactive-simulation";
         row["interaction_id"] = interactionId;
         row["sequence_index"] = interactionId - 1;
+        row["timestamp"] = utcTimestamp();
+        row["processing_status"] = "completed";
         row["condition_code"] = std::string(1, selectedAgentCode);
         row["input_summary"] = label;
         row["observation"] = {
@@ -458,6 +471,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                 nlohmann::json manifest;
                 manifest["schema_version"] = 1;
                 manifest["mode"] = "interactive_simulation";
+                manifest["started_at"] = utcTimestamp();
                 manifest["policy_updates_enabled"] = false;
                 manifest["selected_condition"] = std::string(1, selectedAgentCode);
                 manifest["condition_key"] = {
