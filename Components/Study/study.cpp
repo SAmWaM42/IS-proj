@@ -46,7 +46,7 @@ const std::array<Scenario, 5> kScenarios{{
     {"A sudden loud noise occurs nearby.",
      EnvironmentObservation{2, 0, 0, 0, 0.90f}},
     {"You sit quietly to rest; no task is pending.",
-     EnvironmentObservation{0, 2, 0, 0, 0.25f}},
+     EnvironmentObservation{2, 2, 0, 0, 0.25f}},
     {"You praise the companion after an interaction.",
      EnvironmentObservation{0, 0, 1, 0, 0.75f}}
 }};
