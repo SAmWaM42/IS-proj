@@ -12,6 +12,7 @@ add_executable(IS-2
    Components/Environment/environment.cpp
    Components/Training/training.cpp
    Components/Study/study.cpp
+   Components/Simulation/companion-ui.cpp
 )
 
 target_include_directories(IS-2 PRIVATE
@@ -22,6 +23,7 @@ target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}/Components/State-Action
    ${CMAKE_SOURCE_DIR}/Components/Training
    ${CMAKE_SOURCE_DIR}/Components/Study
+   ${CMAKE_SOURCE_DIR}/Components/Simulation
 )
 
 target_link_libraries(IS-2 PRIVATE
