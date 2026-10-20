@@ -1422,6 +1422,10 @@ void ProposedAgent::loadPersistentState(const std::string& path) {
 
 void ProposedAgent::savePersistentState(const std::string& path) {
     q_policy.saveQTable(path);
+    savePersistentContext(path);
+}
+
+void ProposedAgent::savePersistentContext(const std::string& path) {
     const std::string prefix = path + ".";
     bool memorySaved = true;
     if (memory_records.empty()) {
