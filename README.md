@@ -64,6 +64,10 @@ Build the project with the existing CMake setup, then run:
 
 Training saves `baseline.qtable` and `proposed.qtable`. Validation and comparison load those checkpoints, disable exploration and policy updates, and use an evaluation scenario seed offset from the supplied seed. Step logs are written to `<mode>_baseline_steps.jsonl` and `<mode>_proposed_steps.jsonl`, preventing later runs from overwriting earlier mode logs; a mode-specific JSON summary is also written.
 
+The policy state now includes task availability and a discretized signal-strength bucket, and the fallback policy selects an action consistent with the interaction intent when a state has no useful learned values. The synthetic reward is also intent-conditioned (social greeting, explicit request, or disturbance/rest).
+
+Important: these state-encoding changes make previously saved Q-table keys incompatible with the current policy. **Retrain both agents before validation or running the participant study**. The current synthetic observations are independently sampled rather than a causal action-driven environment, so each training update deliberately avoids bootstrapping from a randomly sampled next observation. Treat this as contextual reward learning, not evidence of long-horizon planning.
+
 These are synthetic engineering diagnostics only. The reward model does not measure believability. Build and test the branch before relying on generated results.
 
 ### Participant study prototype
