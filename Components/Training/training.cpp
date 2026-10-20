@@ -145,7 +145,10 @@ namespace
                                    observation.task_status == 1 &&
                                    observation.target_proximity <= 1 &&
                                    observation.signal_strength >= 0.72f;
-            const bool terminal = completed || step + 1 == observations.size();
+            // A successful subtask is a metric, not the end of the companion
+            // interaction episode; later contexts are needed to train memory
+            // and affect adaptation. Only the final transition is terminal.
+            const bool terminal = step + 1 == observations.size();
 
             ActionOutcome outcome;
             outcome.action_id = static_cast<int>(step);
@@ -178,10 +181,7 @@ namespace
             row["completed"] = completed;
             stepLog << row.dump() << '\n';
 
-            if (terminal)
-            {
-                break;
-            }
+            if (terminal) break;
         }
         return metrics;
     }
