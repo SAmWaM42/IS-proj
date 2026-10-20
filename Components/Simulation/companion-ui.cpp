@@ -1,12 +1,15 @@
 #include "companion-ui.h"
 
 #include <algorithm>
+#include <array>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 namespace {
 const sf::Color kBackground(239, 243, 247);
@@ -157,7 +160,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
     }
     if (screen != Screen::Simulation) return;
     textInputFocused = y >= 700 && y <= 750;
-    if (y >= 135 && y <= 205) {
+    if (y >= 445 && y <= 495) {
         if (x >= 40 && x < 250) processInteraction("Greet the companion", {0, 1, 0, 0, 0.55f}, 0.65f);
         else if (x >= 260 && x < 470) processInteraction("Ask the companion to fetch the ball", {1, 1, 1, 1, 0.85f}, 0.85f);
         else if (x >= 480 && x < 690) processInteraction("Praise the companion", {0, 0, 1, 0, 0.75f}, 1.0f);
