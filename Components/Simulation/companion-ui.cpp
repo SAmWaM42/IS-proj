@@ -75,6 +75,15 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
         throw std::runtime_error("Unable to load DejaVuSans.ttf. Install DejaVu fonts or update companion-ui.cpp.");
     }
     window.setFramerateLimit(60);
+    window.setMinimumSize({960u, 640u});
+    const std::string dogSheet = "Data/Assets/DogMegaPackFree/DogMegaPackFree/Dogs.png";
+    dogTextureLoaded = dogTexture.loadFromFile(dogSheet);
+    if (dogTextureLoaded) {
+        const auto size = dogTexture.getSize();
+        appendLog("Loaded dog sprite sheet (" + std::to_string(size.x) + "x" + std::to_string(size.y) + ")");
+    } else {
+        appendLog("Dog sprite sheet unavailable; using vector companion fallback.");
+    }
     std::filesystem::create_directories(outputDirectory);
     const auto basePath = std::filesystem::path(policyDirectory) / "baseline.qtable";
     const auto proposedPath = std::filesystem::path(policyDirectory) / "proposed.qtable";
@@ -86,6 +95,7 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
 
 void CompanionUI::run() {
     while (window.isOpen()) {
+        updateAnimation(frameClock.restart().asSeconds());
         while (const auto event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>()) {
                 saveSession();
@@ -117,6 +127,48 @@ void CompanionUI::run() {
     }
 }
 
+void CompanionUI::updateAnimation(float elapsedSeconds) {
+    if (!animationActive) return;
+    animationClock += elapsedSeconds;
+    if (animationClock >= 0.16f) {
+        animationClock = 0.0f;
+        animationFrame = (animationFrame + 1) % 4;
+    }
+    if (latestProposedAction == "FETCH" || latestProposedAction == "NUZZLE" ||
+        latestProposedAction == "GREETING" || latestProposedAction == "WANDER") {
+        const float direction = (latestProposedAction == "NUZZLE" || latestProposedAction == "GREETING") ? -1.0f : 1.0f;
+        agentX += direction * elapsedSeconds * 90.0f;
+        if (agentX > 900.0f) agentX = 380.0f;
+        if (agentX < 320.0f) agentX = 760.0f;
+    }
+}
+
+void CompanionUI::drawCompanion(float x, float y) {
+    if (dogTextureLoaded) {
+        const sf::Vector2u size = dogTexture.getSize();
+        const unsigned int frameWidth = std::max(1u, size.x / 4u);
+        const unsigned int frameHeight = std::max(1u, size.y / 4u);
+        unsigned int row = 0;
+        if (latestProposedAction == "FETCH" || latestProposedAction == "WANDER") row = 1;
+        else if (latestProposedAction == "SLEEP_LAY") row = 2;
+        else if (latestProposedAction == "BARK" || latestProposedAction == "ACT_CONFUSED") row = 3;
+        const unsigned int col = animationActive ? static_cast<unsigned int>(animationFrame) : 0u;
+        sf::Sprite dog(dogTexture);
+        dog.setTextureRect(sf::IntRect(
+            {static_cast<int>(std::min(col * frameWidth, size.x - 1)),
+             static_cast<int>(std::min(row * frameHeight, size.y - 1))},
+            {static_cast<int>(frameWidth), static_cast<int>(frameHeight)}));
+        dog.setScale({2.0f, 2.0f});
+        dog.setPosition({x, y});
+        window.draw(dog);
+    } else {
+        sf::CircleShape companion(22);
+        companion.setPosition({x, y});
+        companion.setFillColor(kBlue);
+        window.draw(companion);
+    }
+}
+
 void CompanionUI::processInteraction(const std::string& label,
                                      const EnvironmentObservation& observation,
                                      float feedbackRewardValue) {
@@ -124,6 +176,9 @@ void CompanionUI::processInteraction(const std::string& label,
     latestStimulus = label;
     latestBaselineAction = baseline.selectAction(observation);
     latestProposedAction = proposed.selectAction(observation);
+    animationActive = true;
+    animationClock = 0.0f;
+    animationFrame = 0;
 
     ActionOutcome baselineOutcome;
     baselineOutcome.reward = feedbackRewardValue;
@@ -137,7 +192,6 @@ void CompanionUI::processInteraction(const std::string& label,
     baselineRewards.push_back(feedbackRewardValue);
     proposedRewards.push_back(feedbackRewardValue);
     ++interactionCount;
-    agentX = 430.0f + static_cast<float>((interactionCount * 47) % 250);
     appendLog("You: " + label);
     appendLog("Baseline: " + describeAction(latestBaselineAction));
     appendLog("Proposed: " + describeAction(latestProposedAction));
