@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
                 CompanionUI simulation(policyDirectory, "artifacts/simulation");
                 simulation.run();
             } catch (const std::exception& error) {
-                std::cerr << "Unable to start companion UI: " << error.what() << '\\n';
+                std::cerr << "Unable to start companion UI: " << error.what() << '\n';
                 return 1;
             }
             return 0;
