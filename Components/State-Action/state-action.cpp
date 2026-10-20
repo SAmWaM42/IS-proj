@@ -674,8 +674,24 @@ void QLearning::setActions(const std::vector<std::string>& newActions) {
 }
 
 std::string QLearning::chooseAction(const state& stateRef) const {
+    const std::string fallback = actions.empty() ? "FETCH" : actions.front();
+    return chooseAction(stateRef, fallback);
+}
+
+std::string QLearning::chooseAction(const state& stateRef,
+                                    const std::string& contextualFallback) const {
     if (actions.empty()) {
-        return "FETCH";
+        return contextualFallback.empty() ? "FETCH" : contextualFallback;
+    }
+
+    const auto stateIt = q_table.table.find(stateRef.encode());
+    const bool hasLearnedValues = stateIt != q_table.table.end() &&
+        std::any_of(stateIt->second.begin(), stateIt->second.end(),
+                    [](const auto& entry) { return std::abs(entry.second) > 1e-9; });
+
+    if (!hasLearnedValues) {
+        return std::find(actions.begin(), actions.end(), contextualFallback) != actions.end()
+            ? contextualFallback : actions.front();
     }
 
     if (epsilon > 0.0f) {
@@ -872,6 +888,43 @@ float scoreActionAgainstObservation(const std::string& action, const Environment
     return std::clamp(score, -1.0f, 1.0f);
 }
 
+std::string contextualAction(const EnvironmentObservation& observation,
+                             const AffectiveState* affect = nullptr,
+                             const std::vector<record>* memories = nullptr) {
+    // goal_state: 0=social greeting, 1=explicit task/request, 2=unexpected event/rest.
+    if (observation.goal_state == 0) {
+        if (observation.user_status == 0) return "GREETING";
+        if (affect != nullptr && affect->stress >= 0.75f) return "ACT_CONFUSED";
+        return observation.target_proximity == 0 ? "NUZZLE" : "GREETING";
+    }
+
+    if (observation.goal_state == 1) {
+        if (observation.task_status == 1 && observation.target_proximity <= 1) return "FETCH";
+        if (observation.task_status == 0) return "ACT_CONFUSED";
+        return "WANDER";
+    }
+
+    // An unexpected disturbance should not trigger an unrelated fetch.
+    if (observation.signal_strength >= 0.80f) {
+        if (affect != nullptr && affect->stress >= 0.70f) return "ACT_CONFUSED";
+        return "BARK";
+    }
+    if (observation.task_status == 0) return "SLEEP_LAY";
+
+    // A negative response to insistence is an explicit reason to avoid insisting again.
+    if (affect != nullptr && affect->valence == AffectValence::NEGATIVE) return "WANDER";
+    if (memories != nullptr) {
+        for (auto it = memories->rbegin(); it != memories->rend(); ++it) {
+            if (it->raw_fact.relation == "response_to_action" &&
+                it->raw_fact.object == "negative" &&
+                it->raw_fact.subject == "INSIST") {
+                return "WANDER";
+            }
+        }
+    }
+    return "ACT_CONFUSED";
+}
+
 std::string currentTimeStamp() {
     const auto now = std::chrono::system_clock::now();
     const auto timer = std::chrono::system_clock::to_time_t(now);
@@ -928,7 +981,8 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
         observation.user_status,
         0.0f);
     current_state = candidate;
-    session_context.current_action = q_policy.chooseAction(candidate);
+    session_context.current_action = q_policy.chooseAction(
+        candidate, contextualAction(observation));
     return session_context.current_action;
 }
 
@@ -1031,7 +1085,8 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
-    session_context.current_action = q_policy.chooseAction(current_state);
+    session_context.current_action = q_policy.chooseAction(
+        current_state, contextualAction(observation, &affective_state, &memory_records));
     return session_context.current_action;
 }
 
@@ -1046,9 +1101,10 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     affective_state.updateFromFeedback(outcome.reward, outcome.reward > 0.0f, outcome.reward < 0.0f);
 
     record memory_entry;
-    memory_entry.raw_fact.subject = "user";
-    memory_entry.raw_fact.relation = "interaction";
-    memory_entry.raw_fact.object = outcome.outcome_tag.empty() ? action : outcome.outcome_tag;
+    memory_entry.raw_fact.subject = action;
+    memory_entry.raw_fact.relation = "response_to_action";
+    memory_entry.raw_fact.object = outcome.reward < -0.05f ? "negative" :
+                                   (outcome.reward > 0.05f ? "positive" : "neutral");
     memory_entry.confidence = std::clamp(observation.signal_strength, 0.0f, 1.0f);
     memory_entry.generalization_factor = 0.5f;
     memory_entry.current_context = record::USER_SPECIFIC;
