@@ -1,6 +1,6 @@
 # Training and Validation Implementation Plan
 
-Status: Phase 1 headless training/evaluation CLI added; compile/runtime verification is still required.
+Status: headless training/evaluation and an initial SFML participant-study prototype are implemented; build and end-to-end study-flow verification remain required.
 
 ## Goal
 
@@ -23,7 +23,13 @@ Build a reproducible synthetic experiment around the existing C++ baseline and p
 - Each condition writes step-level JSONL logs; each run writes an episode-level JSON summary.
 - Q-learning updates now accept a terminal flag, seeded exploration is per-agent, and validation checks cover seeded exploration, baseline feature isolation, and evaluation-mode Q-table immutability.
 
-This is a first headless experiment slice, not a complete participant study. The synthetic reward function is deliberately a development proxy and must not be presented as perceived believability. The participant-facing interface/questionnaire and optional shared-policy experiment remain unimplemented. Build/test execution against the branch still needs to be confirmed. The checked-in `Docs/test-results.json` is not automatically refreshed by these commits; run `./IS-2 --self-test` after building to regenerate it.
+The synthetic reward function is deliberately a development proxy and must not be presented as perceived believability. Build/test execution against the branch still needs to be confirmed. The checked-in `Docs/test-results.json` is not automatically refreshed by these commits; run `./build/IS-2 --self-test` after building to regenerate it.
+
+- Added an SFML participant-study prototype under `Components/Study`, exposed through `--study`. It uses randomised A/B condition mapping, the same five scenarios in both conditions, participant feedback after each action, and four 1–5 questionnaire items per condition.
+- Participant-session Q-table learning is disabled. Feedback is supplied to the agent outcome path so the proposed condition can update memory and affect; questionnaire ratings are stored separately from reward.
+- Study output uses a random session code and is written under `artifacts/study/`, which is git-ignored. The output contains a condition key for analysis and must be treated as restricted research data.
+- This interface is a prototype, not an ethics-approved study instrument. Obtain supervisor/institutional approval, confirm the consent process and questionnaire, and pilot the full flow before collecting participant data.
+- Optional policy sharing remains unimplemented.
 
 ## Delivery order
 
@@ -38,6 +44,16 @@ This is a first headless experiment slice, not a complete participant study. The
 7. Add tests for reproducible seeded runs, baseline feature isolation, terminal updates, complete logs, and evaluation not mutating the policy.
 
 ### Phase 2 — Interaction UI and participant feedback
+
+Initial prototype added in `Components/Study/study.cpp`. Launch with:
+
+```sh
+./build/IS-2 --study --policy-dir artifacts/training --study-out artifacts/study
+```
+
+The UI requires trained Q-tables, presents A/B conditions in randomised order, reuses the same five scenario observations, gathers feedback (positive, neutral, negative, or no response), and asks for 1–5 ratings of believability, consistency, adaptability, and perceived continuity. The participant-facing label does not identify the agent type; the output's condition key maps A/B to baseline/proposed for analysis. Q-table learning is disabled during sessions to avoid online policy updates confounding the comparison. Participant feedback still updates the proposed agent's memory/affect through its normal outcome path.
+
+The JSON output is anonymous by design and stored under the git-ignored `artifacts/study/` directory. It includes scenario responses, ratings, and a condition key; keep these files restricted. This implementation does not replace institutional ethics approval or a supervisor-approved consent process. Pilot it with test data before collecting real responses.
 
 1. Build a user-facing interaction flow that can run either agent against the same bounded scenario.
 2. Keep participant questionnaire responses separate from training rewards and synthetic-user labels.
