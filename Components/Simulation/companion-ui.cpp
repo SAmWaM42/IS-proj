@@ -263,30 +263,29 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
 }
 
 void CompanionUI::drawCompanion(float x, float y) {
+    const std::vector<std::unique_ptr<sf::Texture>>* frames = &idleFrames;
+    if (latestProposedAction == "FETCH" || latestProposedAction == "WANDER") frames = &walkFrames;
+    else if (latestProposedAction == "SLEEP_LAY") frames = &sleepFrames;
+    else if (latestProposedAction == "BARK" || latestProposedAction == "ACT_CONFUSED") frames = &barkFrames;
+    else if (latestProposedAction == "NUZZLE" || latestProposedAction == "GREETING") frames = &sitFrames;
+    else if (latestProposedAction == "INSIST") frames = &layFrames;
+    if (!frames->empty()) {
+        const std::size_t index = animationActive ? static_cast<std::size_t>(animationFrame) % frames->size() : 0u;
+        sf::Sprite dog(*(*frames)[index]);
+        const auto size = (*frames)[index]->getSize();
+        const float scale = 72.0f / static_cast<float>(std::max(1u, size.y));
+        dog.setScale({scale, scale});
+        dog.setPosition({x, y});
+        window.draw(dog);
+        return;
+    }
     if (dogTextureLoaded) {
         const sf::Vector2u size = dogTexture.getSize();
         const unsigned int frameWidth = std::max(1u, size.x / 7u);
         const unsigned int frameHeight = std::max(1u, size.y / 4u);
-        // Dogs.png is arranged as seven columns by four pose/breed rows.
-        // Row 0 is a standing/walking cycle; row 1 is a lying/resting cycle.
-        // Rows 2-3 are alternate dog sprites, not action categories.
-        const bool resting = latestProposedAction == "SLEEP_LAY";
-        const unsigned int row = resting ? 1u : 0u;
-        // Only the walking and sleeping rows are genuine cycles in this sheet.
-        // Other actions use the first neutral frame rather than a false animation.
-        const unsigned int frameCount = 7u;
-        const bool animated = latestProposedAction == "FETCH" ||
-                              latestProposedAction == "WANDER" ||
-                              latestProposedAction == "SLEEP_LAY";
-        const unsigned int col = animated && animationActive
-            ? static_cast<unsigned int>(animationFrame) % frameCount : 0u;
         sf::Sprite dog(dogTexture);
-        dog.setTextureRect(sf::IntRect(
-            {static_cast<int>(std::min(col * frameWidth, size.x - 1)),
-             static_cast<int>(std::min(row * frameHeight, size.y - 1))},
-            {static_cast<int>(frameWidth), static_cast<int>(frameHeight)}));
-        const float targetHeight = 64.0f;
-        const float scale = targetHeight / static_cast<float>(frameHeight);
+        dog.setTextureRect(sf::IntRect({0, 0}, {static_cast<int>(frameWidth), static_cast<int>(frameHeight)}));
+        const float scale = 64.0f / static_cast<float>(frameHeight);
         dog.setScale({scale, scale});
         dog.setPosition({x, y});
         window.draw(dog);
