@@ -168,6 +168,19 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     const std::string dogSheet = "Data/Assets/DogMegaPackFree/DogMegaPackFree/Dogs.png";
     environmentTextureLoaded = environmentTexture.loadFromFile("Data/Assets/free version/free.png");
     if (environmentTextureLoaded) appendLog("Loaded backyard atlas (free.png)");
+    auto loadFrames = [](std::vector<std::unique_ptr<sf::Texture>>& frames, const std::vector<std::string>& files) {
+        for (const auto& file : files) {
+            auto texture = std::make_unique<sf::Texture>();
+            if (texture->loadFromFile("Data/Assets/white_dog_by_Brysia/" + file))
+                frames.push_back(std::move(texture));
+        }
+    };
+    loadFrames(idleFrames, {"idle1.png", "idle2.png", "idle3.png"});
+    loadFrames(walkFrames, {"walk1.png", "walk2.png", "walk3.png", "walk11.png", "walk12.png", "walk13.png"});
+    loadFrames(sitFrames, {"sit1.png", "sit2.png"});
+    loadFrames(layFrames, {"lay1.png", "lay2.png"});
+    loadFrames(sleepFrames, {"sleep1.png", "sleep2.png"});
+    loadFrames(barkFrames, {"bark1.png", "bark2.png"});
     dogTextureLoaded = dogTexture.loadFromFile(dogSheet);
     if (dogTextureLoaded) {
         const auto size = dogTexture.getSize();
