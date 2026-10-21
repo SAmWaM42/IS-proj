@@ -38,7 +38,7 @@ struct SurveyItem {
     int rating = 0;
 };
 
-const std::array<Scenario, 7> kScenarios{{
+const std::array<Scenario, 8> kScenarios{{
     {"You greet the companion after entering the yard.",
      EnvironmentObservation{0, 1, 0, 0, 0.55f}},
     {"You ask the companion to fetch a ball nearby.",
@@ -52,7 +52,9 @@ const std::array<Scenario, 7> kScenarios{{
     {"You offer the companion a bowl of food.",
      EnvironmentObservation{2, 0, 1, 0, 0.30f, true, false}},
     {"You invite the companion to play.",
-     EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true}}
+     EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true}},
+    {"You tell the companion to stop after an unwanted behaviour.",
+     EnvironmentObservation{0, 1, 2, 0, 0.45f}}
 }};
 
 const std::array<SurveyItem, 4> kSurveyTemplate{{
@@ -266,7 +268,9 @@ bool runParticipantStudy(const std::string& policyDirectory,
                         {"target_proximity", scenario.observation.target_proximity},
                         {"user_status", scenario.observation.user_status},
                         {"task_status", scenario.observation.task_status},
-                        {"signal_strength", scenario.observation.signal_strength}
+                        {"signal_strength", scenario.observation.signal_strength},
+                        {"food_available", scenario.observation.food_available},
+                        {"play_available", scenario.observation.play_available}
                     };
                     studyData["pending_trial"] = row;
                     screen = Screen::Feedback;
