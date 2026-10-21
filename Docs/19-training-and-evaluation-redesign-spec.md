@@ -65,7 +65,7 @@ Synthetic reward is a debugging and policy-learning measure, not a substitute fo
 
 **Required change:**
 - Define typed enums for intent, task state, proximity, user feedback and action. Avoid fragile magic integers and positional aggregate initialization. Use named builders or designated factory functions for observations.
-- Make reward and success metrics use one canonical task-feasibility/success predicate. A far target must not be counted as a successful fetch; if the dog appropriately declines or asks for clarification, that can receive a context-appropriate reward.
+- Make reward and success metrics use one canonical transition outcome. A far-but-reachable fetch may succeed only when the environment's sampled attempt succeeds; do not infer success solely from task status or proximity. Reserve hard masking for physically impossible conditions such as an explicitly unavailable target. Distance and energy should modulate effort and success probability rather than acting as arbitrary policy gates.
 - Remove unreachable branches and add tests that enumerate each supported combination, checking that every intended branch is reachable.
 - Use differentiated, justified reward components rather than arbitrary flat penalties. Keep the range bounded and document why each component exists. Include feasibility, user feedback, task outcome, social appropriateness, repeated unwanted action and drive changes as separate components where relevant.
 - Align docs and UI with the actual supported interaction vocabulary. Include greeting, fetch, disturbance, rest, play, praise, scolding/negative feedback, and feeding only if the environment and action set genuinely support them. Do not document an interaction as supported merely because its keyword is recognized.
