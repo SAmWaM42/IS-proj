@@ -32,7 +32,7 @@ namespace
         std::uniform_int_distribution<int> nearDist(0, 1);
         std::uniform_int_distribution<int> socialDist(0, 1);
         EnvironmentObservation observation;
-        switch (stepIndex % 8)
+        switch (stepIndex % 9)
         {
         case 0: // User initiates a social interaction.
             observation = {0, 1, socialDist(rng), 0, 0.45f};
@@ -55,8 +55,11 @@ namespace
         case 6: // Food is explicitly available.
             observation = {2, 0, 1, 0, 0.30f, true, false};
             break;
-        default: // The user explicitly invites play.
+        case 7: // The user explicitly invites play.
             observation = {0, 1, 1, 0, 0.70f, false, true};
+            break;
+        default: // The user rejects an unwanted behaviour.
+            observation = {0, 1, 2, 0, 0.45f};
             break;
         }
         return observation;
