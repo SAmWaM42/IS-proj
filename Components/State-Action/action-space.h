@@ -22,7 +22,9 @@ inline bool isActionValidForObservation(
     const std::string& action,
     const EnvironmentObservation& observation) {
     if (action == "FETCH")
-        return observation.task_status == 1 && observation.target_proximity <= 1;
+        // Distance affects effort/success in the environment; only an unavailable
+        // target is a hard physical constraint.
+        return observation.task_status == 1 && observation.target_proximity < 3;
     if (action == "NUZZLE")
         return observation.target_proximity == 0 && observation.user_status != 2;
     if (action == "GREETING")
