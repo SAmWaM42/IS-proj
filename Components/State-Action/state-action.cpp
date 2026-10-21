@@ -1619,6 +1619,38 @@ bool testOutcomeUsesExplicitNextObservation() {
            b.food_available && b.play_available && p.food_available && p.play_available;
 }
 
+bool testEnvironmentEnergyVisibleOnlyToProposedAgent() {
+    EnvironmentConfig config;
+    config.seed = 23;
+    const EnvironmentObservation observation{0, 1, 0, 0, 0.45f};
+    ActionOutcome highEnergy;
+    highEnergy.reward = 0.25f;
+    highEnergy.terminal = false;
+    highEnergy.outcome_tag = "energy_visibility_test";
+    highEnergy.energy_after = 0.9f;
+    ActionOutcome lowEnergy = highEnergy;
+    lowEnergy.energy_after = 0.1f;
+
+    BaselineAgent baselineHigh(config), baselineLow(config);
+    baselineHigh.setLearningEnabled(false);
+    baselineLow.setLearningEnabled(false);
+    const std::string baselineHighAction = baselineHigh.selectAction(observation);
+    const std::string baselineLowAction = baselineLow.selectAction(observation);
+    baselineHigh.applyOutcome(observation, baselineHighAction, highEnergy, observation);
+    baselineLow.applyOutcome(observation, baselineLowAction, lowEnergy, observation);
+
+    ProposedAgent proposedHigh(config), proposedLow(config);
+    proposedHigh.setLearningEnabled(false);
+    proposedLow.setLearningEnabled(false);
+    const std::string proposedHighAction = proposedHigh.selectAction(observation);
+    const std::string proposedLowAction = proposedLow.selectAction(observation);
+    proposedHigh.applyOutcome(observation, proposedHighAction, highEnergy, observation);
+    proposedLow.applyOutcome(observation, proposedLowAction, lowEnergy, observation);
+
+    return baselineHigh.getCurrentState().encode() == baselineLow.getCurrentState().encode() &&
+           proposedHigh.getCurrentState().encode() != proposedLow.getCurrentState().encode();
+}
+
 bool testNegativeFeedbackUpdatesAffectDimensions() {
     AffectiveState affect;
     const float arousalBefore = affect.arousal;
@@ -1644,6 +1676,7 @@ bool runBaselineValidation() {
     results.push_back({"Semantic preference survives intervening interactions", "PASS", testSemanticPreferenceSurvivesInterveningInteractions(), "memory"});
     results.push_back({"Memory confidence follows outcome history", "PASS", testProposedMemoryConfidenceTracksOutcome(), "memory"});
     results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
+    results.push_back({"Environment energy visible only to proposed agent", "PASS", testEnvironmentEnergyVisibleOnlyToProposedAgent(), "fairness"});
     results.push_back({"Negative feedback updates all affect dimensions", "PASS", testNegativeFeedbackUpdatesAffectDimensions(), "affect"});
     results.push_back({"Outcome uses explicit next observation", "PASS", testOutcomeUsesExplicitNextObservation(), "training"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
