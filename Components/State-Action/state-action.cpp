@@ -641,8 +641,11 @@ std::size_t state::encode() const {
         affect_trend);
     const int boundedTask = std::clamp(task_status, 0, 1);
     const int boundedSignal = std::clamp(signal_strength_bucket, 0, 2);
-    return (base * 2u + static_cast<std::size_t>(boundedTask)) * 3u +
-           static_cast<std::size_t>(boundedSignal);
+    const std::size_t withSignal =
+        (base * 2u + static_cast<std::size_t>(boundedTask)) * 3u +
+        static_cast<std::size_t>(boundedSignal);
+    return (withSignal * 2u + static_cast<std::size_t>(food_available)) * 2u +
+           static_cast<std::size_t>(play_available);
 }
 
 QTable::QTable(double learningRate, double discountFactor)
@@ -1141,6 +1144,8 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
     observedState.task_status = observation.task_status;
     observedState.signal_strength_bucket =
         observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
+    observedState.food_available = observation.food_available;
+    observedState.play_available = observation.play_available;
     current_state = observedState;
     session_context.current_action = q_policy.chooseAction(
         observedState, contextualAction(observation), validActionsForObservation(observation));
@@ -1169,6 +1174,8 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
     next_state.task_status = nextObservation.task_status;
     next_state.signal_strength_bucket =
         nextObservation.signal_strength < 0.33f ? 0 : (nextObservation.signal_strength < 0.67f ? 1 : 2);
+    next_state.food_available = nextObservation.food_available;
+    next_state.play_available = nextObservation.play_available;
 
     if (learning_enabled) {
         q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal, validActionsForObservation(nextObservation));
@@ -1257,6 +1264,8 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     current_state.task_status = observation.task_status;
     current_state.signal_strength_bucket =
         observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
+    current_state.food_available = observation.food_available;
+    current_state.play_available = observation.play_available;
 
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
@@ -1541,7 +1550,7 @@ bool testOutcomeUsesExplicitNextObservation() {
     baseline.setLearningEnabled(false);
     proposed.setLearningEnabled(false);
     const EnvironmentObservation current{0, 1, 0, 0, 0.45f};
-    const EnvironmentObservation next{1, 0, 1, 1, 0.90f};
+    const EnvironmentObservation next{1, 0, 1, 1, 0.90f, true, true};
     const std::string baselineAction = baseline.selectAction(current);
     const std::string proposedAction = proposed.selectAction(current);
     ActionOutcome outcome;
