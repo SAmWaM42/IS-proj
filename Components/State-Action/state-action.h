@@ -63,6 +63,8 @@ struct state
     int affect_trend = 0;
     int task_status = 0;
     int signal_strength_bucket = 1;
+    bool food_available = false;
+    bool play_available = false;
 
     std::size_t encode() const;
 };
