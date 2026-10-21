@@ -565,11 +565,7 @@ namespace
                     observation, transition.next_observation, observations[step + 1]);
             }
 
-            const auto actionIt = std::find(
-                companionActionSet().begin(), companionActionSet().end(), action);
-            const int actionId = actionIt == companionActionSet().end()
-                ? -1
-                : static_cast<int>(std::distance(companionActionSet().begin(), actionIt));
+            const int actionId = companionActionId(action);
             ActionOutcome outcome;
             outcome.action_id = actionId;
             outcome.reward = transition.reward;
