@@ -82,7 +82,6 @@ public:
 
     double getQValue(std::size_t state, std::string action) const;
     void update(std::size_t state, std::string action, double reward, std::size_t nextState, bool terminal = false);
-    std::string chooseAction(std::size_t state);
 
     void save(const std::string& filename);
     void load(const std::string& filename);
@@ -100,9 +99,6 @@ private:
 
     float getQValue(const state& stateRef, const std::string& action) const;
     void setQValue(const state& stateRef, const std::string& action, float value);
-    float getMaxQValue(const state& stateRef) const;
-    std::string getBestAction(const state& stateRef) const;
-    std::string getRandomAction(const state& stateRef) const;
 
 public:
     QLearning(float learning_rate, float discount_factor, float epsilon, unsigned int seed = 42);
