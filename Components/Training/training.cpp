@@ -306,6 +306,18 @@ namespace
                sniffWithoutRequest > sniffDuringRequest;
     }
 
+    bool testSuccessfulFetchAdvancesContext()
+    {
+        const EnvironmentObservation activeRequest{1, 1, 1, 1, 0.82f};
+        const EnvironmentObservation successfulFetch{1, 0, 1, 0, 0.82f};
+        const EnvironmentObservation pendingFollowUp{1, 1, 1, 1, 0.82f};
+        const EnvironmentObservation next = mergeTaskTransition(
+            activeRequest, successfulFetch, pendingFollowUp);
+        return next.goal_state == 0 && next.task_status == 0 &&
+               next.user_status == 0 && next.target_proximity == 0 &&
+               next.signal_strength == 0.72f;
+    }
+
     bool testEnvironmentActionTransitions()
     {
         EnvironmentObservation farRequest{1, 2, 1, 1, 0.56f};
@@ -445,9 +457,14 @@ namespace
             metrics.steps = static_cast<int>(step + 1);
             metrics.completed = metrics.completed || transition.completed;
             ++metrics.action_counts[action];
-            ++metrics.stimulus_checks;
-            if (stimulusResponseAligned(action, observation))
-                ++metrics.stimulus_aligned_actions;
+            // Do not count the intentionally taskless post-completion context
+            // as evidence of a response to an active fetch request.
+            if (observation.goal_state != 1 || observation.task_status == 1)
+            {
+                ++metrics.stimulus_checks;
+                if (stimulusResponseAligned(action, observation))
+                    ++metrics.stimulus_aligned_actions;
+            }
 
             nlohmann::json row;
             row["agent"] = agentName;
@@ -674,8 +691,10 @@ bool runTrainingSelfTests()
     const bool transitionsPassed = testEnvironmentActionTransitions();
     const bool retryPassed = testPersistentFetchRetryAndCompletionCredit();
     const bool taskPriorityPassed = testTaskPriorityReward();
+    const bool completionContextPassed = testSuccessfulFetchAdvancesContext();
     std::cout << "Action-dependent environment transitions: " << (transitionsPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
-    return transitionsPassed && retryPassed && taskPriorityPassed;
+    std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
+    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed;
 }
