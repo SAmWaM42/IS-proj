@@ -1173,7 +1173,7 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
         session_context.current_intent,
         proximityFromValue(observation.target_proximity),
         Level::MEDIUM, // Baseline does not observe the environment's hidden energy variable.
-        Level::MEDIUM,
+        levelFromValue(session_context.stress_level),
         Level::MEDIUM,
         Level::LOW,
         observation.user_status,
@@ -1204,7 +1204,7 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
         nextObservation.goal_state,
         proximityFromValue(nextObservation.target_proximity),
         Level::MEDIUM, // Do not leak hidden environment energy into the baseline state.
-        Level::MEDIUM,
+        levelFromValue(std::max(0, session_context.stress_level + (outcome.reward < 0.0f ? 1 : 0))),
         Level::MEDIUM,
         Level::LOW,
         nextObservation.user_status,
