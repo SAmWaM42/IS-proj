@@ -289,7 +289,7 @@ bool runParticipantStudy(const std::string& policyDirectory,
                     ActionOutcome outcome;
                     outcome.action_id = static_cast<int>(scenarioIndex);
                     outcome.reward = reward;
-                    outcome.terminal = scenarioIndex + 1 == kScenarios.size();
+                    outcome.terminated = scenarioIndex + 1 == kScenarios.size();
                     outcome.outcome_tag = "participant_" + feedbackLabel(feedbackKey);
                     const std::string action = studyData["pending_trial"]["action_internal"].get<std::string>();
                     // "No response" is missing feedback, not a neutral judgement.
