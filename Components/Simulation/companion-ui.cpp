@@ -586,7 +586,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
                                          {"response_required", false}, {"response_action", "NONE"},
                                          {"candidate_association", "unresolved"}};
             std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
-            if (log) log << row.dump() << '\\n';
+            if (log) log << row.dump() << '\n';
             else appendLog("WARNING: interaction event log could not be written.");
             saveSession();
             return;
@@ -646,7 +646,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             };
             row["learning_update_enabled"] = false;
             std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
-            if (log) log << row.dump() << '\\n';
+            if (log) log << row.dump() << '\n';
             else appendLog("WARNING: interaction event log could not be written.");
             saveSession();
             return;
@@ -675,7 +675,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
                                      {"response_required", false}, {"response_action", "NONE"}};
         row["learning_update_enabled"] = false;
         std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
-        if (log) log << row.dump() << '\\n';
+        if (log) log << row.dump() << '\n';
         else appendLog("WARNING: interaction event log could not be written.");
         saveSession();
         return;
