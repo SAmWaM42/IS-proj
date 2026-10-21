@@ -1566,7 +1566,8 @@ bool testOutcomeUsesExplicitNextObservation() {
     return b.encoded_user_input == static_cast<float>(next.goal_state) &&
            p.encoded_user_input == static_cast<float>(next.goal_state) &&
            b.task_status == next.task_status && p.task_status == next.task_status &&
-           b.signal_strength_bucket == 2 && p.signal_strength_bucket == 2;
+           b.signal_strength_bucket == 2 && p.signal_strength_bucket == 2 &&
+           b.food_available && b.play_available && p.food_available && p.play_available;
 }
 
 bool testNegativeFeedbackUpdatesAffectDimensions() {
