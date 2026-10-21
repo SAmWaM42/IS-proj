@@ -872,6 +872,18 @@ bool testActionMaskUsesOnlyObservableAvailability() {
     if (companionActionSet().size() != 14) return false;
 
     const EnvironmentObservation ordinary{1, 1, 1, 1, 0.85f};
+    state ordinaryState = makeState(1, distance::CLOSE, Level::MEDIUM, Level::LOW,
+                                    Level::MEDIUM, Level::LOW, 1, 0.0f);
+    state foodState = ordinaryState;
+    foodState.food_available = true;
+    state playState = ordinaryState;
+    playState.play_available = true;
+    if (ordinaryState.encode() == foodState.encode() ||
+        ordinaryState.encode() == playState.encode() ||
+        foodState.encode() == playState.encode()) {
+        return false;
+    }
+
     const auto ordinaryActions = validActionsForObservation(ordinary);
     if (std::find(ordinaryActions.begin(), ordinaryActions.end(), "FETCH") == ordinaryActions.end() ||
         std::find(ordinaryActions.begin(), ordinaryActions.end(), "EAT") != ordinaryActions.end() ||
