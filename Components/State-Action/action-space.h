@@ -37,7 +37,7 @@ inline bool isActionValidForObservation(
     if (action == "INSIST")
         return observation.task_status == 1 && observation.user_status == 0;
     if (action == "APPROACH_FOLLOW")
-        return observation.target_proximity > 0 && observation.user_status != 2;
+        return observation.target_proximity > 0 && observation.target_proximity < 3 && observation.user_status != 2;
     if (action == "SNIFF")
         return observation.target_proximity <= 1;
     if (action == "WHINE")
