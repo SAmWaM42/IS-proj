@@ -250,7 +250,6 @@ bool runTrainingExperiment(const std::string &mode,
     }
 
     EnvironmentConfig config;
-    config.max_steps = steps;
     config.seed = static_cast<int>(seed);
     BaselineAgent baseline(config);
     ProposedAgent proposed(config);
