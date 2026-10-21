@@ -36,15 +36,8 @@ enum class Level
 };
 
 struct EnvironmentConfig {
-    int width = 960;
-    int height = 600;
-    int max_steps = 100;
     int seed = 42;
     std::vector<std::string> actions = companionActionSet();
-    float reward_positive = 1.0f;
-    float reward_negative = -1.0f;
-    float reward_neutral = 0.0f;
-    bool allow_user_stimulus = true;
 };
 
 using ActionOutcome = ActionResult;
