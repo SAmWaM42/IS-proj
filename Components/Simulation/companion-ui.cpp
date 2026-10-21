@@ -547,9 +547,49 @@ void CompanionUI::processTextInteraction(const std::string& text) {
         else if (lower.find("sound") != std::string::npos || lower.find("noise") != std::string::npos ||
                  lower.find("bark") != std::string::npos) object = "sound";
         else if (lower.find("rest") != std::string::npos || lower.find("sleep") != std::string::npos) object = "rest";
+        else {
+            std::size_t relationStart = std::string::npos;
+            std::size_t relationLength = 0;
+            for (const std::string& marker : {std::string("like"), std::string("love"),
+                                              std::string("prefer"), std::string("hate"),
+                                              std::string("dislike")}) {
+                const std::size_t found = lower.find(marker);
+                if (found != std::string::npos && (relationStart == std::string::npos || found < relationStart)) {
+                    relationStart = found;
+                    relationLength = marker.size();
+                }
+            }
+            if (relationStart != std::string::npos) {
+                object = lower.substr(relationStart + relationLength);
+                while (!object.empty() && !std::isalnum(static_cast<unsigned char>(object.front()))) object.erase(object.begin());
+                while (!object.empty() && !std::isalnum(static_cast<unsigned char>(object.back()))) object.pop_back();
+                for (const std::string& article : {std::string("the "), std::string("a "), std::string("an ")}) {
+                    if (object.rfind(article, 0) == 0) { object.erase(0, article.size()); break; }
+                }
+                if (object.size() > 80) object.resize(80);
+            }
+        }
 
         if (object.empty()) {
-            appendLog("Statement recorded for review; no supported preference object was identified.");
+            ++interactionCount;
+            appendLog("You: " + text + " [preference statement; object unresolved; no action selected]");
+            nlohmann::json row;
+            row["schema_version"] = 2;
+            row["run_id"] = runId;
+            row["interaction_id"] = interactionCount;
+            row["sequence_index"] = interactionCount - 1;
+            row["timestamp"] = utcTimestamp();
+            row["processing_status"] = "statement_object_unresolved";
+            row["condition_code"] = std::string(1, selectedAgentCode);
+            row["input_summary"] = text;
+            row["utterance_analysis"] = {{"kind", "preference_statement"}, {"memory_updated", false},
+                                         {"response_required", false}, {"response_action", "NONE"},
+                                         {"candidate_association", "unresolved"}};
+            std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+            if (log) log << row.dump() << '\\n';
+            else appendLog("WARNING: interaction event log could not be written.");
+            saveSession();
+            return;
         } else {
             const std::string relation = explicitDislike ? "dislikes" : "likes";
             proposed.recordUserStatement(relation, object);
@@ -558,7 +598,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             std::string associationReason = "No recent matching action or event was found.";
             float associationConfidence = 0.0f;
             const bool hasPriorAction = interactionCount > 0 && lastActionInteractionId > 0 &&
-                interactionCount - lastActionInteractionId <= 1;
+                interactionCount == lastActionInteractionId;
             const bool mentionsSound = object == "sound";
             const bool mentionsBall = object == "ball";
             const bool mentionsRest = object == "rest";
