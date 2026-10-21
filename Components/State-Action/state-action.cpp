@@ -445,9 +445,23 @@ bool testContextualFallbackMatchesIntent() {
     const bool proposedPlayOk = proposed.selectAction(play) == "PLAY";
     const bool proposedRejectionOk = proposed.selectAction(rejection) == "HIDE_AVOID";
 
+    EnvironmentObservation feedingTimeRequest;
+    feedingTimeRequest.goal_state = 1; feedingTimeRequest.user_status = 1;
+    feedingTimeRequest.target_proximity = 1; feedingTimeRequest.task_status = 1;
+    feedingTimeRequest.signal_strength = 0.56f; feedingTimeRequest.food_available = true;
+    AffectiveState tired;
+    tired.energy = AffectEnergy::LOW;
+    tired.stress = 0.20f;
+    AffectiveState overwhelmed;
+    overwhelmed.energy = AffectEnergy::MODERATE;
+    overwhelmed.stress = 0.90f;
+    const bool tiredAgentEats = contextualAction(feedingTimeRequest, &tired) == "EAT";
+    const bool overwhelmedAgentRests = contextualAction(feedingTimeRequest, &overwhelmed) == "SLEEP_LAY";
+
     return greetingOk && requestOk && disturbanceOk && restOk &&
            foodOk && playOk && rejectionOk &&
-           proposedFoodOk && proposedPlayOk && proposedRejectionOk;
+           proposedFoodOk && proposedPlayOk && proposedRejectionOk &&
+           tiredAgentEats && overwhelmedAgentRests;
 }
 
 bool testProposedAgentAdaptsAfterNegativeFeedback() {
