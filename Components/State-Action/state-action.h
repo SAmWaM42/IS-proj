@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "Components/Memory/memory.h"
+#include "Components/State-Action/action-space.h"
 
 enum class InputType
 {
@@ -40,16 +41,7 @@ struct EnvironmentConfig {
     int height = 600;
     int max_steps = 100;
     int seed = 42;
-    std::vector<std::string> actions = {
-        "FETCH",
-        "WANDER",
-        "BARK",
-        "ACT_CONFUSED",
-        "SLEEP_LAY",
-        "NUZZLE",
-        "INSIST",
-        "GREETING"
-    };
+    std::vector<std::string> actions = companionActionSet();
     float reward_positive = 1.0f;
     float reward_negative = -1.0f;
     float reward_neutral = 0.0f;
@@ -74,24 +66,6 @@ struct state
     int signal_strength_bucket = 1;
 
     std::size_t encode() const;
-};
-
-class base_action
-{
-public:
-    virtual ~base_action() = default;
-    virtual void act() = 0;
-};
-
-class complex_action
-{
-public:
-    std::string action_tag;
-    std::unique_ptr<base_action> internal_current_action;
-    virtual ~complex_action() = default;
-    virtual void act(std::vector<base_action> included_actions,
-                    std::vector<std::string> action_order,
-                    void* mem) = 0;
 };
 
 class QTable
@@ -136,6 +110,8 @@ public:
     void setActions(const std::vector<std::string>& actions);
     std::string chooseAction(const state& stateRef) const;
     std::string chooseAction(const state& stateRef, const std::string& contextualFallback) const;
+    std::string chooseAction(const state& stateRef, const std::string& contextualFallback,
+                             const std::vector<std::string>& validActions) const;
     void update(const state& current_state, const std::string& action, float reward, const state& next_state, bool terminal = false);
 
     void setEpsilon(float epsilon);
@@ -143,7 +119,6 @@ public:
 
     void loadQTable(const std::string& path);
     void saveQTable(const std::string& path);
-    void loadTrainingData(const std::string& path);
 };
 
 class BaselineAgent {
