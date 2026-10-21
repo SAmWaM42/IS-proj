@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-21T10:57:04Z",
+  "generated_at": "2026-10-21T13:05:43Z",
   "project": "IS-2",
   "status": "PASS",
   "summary": {
     "failed": 0,
-    "passed": 26,
-    "total": 26
+    "passed": 27,
+    "total": 27
   },
   "tests": [
     {
@@ -35,6 +35,12 @@
     {
       "category": "state",
       "name": "Task and signal state encoding",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "state",
+      "name": "State encoding has no memory radix collisions",
       "passed": true,
       "status": "PASS"
     },

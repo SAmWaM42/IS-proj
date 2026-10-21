@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <unordered_set>
 #include <vector>
 
 namespace {
@@ -189,9 +190,17 @@ std::size_t mixEncode(const std::map<std::string, distance>& environmentConditio
 
     const std::size_t base =
         (((((((((intent * 4 + proximity) * 4 + userStatus) * 4 + energyIdx) * 4 + stressIdx) * 4 + curiosityIdx) * 4 + attachmentIdx) * 3 + valenceIdx) * 3 + affectEnergyIdx) * 3 + arousalIdx) * 3 + engagementIdx;
-    const std::size_t encoded = (base * 3 + static_cast<std::size_t>(memoryBias)) * 3 + static_cast<std::size_t>(affectTrend);
+    const int boundedMemoryBias = std::clamp(memoryBias, 0, 2);
+    const int boundedAffectTrend = std::clamp(affectTrend, 0, 2);
+    const std::size_t encoded =
+        (base * 3u + static_cast<std::size_t>(boundedMemoryBias)) * 3u +
+        static_cast<std::size_t>(boundedAffectTrend);
 
-    return encoded + static_cast<std::size_t>(std::round(memory));
+    // Memory is its own bounded radix digit. Adding it to the finished key
+    // could make it collide with a neighbouring affect-trend value.
+    const float boundedMemory = std::isfinite(memory) ? std::clamp(memory, 0.0f, 2.0f) : 0.0f;
+    const int memorySignal = std::clamp(static_cast<int>(std::lround(boundedMemory)), 0, 2);
+    return encoded * 3u + static_cast<std::size_t>(memorySignal);
 }
 
 bool testBasicQUpdate() {
@@ -569,6 +578,41 @@ bool testTaskAndSignalAreEncoded() {
            base.encode() != signalVariant.encode() &&
            base.encode() != proximityVariant.encode();
 }
+bool testStateEncodingHasNoMemoryRadixCollisions() {
+    std::unordered_set<std::size_t> encodedStates;
+    const state base = makeState(
+        0, distance::CLOSE, Level::LOW, Level::LOW, Level::LOW, Level::LOW, 0, 0.0f);
+
+    // Exhaustively vary the memory/affect summary digits and the trailing
+    // environment dimensions while holding the remaining state fields fixed.
+    for (int memory = 0; memory <= 2; ++memory) {
+        for (int memoryBias = 0; memoryBias <= 2; ++memoryBias) {
+            for (int affectTrend = 0; affectTrend <= 2; ++affectTrend) {
+                for (int task = 0; task <= 1; ++task) {
+                    for (int signal = 0; signal <= 2; ++signal) {
+                        for (int food = 0; food <= 1; ++food) {
+                            for (int play = 0; play <= 1; ++play) {
+                                state candidate = base;
+                                candidate.memory = static_cast<float>(memory);
+                                candidate.memory_bias = memoryBias;
+                                candidate.affect_trend = affectTrend;
+                                candidate.task_status = task;
+                                candidate.signal_strength_bucket = signal;
+                                candidate.food_available = food != 0;
+                                candidate.play_available = play != 0;
+                                if (!encodedStates.insert(candidate.encode()).second) {
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return encodedStates.size() == 648u;
+}
+
 bool testPersistence() {
     const std::filesystem::path savePath = std::filesystem::temp_directory_path() / "is2_qtable_test.txt";
 
@@ -1822,6 +1866,7 @@ bool runBaselineValidation() {
     results.push_back({"Unseen state handling", "PASS", testUnseenStateHandling(), "baseline"});
     results.push_back({"Intent-appropriate fallback actions", "PASS", testContextualFallbackMatchesIntent(), "policy"});
     results.push_back({"Task and signal state encoding", "PASS", testTaskAndSignalAreEncoded(), "state"});
+    results.push_back({"State encoding has no memory radix collisions", "PASS", testStateEncodingHasNoMemoryRadixCollisions(), "state"});
     results.push_back({"Proposed agent adapts after negative feedback", "PASS", testProposedAgentAdaptsAfterNegativeFeedback(), "affect"});
     results.push_back({"Proposed agent avoids rejected action", "PASS", testProposedAgentAvoidsRejectedAction(), "memory"});
     results.push_back({"Memory retention after intervening interactions", "PASS", testMemoryRetentionAfterInterveningInteractions(), "memory"});
