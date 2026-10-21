@@ -286,12 +286,12 @@ bool runParticipantStudy(const std::string& policyDirectory,
                 if (feedbackKey != 0) {
                     const Scenario& scenario = kScenarios[scenarioIndex];
                     const float reward = feedbackReward(feedbackKey);
+                    const std::string action = studyData["pending_trial"]["action_internal"].get<std::string>();
                     ActionOutcome outcome;
-                    outcome.action_id = static_cast<int>(scenarioIndex);
+                    outcome.action_id = companionActionId(action);
                     outcome.reward = reward;
                     outcome.terminated = scenarioIndex + 1 == kScenarios.size();
                     outcome.outcome_tag = "participant_" + feedbackLabel(feedbackKey);
-                    const std::string action = studyData["pending_trial"]["action_internal"].get<std::string>();
                     // "No response" is missing feedback, not a neutral judgement.
                     // Preserve it in the study record but do not update either agent.
                     const bool responseObserved = feedbackKey != 4;
@@ -303,6 +303,7 @@ bool runParticipantStudy(const std::string& policyDirectory,
                         }
                     }
                     nlohmann::json row = studyData["pending_trial"];
+                    row["action_id"] = outcome.action_id;
                     row["participant_response"] = feedbackLabel(feedbackKey);
                     row["participant_response_code"] = feedbackKey;
                     row["response_observed"] = responseObserved;
