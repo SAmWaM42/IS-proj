@@ -422,7 +422,46 @@ bool testContextualFallbackMatchesIntent() {
     EnvironmentObservation rest = disturbance;
     rest.signal_strength = 0.20f;
     const bool restOk = agent.selectAction(rest) == "SLEEP_LAY";
-    return greetingOk && requestOk && disturbanceOk && restOk;
+
+    EnvironmentObservation food;
+    food.goal_state = 2; food.user_status = 1; food.target_proximity = 0;
+    food.task_status = 0; food.signal_strength = 0.30f; food.food_available = true;
+    const bool foodOk = agent.selectAction(food) == "EAT";
+
+    EnvironmentObservation play;
+    play.goal_state = 0; play.user_status = 1; play.target_proximity = 1;
+    play.task_status = 0; play.signal_strength = 0.70f; play.play_available = true;
+    const bool playOk = agent.selectAction(play) == "PLAY";
+
+    EnvironmentObservation rejection;
+    rejection.goal_state = 0; rejection.user_status = 2; rejection.target_proximity = 1;
+    rejection.task_status = 0; rejection.signal_strength = 0.45f;
+    const bool rejectionOk = agent.selectAction(rejection) == "HIDE_AVOID";
+
+    ProposedAgent proposed(config);
+    proposed.setExplorationRate(0.0f);
+    proposed.setLearningEnabled(false);
+    const bool proposedFoodOk = proposed.selectAction(food) == "EAT";
+    const bool proposedPlayOk = proposed.selectAction(play) == "PLAY";
+    const bool proposedRejectionOk = proposed.selectAction(rejection) == "HIDE_AVOID";
+
+    EnvironmentObservation feedingTimeRequest;
+    feedingTimeRequest.goal_state = 1; feedingTimeRequest.user_status = 1;
+    feedingTimeRequest.target_proximity = 1; feedingTimeRequest.task_status = 1;
+    feedingTimeRequest.signal_strength = 0.56f; feedingTimeRequest.food_available = true;
+    AffectiveState tired;
+    tired.energy = AffectEnergy::LOW;
+    tired.stress = 0.20f;
+    AffectiveState overwhelmed;
+    overwhelmed.energy = AffectEnergy::MODERATE;
+    overwhelmed.stress = 0.90f;
+    const bool tiredAgentEats = contextualAction(feedingTimeRequest, &tired) == "EAT";
+    const bool overwhelmedAgentRests = contextualAction(feedingTimeRequest, &overwhelmed) == "SLEEP_LAY";
+
+    return greetingOk && requestOk && disturbanceOk && restOk &&
+           foodOk && playOk && rejectionOk &&
+           proposedFoodOk && proposedPlayOk && proposedRejectionOk &&
+           tiredAgentEats && overwhelmedAgentRests;
 }
 
 bool testProposedAgentAdaptsAfterNegativeFeedback() {
@@ -1072,6 +1111,20 @@ namespace {
 std::string contextualAction(const EnvironmentObservation& observation,
                              const AffectiveState* affect = nullptr,
                              const std::vector<record>* memories = nullptr) {
+    // For unseen states, choose a fallback that balances available resources
+    // against the proposed agent's affective condition rather than always eating
+    // or playing whenever an affordance is present.
+    if (affect != nullptr &&
+        (affect->stress >= 0.80f ||
+         (affect->energy == AffectEnergy::LOW && !observation.food_available)))
+    {
+        if (observation.goal_state != 2 || observation.signal_strength < 0.80f)
+            return "SLEEP_LAY";
+    }
+    if (observation.food_available) return "EAT";
+    if (observation.play_available && observation.user_status != 2) return "PLAY";
+    if (observation.goal_state == 0 && observation.user_status == 2) return "HIDE_AVOID";
+
     // Explicit semantic preferences are consulted before generic fallbacks.
     if (memories != nullptr) {
         for (auto it = memories->rbegin(); it != memories->rend(); ++it) {
@@ -1355,7 +1408,8 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     for (auto it = memory_records.rbegin(); it != memory_records.rend(); ++it) {
         if (it->confidence < 0.4f) continue;
         if (observation.goal_state == 1 && observation.task_status == 1 &&
-            observation.target_proximity <= 1 && it->raw_fact.object == "FETCH") {
+            observation.target_proximity <= 1 && it->raw_fact.object == "FETCH" &&
+            affective_state.energy != AffectEnergy::LOW && affective_state.stress < 0.80f) {
             if (it->raw_fact.relation == "prefers_action") selected = "FETCH";
             else if (it->raw_fact.relation == "dislikes_action") selected = "ACT_CONFUSED";
             if (it->raw_fact.relation == "prefers_action" || it->raw_fact.relation == "dislikes_action") break;

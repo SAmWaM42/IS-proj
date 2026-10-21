@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <set>
 #include <vector>
+#include <utility>
 
 namespace
 {
@@ -19,6 +20,10 @@ namespace
         float total_reward = 0.0f;
         int steps = 0;
         bool completed = false;
+        int stimulus_checks = 0;
+        int stimulus_aligned_actions = 0;
+        std::map<std::string, int> stimulus_checks_by_type;
+        std::map<std::string, int> stimulus_aligned_by_type;
         std::map<std::string, int> action_counts;
         std::set<std::size_t> visited_states;
     };
@@ -32,7 +37,7 @@ namespace
         std::uniform_int_distribution<int> nearDist(0, 1);
         std::uniform_int_distribution<int> socialDist(0, 1);
         EnvironmentObservation observation;
-        switch (stepIndex % 13)
+        switch (stepIndex % 14)
         {
         case 0: // User initiates a social interaction.
             observation = {0, 1, socialDist(rng), 0, 0.45f};
@@ -70,8 +75,11 @@ namespace
         case 11: // The user rejects an unwanted behaviour.
             observation = {0, 1, 2, 0, 0.45f};
             break;
-        default: // A task is pending but the user has not responded.
+        case 12: // A task is pending but the user has not responded.
             observation = {1, 1, 0, 1, 0.82f};
+            break;
+        default: // Fetch is requested during feeding time: the ball and food coexist.
+            observation = {1, 1, 1, 1, 0.56f, true, false};
             break;
         }
         return observation;
@@ -82,93 +90,164 @@ namespace
         EnvironmentObservation next_observation;
         float reward = 0.0f;
         float energy_after = 0.8f;
+        float stress_after = 0.2f;
+        float user_satisfaction_after = 0.5f;
         bool completed = false;
     };
 
+    struct ActionProfile
+    {
+        float fetch;
+        float food;
+        float play;
+        float social;
+        float disturbance;
+        float rest;
+        float rejection;
+        float energyRelief;
+        float stressRelief;
+        float curiosityRelief;
+    };
+
+    const ActionProfile &actionProfileFor(const std::string &action)
+    {
+        // Profiles express broad affordances and drive effects. They are not a
+        // scenario-to-correct-action lookup table.
+        static const std::map<std::string, ActionProfile> profiles = {
+            {"FETCH",           { 1.00f, -0.40f, -0.10f, -0.40f, -0.90f, -0.80f, -0.70f, -0.40f, -0.20f, -0.20f}},
+            {"APPROACH_FOLLOW", { 0.65f, -0.20f,  0.50f,  0.55f, -0.30f, -0.20f, -0.80f, -0.15f, -0.10f,  0.10f}},
+            {"EAT",             {-0.15f,  1.00f, -0.20f, -0.10f, -0.70f,  0.20f, -0.30f,  0.55f,  0.05f,  0.00f}},
+            {"SLEEP_LAY",       {-0.25f, -0.20f, -0.35f, -0.25f, -0.90f,  1.00f,  0.25f,  0.60f,  3.00f, -0.15f}},
+            {"PLAY",            { 0.05f, -0.25f,  1.00f,  0.60f, -0.65f, -0.50f, -0.40f, -0.20f, -0.45f,  0.40f}},
+            {"SNIFF",           {-0.85f, -0.55f, -0.25f, -0.35f, -0.80f,  0.15f, -0.55f, -0.10f, -0.10f,  0.35f}},
+            {"INSIST",          { 0.35f, -0.40f, -0.40f, -0.30f, -0.60f, -0.70f, -1.00f, -0.10f, -0.30f,  0.00f}},
+            {"HIDE_AVOID",      {-0.45f, -0.30f, -0.60f, -0.30f,  0.85f,  0.10f,  0.95f,  0.05f,  0.70f, -0.10f}},
+            {"WHINE",           {-0.25f, -0.20f, -0.25f, -0.10f,  0.35f, -0.20f,  0.50f, -0.10f,  0.20f, -0.10f}},
+            {"BARK",            {-0.45f, -0.20f, -0.20f, -0.25f,  0.60f, -0.40f, -0.10f, -0.10f,  0.10f,  0.00f}},
+            {"ACT_CONFUSED",    {-0.10f, -0.10f, -0.10f,  0.10f,  0.70f,  0.10f,  0.40f,  0.00f,  0.40f,  0.10f}},
+            {"GREETING",        {-0.20f, -0.10f,  0.40f,  1.00f, -0.30f, -0.30f, -0.50f, -0.10f, -0.10f,  0.10f}},
+            {"NUZZLE",          {-0.25f, -0.10f,  0.45f,  0.90f, -0.40f, -0.30f, -0.60f, -0.10f, -0.10f,  0.10f}},
+            {"WANDER",          {-0.30f, -0.10f,  0.15f,  0.10f, -0.20f,  0.50f, -0.30f,  0.10f,  0.10f,  0.35f}}
+        };
+        static const ActionProfile fallback{-0.10f, -0.10f, -0.10f, 0.0f, -0.10f, 0.0f, -0.10f, 0.0f, 0.0f, 0.0f};
+        const auto it = profiles.find(action);
+        return it == profiles.end() ? fallback : it->second;
+    }
+
+    float actionContextFit(const std::string &action,
+                           const EnvironmentObservation &observation,
+                           float energy,
+                           float stress)
+    {
+        const ActionProfile &profile = actionProfileFor(action);
+        float weightedFit = 0.0f;
+        float totalWeight = 0.0f;
+        const auto addCue = [&](float weight, float fit) {
+            weightedFit += weight * fit;
+            totalWeight += weight;
+        };
+
+        if (observation.goal_state == 1 && observation.task_status == 1)
+            addCue(1.00f, profile.fetch);
+        if (observation.food_available)
+            addCue(0.80f, profile.food);
+        if (observation.play_available)
+            addCue(0.70f, profile.play);
+        if (observation.goal_state == 0 && observation.user_status != 2)
+            addCue(0.55f, profile.social);
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+            addCue(0.95f, profile.disturbance);
+        if (observation.goal_state == 2 && observation.task_status == 0 &&
+            observation.signal_strength < 0.80f)
+            addCue(0.45f, profile.rest);
+        if (observation.user_status == 2)
+            addCue(0.90f, profile.rejection);
+
+        const float contextualFit = totalWeight > 0.0f
+            ? weightedFit / totalWeight
+            : 0.25f * profile.curiosityRelief;
+        const float energyDrive = std::clamp(1.0f - energy, 0.0f, 1.0f);
+        const float stressDrive = std::clamp(stress, 0.0f, 1.0f);
+        const float driveFit = 0.30f * profile.energyRelief * energyDrive +
+                               0.30f * profile.stressRelief * stressDrive +
+                               0.10f * profile.curiosityRelief;
+        return std::clamp(contextualFit + driveFit, -1.0f, 1.0f);
+    }
+
     float rewardFor(const std::string &action,
                     const EnvironmentObservation &observation,
-                    bool fetchSucceeded)
+                    bool fetchSucceeded,
+                    float energyBefore = 0.8f,
+                    float stressBefore = 0.2f,
+                    float userSatisfaction = 0.5f)
     {
-        // External task/social reward is shared by both agents. Energy and effort
-        // are environment variables; only the proposed policy observes energy.
-        if (action == "EAT") return observation.food_available ? 0.80f : -0.50f;
-        if (action == "PLAY") return observation.play_available ? 0.65f : -0.40f;
-        if (action == "WHINE") return observation.user_status == 2 ? 0.35f : -0.15f;
-        if (action == "HIDE_AVOID")
-            return (observation.user_status == 2 || observation.signal_strength >= 0.90f) ? 0.45f : -0.10f;
-        if (action == "APPROACH_FOLLOW")
-            return observation.user_status != 2 ? 0.20f : -0.20f;
-        if (action == "SNIFF")
-            return observation.target_proximity <= 1 ? 0.30f : -0.05f;
+        const float energy = std::clamp(energyBefore, 0.0f, 1.0f);
+        const float stress = std::clamp(stressBefore, 0.0f, 1.0f);
+        const float satisfaction = std::clamp(userSatisfaction, 0.0f, 1.0f);
+        const float fit = actionContextFit(action, observation, energy, stress);
 
-        float reward = -0.10f;
-        switch (observation.goal_state)
+        float driveRelief = 0.0f;
+        if (action == "EAT" && observation.food_available)
+            driveRelief = 0.18f + 0.42f * (1.0f - energy);
+        else if (action == "SLEEP_LAY")
+            driveRelief = 0.28f * (1.0f - energy) + 0.45f * stress;
+        else if (action == "PLAY" && observation.play_available)
+            driveRelief = 0.12f * energy - 0.10f * stress;
+        else if (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2 &&
+                 observation.task_status == 1)
+            driveRelief = 0.08f;
+
+        // Compliance is rewarded only on successful completion. Deviation itself
+        // is not punished; the separate user-response term models disappointment.
+        const float complianceBonus =
+            observation.goal_state == 1 && observation.task_status == 1 &&
+            action == "FETCH" && fetchSucceeded ? 0.62f : 0.0f;
+
+        float userResponse = 0.0f;
+        if (observation.goal_state == 1 && observation.task_status == 1 && !fetchSucceeded)
         {
-        case 0:
-            if (action == "GREETING")
-                reward += observation.user_status == 0 ? 0.85f : 0.65f;
-            else if (action == "NUZZLE")
-                reward += observation.target_proximity == 0 && observation.user_status != 2 ? 0.75f : -0.20f;
-            else if (action == "BARK")
-                reward -= 0.30f;
-            else if (action == "FETCH" || action == "INSIST")
-                reward -= 0.45f;
-            else if (action == "WANDER")
-                reward -= 0.10f;
-            break;
-        case 1:
-            if (action == "FETCH")
-            {
-                if (observation.task_status != 1) reward -= 0.55f;
-                else if (fetchSucceeded)
-                    // Explicit task-completion credit should outweigh short-term
-                    // distractors such as SNIFF when a fetch was requested.
-                    reward += 0.75f + observation.signal_strength * 0.10f + 0.35f;
-                else reward -= 0.20f;
-            }
-            else if (action == "APPROACH_FOLLOW")
-                reward += observation.task_status == 1 ? 0.20f : -0.20f;
-            else if (action == "ACT_CONFUSED")
-                reward += observation.task_status == 0 ? 0.15f : -0.20f;
-            else if (action == "WANDER")
-                reward += observation.target_proximity >= 2 ? 0.10f : -0.15f;
-            else if (action == "INSIST")
-                reward += observation.user_status == 0 ? 0.15f : -0.25f;
-            else
-                reward -= 0.35f;
-            break;
-        case 2:
-        default:
-            if (observation.signal_strength >= 0.80f)
-            {
-                if (action == "ACT_CONFUSED") reward += 0.55f;
-                else if (action == "BARK") reward += 0.35f;
-                else if (action == "INSIST" || action == "FETCH") reward -= 0.45f;
-            }
-            else if (observation.task_status == 0)
-            {
-                if (action == "SLEEP_LAY") reward += 0.65f;
-                else if (action == "WANDER") reward += 0.15f;
-                else if (action == "FETCH" || action == "INSIST") reward -= 0.35f;
-            }
-            else
-            {
-                if (action == "ACT_CONFUSED") reward += 0.20f;
-                else if (action == "WANDER") reward += 0.10f;
-            }
-            break;
+            const bool justifiedDeviation =
+                (action == "EAT" && observation.food_available && energy < 0.45f) ||
+                (action == "SLEEP_LAY" && (energy < 0.25f || stress > 0.78f)) ||
+                (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2);
+            if (action != "FETCH")
+                userResponse = justifiedDeviation
+                    ? -0.035f * (0.5f + satisfaction)
+                    : -0.16f * (0.5f + satisfaction);
         }
-        return reward;
+        else if (observation.user_status == 2)
+        {
+            const bool responseAcknowledgesRejection =
+                action == "HIDE_AVOID" || action == "WHINE" || action == "ACT_CONFUSED";
+            userResponse = responseAcknowledgesRejection
+                ? 0.06f * (0.5f + satisfaction)
+                : -0.12f * (0.5f + satisfaction);
+        }
+        else if (fit >= 0.40f)
+        {
+            userResponse = 0.05f * satisfaction;
+        }
+
+        const float incongruencePenalty = fit < 0.0f ? 0.55f * fit : 0.0f;
+        return std::clamp(fit + driveRelief + complianceBonus + userResponse +
+                          incongruencePenalty - 0.05f, -1.0f, 1.0f);
     }
 
     EnvironmentStep applyEnvironmentAction(const std::string &action,
                                            const EnvironmentObservation &observation,
                                            float energy,
+                                           float stress,
+                                           float userSatisfaction,
                                            std::mt19937 &rng)
     {
         EnvironmentStep result;
         result.next_observation = observation;
         energy = std::clamp(energy, 0.0f, 1.0f);
+        stress = std::clamp(stress, 0.0f, 1.0f);
+        userSatisfaction = std::clamp(userSatisfaction, 0.0f, 1.0f);
+        const float energyBefore = energy;
+        const float stressBefore = stress;
+        const float satisfactionBefore = userSatisfaction;
 
         const int proximity = std::clamp(observation.target_proximity, 0, 2);
         const float distanceCost[] = {0.035f, 0.085f, 0.16f};
@@ -210,13 +289,49 @@ namespace
         if (action != "SLEEP_LAY" && !(action == "EAT" && observation.food_available))
             energy = std::max(0.0f, energy - effort * 1.5f);
 
+        const float fit = actionContextFit(action, observation, energyBefore, stressBefore);
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+            stress += 0.16f;
+        if (observation.user_status == 2) stress += 0.10f;
+        if (action == "SLEEP_LAY") stress -= 0.28f;
+        if (action == "PLAY" && observation.play_available && stress < 0.75f) stress -= 0.08f;
+        if (action == "FETCH" && fetchSucceeded) stress -= 0.04f;
+        stress = std::clamp(stress, 0.0f, 1.0f);
+
+        const bool taskPending = observation.goal_state == 1 && observation.task_status == 1;
+        const bool justifiedDeviation =
+            (action == "EAT" && observation.food_available && energyBefore < 0.45f) ||
+            (action == "SLEEP_LAY" && (energyBefore < 0.25f || stressBefore > 0.78f)) ||
+            (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2);
+        if (taskPending && fetchSucceeded)
+            userSatisfaction += 0.10f;
+        else if (taskPending && action != "FETCH")
+            userSatisfaction -= justifiedDeviation ? 0.025f : 0.08f;
+        else if (fit >= 0.40f)
+            userSatisfaction += 0.025f;
+        else if (fit < 0.0f)
+            userSatisfaction -= 0.025f;
+        userSatisfaction = std::clamp(userSatisfaction, 0.0f, 1.0f);
+
         result.energy_after = std::clamp(energy, 0.0f, 1.0f);
+        result.stress_after = stress;
+        result.user_satisfaction_after = userSatisfaction;
         result.reward = std::clamp(
-            rewardFor(action, observation, fetchSucceeded) - effort - 0.05f,
+            rewardFor(action, observation, fetchSucceeded, energyBefore, stressBefore,
+                      satisfactionBefore) - effort,
             -1.0f, 1.0f);
         result.completed = action == "FETCH" && fetchSucceeded &&
                            observation.task_status == 1 && observation.target_proximity < 3;
         return result;
+    }
+
+    // Compatibility wrapper for deterministic transition tests.
+    EnvironmentStep applyEnvironmentAction(const std::string &action,
+                                           const EnvironmentObservation &observation,
+                                           float energy,
+                                           std::mt19937 &rng)
+    {
+        return applyEnvironmentAction(action, observation, energy, 0.2f, 0.5f, rng);
     }
 
     EnvironmentObservation mergeTaskTransition(const EnvironmentObservation &current,
@@ -226,6 +341,22 @@ namespace
         // Preserve action-caused changes across contiguous decisions for the same fetch
         // request. In particular, do not resurrect a task after a successful FETCH.
         // A genuinely different scenario remains an external context change.
+        if (current.goal_state == 1 && current.task_status == 1 &&
+            transitioned.task_status == 0 &&
+            nextScenario.goal_state == 1 && nextScenario.task_status == 1)
+        {
+            // A successful fetch satisfies the request. Do not replay the
+            // pre-generated "request still pending" observation as if it were
+            // still active; move to a plausible post-completion social response.
+            EnvironmentObservation completedFollowUp = nextScenario;
+            completedFollowUp.goal_state = 0;
+            completedFollowUp.target_proximity = 0;
+            completedFollowUp.user_status = 0;
+            completedFollowUp.task_status = 0;
+            completedFollowUp.signal_strength = 0.72f;
+            return completedFollowUp;
+        }
+
         if (current.goal_state == 1 &&
             nextScenario.goal_state == 1 && nextScenario.task_status == 1)
         {
@@ -235,6 +366,71 @@ namespace
             return merged;
         }
         return nextScenario;
+    }
+
+    std::string stimulusCategory(const EnvironmentObservation &observation)
+    {
+        if (observation.goal_state == 1 && observation.task_status == 1)
+        {
+            if (observation.food_available) return "fetch_with_food";
+            return observation.target_proximity >= 2 ? "fetch_far" : "fetch_near";
+        }
+        if (observation.goal_state == 0 && observation.user_status == 2)
+            return "negative_feedback";
+        if (observation.food_available) return "food_offer";
+        if (observation.play_available) return "play_invitation";
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+            return "disturbance";
+        if (observation.goal_state == 2 && observation.task_status == 0)
+            return "quiet_rest";
+        if (observation.goal_state == 0) return "social_contact";
+        return "other";
+    }
+
+    bool stimulusResponseAligned(const std::string &action,
+                                 const EnvironmentObservation &observation,
+                                 float energy,
+                                 float stress)
+    {
+        // Use the graded context-fit model, not a one-correct-action oracle.
+        // This is an engineering diagnostic only, not a believability measure.
+        return actionContextFit(action, observation, energy, stress) >= 0.0f;
+    }
+
+    bool testTaskPriorityReward()
+    {
+        const EnvironmentObservation request{1, 0, 1, 1, 0.56f};
+        const EnvironmentObservation feedingTimeRequest{1, 1, 1, 1, 0.56f, true, false};
+        const EnvironmentObservation idle{2, 1, 0, 0, 0.20f};
+        const float fetchReward = rewardFor("FETCH", request, true, 0.75f, 0.20f);
+        const float eatWhenHungry = rewardFor("EAT", feedingTimeRequest, false, 0.15f, 0.20f);
+        const float sleepWhenOverwhelmed = rewardFor("SLEEP_LAY", feedingTimeRequest, false, 0.20f, 0.90f);
+        const float sniffWhenCompetingNeeds = rewardFor("SNIFF", feedingTimeRequest, false, 0.15f, 0.20f);
+        const float sniffWhenIdle = rewardFor("SNIFF", idle, false, 0.75f, 0.20f);
+        std::mt19937 scenarioRng(42);
+        const EnvironmentObservation generated = makeObservation(scenarioRng, 13);
+        return fetchReward > sniffWhenCompetingNeeds &&
+               eatWhenHungry > sniffWhenCompetingNeeds &&
+               sleepWhenOverwhelmed > sniffWhenCompetingNeeds &&
+               sleepWhenOverwhelmed > eatWhenHungry &&
+               sniffWhenIdle > sniffWhenCompetingNeeds &&
+               generated.goal_state == 1 && generated.task_status == 1 &&
+               generated.food_available &&
+               isActionValidForObservation("FETCH", generated) &&
+               isActionValidForObservation("EAT", generated) &&
+               isActionValidForObservation("SLEEP_LAY", generated);
+    }
+
+    bool testSuccessfulFetchAdvancesContext()
+    {
+        const EnvironmentObservation activeRequest{1, 1, 1, 1, 0.82f};
+        const EnvironmentObservation successfulFetch{1, 0, 1, 0, 0.82f};
+        const EnvironmentObservation pendingFollowUp{1, 1, 1, 1, 0.82f};
+        const EnvironmentObservation next = mergeTaskTransition(
+            activeRequest, successfulFetch, pendingFollowUp);
+        return next.goal_state == 0 && next.task_status == 0 &&
+               next.user_status == 0 && next.target_proximity == 0 &&
+               next.signal_strength == 0.72f;
     }
 
     bool testEnvironmentActionTransitions()
@@ -332,6 +528,8 @@ namespace
 
         EpisodeMetrics metrics;
         float environmentEnergy = 0.8f;
+        float environmentStress = 0.2f;
+        float userSatisfaction = 0.5f;
         EnvironmentObservation currentObservation = observations.front();
         for (std::size_t step = 0; step < observations.size(); ++step)
         {
@@ -345,13 +543,17 @@ namespace
             metrics.visited_states.insert(stateKeyBeforeAction);
 
             const float energyBefore = environmentEnergy;
+            const float stressBefore = environmentStress;
             // Same seed per episode/step gives both agents paired environmental noise,
             // independent of how many stochastic actions either policy selected.
             std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
                                        static_cast<unsigned int>(step) * 104729u);
             const EnvironmentStep transition =
-                applyEnvironmentAction(action, observation, environmentEnergy, transitionRng);
+                applyEnvironmentAction(action, observation, environmentEnergy,
+                                       environmentStress, userSatisfaction, transitionRng);
             environmentEnergy = transition.energy_after;
+            environmentStress = transition.stress_after;
+            userSatisfaction = transition.user_satisfaction_after;
             const bool terminal = step + 1 == observations.size();
 
             EnvironmentObservation nextObservation = transition.next_observation;
@@ -376,6 +578,19 @@ namespace
             metrics.steps = static_cast<int>(step + 1);
             metrics.completed = metrics.completed || transition.completed;
             ++metrics.action_counts[action];
+            // Do not count the intentionally taskless post-completion context
+            // as evidence of a response to an active fetch request.
+            if (observation.goal_state != 1 || observation.task_status == 1)
+            {
+                ++metrics.stimulus_checks;
+                const std::string category = stimulusCategory(observation);
+                ++metrics.stimulus_checks_by_type[category];
+                if (stimulusResponseAligned(action, observation, energyBefore, stressBefore))
+                {
+                    ++metrics.stimulus_aligned_actions;
+                    ++metrics.stimulus_aligned_by_type[category];
+                }
+            }
 
             nlohmann::json row;
             row["agent"] = agentName;
@@ -390,6 +605,8 @@ namespace
             row["play_available"] = observation.play_available;
             row["energy_before"] = energyBefore;
             row["energy_after"] = transition.energy_after;
+            row["environment_stress_after"] = transition.stress_after;
+            row["user_satisfaction_after"] = transition.user_satisfaction_after;
             row["action"] = action;
             row["encoded_state"] = stateKeyBeforeAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
@@ -413,6 +630,14 @@ namespace
         result["completed"] = metrics.completed;
         result["action_counts"] = metrics.action_counts;
         result["unique_states_visited"] = metrics.visited_states.size();
+        result["stimulus_checks"] = metrics.stimulus_checks;
+        result["stimulus_aligned_actions"] = metrics.stimulus_aligned_actions;
+        result["stimulus_response_alignment_rate"] =
+            metrics.stimulus_checks > 0
+                ? static_cast<double>(metrics.stimulus_aligned_actions) / metrics.stimulus_checks
+                : 0.0;
+        result["stimulus_checks_by_type"] = metrics.stimulus_checks_by_type;
+        result["stimulus_aligned_by_type"] = metrics.stimulus_aligned_by_type;
         return result;
     }
 } // namespace
@@ -478,9 +703,9 @@ bool runTrainingExperiment(const std::string &mode,
     summary["environment_seed"] = environmentSeed;
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
-    summary["reward_model"] = "synthetic_v2_context_sequence";
-    summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request"};
-    summary["note"] = "Training uses repeated contextual scenarios for tabular coverage. Synthetic reward is not a measure of perceived believability.";
+    summary["reward_model"] = "synthetic_v4_graded_context_fit";
+    summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request", "fetch_at_feeding_time"};
+    summary["note"] = "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
     nlohmann::json proposedEpisodes = nlohmann::json::array();
@@ -534,6 +759,59 @@ bool runTrainingExperiment(const std::string &mode,
         proposed.savePersistentState(proposedPolicy.string());
     }
 
+    const auto buildStimulusAudit = [](const nlohmann::json &episodes) {
+        nlohmann::json audit = nlohmann::json::object();
+        int checks = 0;
+        int aligned = 0;
+        for (const auto &episode : episodes)
+        {
+            checks += episode["stimulus_checks"].get<int>();
+            aligned += episode["stimulus_aligned_actions"].get<int>();
+            for (auto it = episode["stimulus_checks_by_type"].begin();
+                 it != episode["stimulus_checks_by_type"].end(); ++it)
+            {
+                const std::string category = it.key();
+                if (!audit.contains(category))
+                    audit[category] = {{"checks", 0}, {"aligned", 0}};
+                audit[category]["checks"] = audit[category]["checks"].get<int>() + it.value().get<int>();
+            }
+            for (auto it = episode["stimulus_aligned_by_type"].begin();
+                 it != episode["stimulus_aligned_by_type"].end(); ++it)
+            {
+                const std::string category = it.key();
+                if (!audit.contains(category))
+                    audit[category] = {{"checks", 0}, {"aligned", 0}};
+                audit[category]["aligned"] = audit[category]["aligned"].get<int>() + it.value().get<int>();
+            }
+        }
+        for (auto it = audit.begin(); it != audit.end(); ++it)
+        {
+            const int categoryChecks = it.value()["checks"].get<int>();
+            const int categoryAligned = it.value()["aligned"].get<int>();
+            it.value()["alignment_rate"] = categoryChecks > 0
+                ? static_cast<double>(categoryAligned) / categoryChecks : 0.0;
+        }
+        return std::pair<nlohmann::json, std::pair<int, int>>{
+            audit, {checks, aligned}};
+    };
+
+    const auto baselineAudit = buildStimulusAudit(baselineEpisodes);
+    const auto proposedAudit = buildStimulusAudit(proposedEpisodes);
+    summary["baseline"]["stimulus_checks"] = baselineAudit.second.first;
+    summary["baseline"]["stimulus_aligned_actions"] = baselineAudit.second.second;
+    summary["baseline"]["stimulus_response_alignment_rate"] =
+        baselineAudit.second.first > 0
+            ? static_cast<double>(baselineAudit.second.second) / baselineAudit.second.first : 0.0;
+    summary["baseline"]["stimulus_response_audit_by_type"] = baselineAudit.first;
+    summary["proposed"]["stimulus_checks"] = proposedAudit.second.first;
+    summary["proposed"]["stimulus_aligned_actions"] = proposedAudit.second.second;
+    summary["proposed"]["stimulus_response_alignment_rate"] =
+        proposedAudit.second.first > 0
+            ? static_cast<double>(proposedAudit.second.second) / proposedAudit.second.first : 0.0;
+    summary["proposed"]["stimulus_response_audit_by_type"] = proposedAudit.first;
+    summary["stimulus_alignment_note"] =
+        "Heuristic engineering diagnostic for broad stimulus/action compatibility only; not a validated animal-behaviour model or measure of perceived believability.";
+
     summary["baseline"]["mean_total_reward_per_episode"] = baselineRewardSum / episodes;
     summary["baseline"]["mean_reward_per_step"] = baselineStepSum > 0.0 ? baselineRewardSum / baselineStepSum : 0.0;
     summary["baseline"]["mean_steps_per_episode"] = baselineStepSum / episodes;
@@ -569,7 +847,11 @@ bool runTrainingSelfTests()
 {
     const bool transitionsPassed = testEnvironmentActionTransitions();
     const bool retryPassed = testPersistentFetchRetryAndCompletionCredit();
+    const bool taskPriorityPassed = testTaskPriorityReward();
+    const bool completionContextPassed = testSuccessfulFetchAdvancesContext();
     std::cout << "Action-dependent environment transitions: " << (transitionsPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
-    return transitionsPassed && retryPassed;
+    std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
+    std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
+    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed;
 }
