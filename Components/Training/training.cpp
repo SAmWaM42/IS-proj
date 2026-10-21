@@ -32,7 +32,7 @@ namespace
         std::uniform_int_distribution<int> nearDist(0, 1);
         std::uniform_int_distribution<int> socialDist(0, 1);
         EnvironmentObservation observation;
-        switch (stepIndex % 11)
+        switch (stepIndex % 13)
         {
         case 0: // User initiates a social interaction.
             observation = {0, 1, socialDist(rng), 0, 0.45f};
@@ -40,28 +40,34 @@ namespace
         case 1: // Explicit fetch request with a nearby object.
             observation = {1, nearDist(rng), 1, 1, 0.82f};
             break;
-        case 2: // A loud unexpected disturbance.
+        case 2: // The nearby fetch request persists for a second decision.
+            observation = {1, 1, 1, 1, 0.82f};
+            break;
+        case 3: // A loud unexpected disturbance.
             observation = {2, 0, 0, 0, 0.92f};
             break;
-        case 3: // Quiet period with no task pending.
+        case 4: // Quiet period with no task pending.
             observation = {2, 2, 0, 0, 0.18f};
             break;
-        case 4: // Positive social feedback / renewed contact.
+        case 5: // Positive social feedback / renewed contact.
             observation = {0, 0, 1, 0, 0.72f};
             break;
-        case 5: // Request where the target is too far away.
+        case 6: // Request where the target is too far away.
             observation = {1, 2, 1, 1, 0.56f};
             break;
-        case 6: // The far-fetch request persists for another decision.
+        case 7: // The far-fetch request persists for another decision.
             observation = {1, 2, 1, 1, 0.56f};
             break;
-        case 7: // Food is explicitly available.
+        case 8: // A third decision permits retrying after a failed fetch.
+            observation = {1, 2, 1, 1, 0.56f};
+            break;
+        case 9: // Food is explicitly available.
             observation = {2, 0, 1, 0, 0.30f, true, false};
             break;
-        case 8: // The user explicitly invites play.
+        case 10: // The user explicitly invites play.
             observation = {0, 1, 1, 0, 0.70f, false, true};
             break;
-        case 9: // The user rejects an unwanted behaviour.
+        case 11: // The user rejects an unwanted behaviour.
             observation = {0, 1, 2, 0, 0.45f};
             break;
         default: // A task is pending but the user has not responded.
@@ -114,7 +120,10 @@ namespace
             if (action == "FETCH")
             {
                 if (observation.task_status != 1) reward -= 0.55f;
-                else if (fetchSucceeded) reward += 0.75f + observation.signal_strength * 0.10f;
+                else if (fetchSucceeded)
+                    // Explicit task-completion credit should outweigh short-term
+                    // distractors such as SNIFF when a fetch was requested.
+                    reward += 0.75f + observation.signal_strength * 0.10f + 0.35f;
                 else reward -= 0.20f;
             }
             else if (action == "APPROACH_FOLLOW")
@@ -214,9 +223,10 @@ namespace
                                                const EnvironmentObservation &transitioned,
                                                const EnvironmentObservation &nextScenario)
     {
-        // Preserve action-caused changes while a multi-step fetch request is still
-        // active. A genuinely different scenario remains an external context change.
-        if (current.goal_state == 1 && current.task_status == 1 &&
+        // Preserve action-caused changes across contiguous decisions for the same fetch
+        // request. In particular, do not resurrect a task after a successful FETCH.
+        // A genuinely different scenario remains an external context change.
+        if (current.goal_state == 1 &&
             nextScenario.goal_state == 1 && nextScenario.task_status == 1)
         {
             EnvironmentObservation merged = nextScenario;
@@ -254,6 +264,57 @@ namespace
                rested.energy_after > 0.25f &&
                farFetch.energy_after < nearFetch.energy_after &&
                sawFarSuccess && sawFarFailure;
+    }
+
+    bool testPersistentFetchRetryAndCompletionCredit()
+    {
+        const EnvironmentObservation farRequest{1, 2, 1, 1, 0.56f};
+        bool sawFailure = false;
+        bool sawSuccess = false;
+        bool failureKeepsTaskActive = false;
+        bool successDoesNotResurrectTask = false;
+        bool completionOutweighsSniff = false;
+
+        for (unsigned int seed = 1; seed <= 300; ++seed)
+        {
+            std::mt19937 trialRng(seed);
+            const EnvironmentStep attempt = applyEnvironmentAction("FETCH", farRequest, 0.8f, trialRng);
+            if (!attempt.completed && !sawFailure)
+            {
+                sawFailure = true;
+                const EnvironmentObservation retry = mergeTaskTransition(
+                    farRequest, attempt.next_observation, farRequest);
+                failureKeepsTaskActive = retry.task_status == 1 &&
+                    retry.target_proximity == farRequest.target_proximity &&
+                    isActionValidForObservation("FETCH", retry);
+            }
+            if (attempt.completed && !sawSuccess)
+            {
+                sawSuccess = true;
+                const EnvironmentObservation afterCompletion = mergeTaskTransition(
+                    farRequest, attempt.next_observation, farRequest);
+                successDoesNotResurrectTask = afterCompletion.task_status == 0;
+            }
+        }
+
+        const EnvironmentObservation nearRequest{1, 0, 1, 1, 0.82f};
+        bool sawNearSuccess = false;
+        for (unsigned int seed = 1; seed <= 100; ++seed)
+        {
+            std::mt19937 trialRng(seed);
+            const EnvironmentStep fetch = applyEnvironmentAction("FETCH", nearRequest, 0.8f, trialRng);
+            if (fetch.completed)
+            {
+                std::mt19937 sniffRng(seed);
+                const EnvironmentStep sniff = applyEnvironmentAction("SNIFF", nearRequest, 0.8f, sniffRng);
+                completionOutweighsSniff = fetch.reward > sniff.reward;
+                sawNearSuccess = true;
+                break;
+            }
+        }
+
+        return sawFailure && sawSuccess && failureKeepsTaskActive &&
+               successDoesNotResurrectTask && sawNearSuccess && completionOutweighsSniff;
     }
 
     template <typename Agent>
@@ -418,7 +479,7 @@ bool runTrainingExperiment(const std::string &mode,
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v2_context_sequence";
-    summary["scenario_pattern"] = {"social", "fetch_near", "disturbance", "rest", "positive_social", "fetch_far", "fetch_follow_up", "food_offer", "play_invitation", "negative_feedback", "ignored_request"};
+    summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request"};
     summary["note"] = "Training uses repeated contextual scenarios for tabular coverage. Synthetic reward is not a measure of perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
@@ -506,7 +567,9 @@ bool runTrainingExperiment(const std::string &mode,
 
 bool runTrainingSelfTests()
 {
-    const bool passed = testEnvironmentActionTransitions();
-    std::cout << "Action-dependent environment transitions: " << (passed ? "PASS" : "FAIL") << '\n';
-    return passed;
+    const bool transitionsPassed = testEnvironmentActionTransitions();
+    const bool retryPassed = testPersistentFetchRetryAndCompletionCredit();
+    std::cout << "Action-dependent environment transitions: " << (transitionsPassed ? "PASS" : "FAIL") << '\n';
+    std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
+    return transitionsPassed && retryPassed;
 }
