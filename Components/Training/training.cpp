@@ -32,7 +32,7 @@ namespace
         std::uniform_int_distribution<int> nearDist(0, 1);
         std::uniform_int_distribution<int> socialDist(0, 1);
         EnvironmentObservation observation;
-        switch (stepIndex % 6)
+        switch (stepIndex % 8)
         {
         case 0: // User initiates a social interaction.
             observation = {0, 1, socialDist(rng), 0, 0.45f};
@@ -49,8 +49,14 @@ namespace
         case 4: // Positive social feedback / renewed contact.
             observation = {0, 0, 1, 0, 0.72f};
             break;
-        default: // Request where the target is too far away.
+        case 5: // Request where the target is too far away.
             observation = {1, 3, 1, 1, 0.56f};
+            break;
+        case 6: // Food is explicitly available.
+            observation = {2, 0, 1, 0, 0.30f, true, false};
+            break;
+        default: // The user explicitly invites play.
+            observation = {0, 1, 1, 0, 0.70f, false, true};
             break;
         }
         return observation;
@@ -59,6 +65,16 @@ namespace
     float rewardFor(const std::string &action, const EnvironmentObservation &observation)
     {
         // Reward is conditioned on the interaction intent, not just generic environment values.
+        if (action == "EAT") return observation.food_available ? 0.80f : -0.50f;
+        if (action == "PLAY") return observation.play_available ? 0.65f : -0.40f;
+        if (action == "WHINE") return observation.user_status == 2 ? 0.35f : -0.15f;
+        if (action == "HIDE_AVOID")
+            return (observation.user_status == 2 || observation.signal_strength >= 0.90f) ? 0.45f : -0.10f;
+        if (action == "APPROACH_FOLLOW")
+            return observation.user_status != 2 ? 0.25f : -0.20f;
+        if (action == "SNIFF")
+            return observation.target_proximity <= 1 ? 0.30f : -0.05f;
+
         float reward = -0.10f;
         switch (observation.goal_state)
         {
@@ -174,6 +190,8 @@ namespace
             row["user_status"] = observation.user_status;
             row["task_status"] = observation.task_status;
             row["signal_strength"] = observation.signal_strength;
+            row["food_available"] = observation.food_available;
+            row["play_available"] = observation.play_available;
             row["action"] = action;
             row["encoded_state"] = agent.getCurrentState().encode();
             row["reward"] = reward;
