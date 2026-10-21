@@ -906,6 +906,20 @@ bool testActionMaskUsesOnlyObservableAvailability() {
         return false;
     }
 
+    // Far is costly/reduced-success, not physically impossible. Only the
+    // explicit UNAVAILABLE bin is a hard gate for FETCH.
+    const EnvironmentObservation farRequest{1, 2, 1, 1, 0.56f};
+    const auto farActions = validActionsForObservation(farRequest);
+    if (std::find(farActions.begin(), farActions.end(), "FETCH") == farActions.end() ||
+        std::find(farActions.begin(), farActions.end(), "APPROACH_FOLLOW") == farActions.end()) {
+        return false;
+    }
+    const EnvironmentObservation unavailableRequest{1, 3, 1, 1, 0.56f};
+    const auto unavailableActions = validActionsForObservation(unavailableRequest);
+    if (std::find(unavailableActions.begin(), unavailableActions.end(), "FETCH") != unavailableActions.end()) {
+        return false;
+    }
+
     const EnvironmentObservation food{2, 0, 1, 0, 0.30f, true, false};
     const auto foodActions = validActionsForObservation(food);
     if (std::find(foodActions.begin(), foodActions.end(), "EAT") == foodActions.end() ||
