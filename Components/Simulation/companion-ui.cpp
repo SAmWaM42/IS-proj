@@ -463,9 +463,18 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
         if (!output.empty()) {
             const auto parsed = json::parse(output);
             const std::string intent = parsed.value("intent", std::string("unknown"));
+            const bool negativeFeedback = intent == "negative_feedback" ||
+                lowered.find("stop") != std::string::npos ||
+                lowered.find("annoy") != std::string::npos ||
+                lowered.find("scold") != std::string::npos ||
+                lowered.find("dislike") != std::string::npos ||
+                lowered.find("hate") != std::string::npos ||
+                lowered.find("don't") != std::string::npos ||
+                lowered.find("do not") != std::string::npos;
             observation = EnvironmentObservation{
                 parsed.value("goal_state", 0), parsed.value("target_proximity", 1),
-                parsed.value("task_status", 0), 0, parsed.value("signal_strength", 0.45f),
+                parsed.value("task_status", 0), negativeFeedback ? 2 : parsed.value("user_status", 0),
+                parsed.value("signal_strength", 0.45f),
                 parsed.value("food_available", false), parsed.value("play_available", false)};
             observation.food_available = observation.food_available ||
                 lowered.find("food") != std::string::npos || lowered.find("feed") != std::string::npos;
