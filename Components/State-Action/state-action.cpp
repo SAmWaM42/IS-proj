@@ -901,12 +901,23 @@ bool testActionMaskUsesOnlyObservableAvailability() {
         return false;
     }
 
+    const EnvironmentObservation rejection{0, 1, 2, 0, 0.45f};
+    const auto rejectionActions = validActionsForObservation(rejection);
+    for (const auto& disallowed : {"GREETING", "NUZZLE", "APPROACH_FOLLOW"}) {
+        if (std::find(rejectionActions.begin(), rejectionActions.end(), disallowed) != rejectionActions.end())
+            return false;
+    }
+    if (std::find(rejectionActions.begin(), rejectionActions.end(), "HIDE_AVOID") == rejectionActions.end() ||
+        std::find(rejectionActions.begin(), rejectionActions.end(), "WHINE") == rejectionActions.end()) {
+        return false;
+    }
+
     EnvironmentConfig config;
     BaselineAgent baseline(config);
     ProposedAgent proposed(config);
     baseline.setExplorationRate(1.0f);
     proposed.setExplorationRate(1.0f);
-    for (const auto& observation : {ordinary, food, play}) {
+    for (const auto& observation : {ordinary, food, play, rejection}) {
         const std::string baselineAction = baseline.selectAction(observation);
         const std::string proposedAction = proposed.selectAction(observation);
         if (!isActionValidForObservation(baselineAction, observation) ||
