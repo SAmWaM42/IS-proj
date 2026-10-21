@@ -1101,7 +1101,8 @@ std::string contextualAction(const EnvironmentObservation& observation,
     // against the proposed agent's affective condition rather than always eating
     // or playing whenever an affordance is present.
     if (affect != nullptr &&
-        (affect->energy == AffectEnergy::LOW || affect->stress >= 0.80f))
+        (affect->stress >= 0.80f ||
+         (affect->energy == AffectEnergy::LOW && !observation.food_available)))
     {
         if (observation.goal_state != 2 || observation.signal_strength < 0.80f)
             return "SLEEP_LAY";
@@ -1393,7 +1394,8 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     for (auto it = memory_records.rbegin(); it != memory_records.rend(); ++it) {
         if (it->confidence < 0.4f) continue;
         if (observation.goal_state == 1 && observation.task_status == 1 &&
-            observation.target_proximity <= 1 && it->raw_fact.object == "FETCH") {
+            observation.target_proximity <= 1 && it->raw_fact.object == "FETCH" &&
+            affective_state.energy != AffectEnergy::LOW && affective_state.stress < 0.80f) {
             if (it->raw_fact.relation == "prefers_action") selected = "FETCH";
             else if (it->raw_fact.relation == "dislikes_action") selected = "ACT_CONFUSED";
             if (it->raw_fact.relation == "prefers_action" || it->raw_fact.relation == "dislikes_action") break;
