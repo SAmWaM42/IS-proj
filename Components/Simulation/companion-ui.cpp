@@ -390,7 +390,7 @@ void CompanionUI::executeInteraction(const std::string& label,
 
     ActionOutcome baselineOutcome;
     baselineOutcome.reward = feedbackRewardValue;
-    baselineOutcome.terminal = true;
+    baselineOutcome.terminated = true;
     baselineOutcome.outcome_tag = "simulation_" + (feedbackRewardValue > 0 ? std::string("positive") :
                                                     feedbackRewardValue < 0 ? std::string("negative") : std::string("neutral"));
     ActionOutcome proposedOutcome = baselineOutcome;
