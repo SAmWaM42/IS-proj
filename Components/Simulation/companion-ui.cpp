@@ -413,7 +413,9 @@ void CompanionUI::executeInteraction(const std::string& label,
             {"target_proximity", observation.target_proximity},
             {"user_status", observation.user_status},
             {"task_status", observation.task_status},
-            {"signal_strength", observation.signal_strength}
+            {"signal_strength", observation.signal_strength},
+            {"food_available", observation.food_available},
+            {"play_available", observation.play_available}
         };
         row["baseline"] = {{"action", latestBaselineAction}, {"reward", baselineOutcome.reward},
                            {"state_before_outcome", baselineStateBeforeOutcome},
