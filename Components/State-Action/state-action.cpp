@@ -1446,7 +1446,8 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     next_state.food_available = nextObservation.food_available;
     next_state.play_available = nextObservation.play_available;
     if (learning_enabled) {
-        q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
+        q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal,
+                         validActionsForObservation(nextObservation));
     }
 
     InteractionEvent event;
