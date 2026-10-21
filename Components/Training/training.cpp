@@ -281,7 +281,7 @@ bool runTrainingExperiment(const std::string &mode,
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v2_context_sequence";
-    summary["scenario_pattern"] = {"social", "fetch_near", "disturbance", "rest", "positive_social", "fetch_far"};
+    summary["scenario_pattern"] = {"social", "fetch_near", "disturbance", "rest", "positive_social", "fetch_far", "food_offer", "play_invitation", "negative_feedback"};
     summary["note"] = "Training uses repeated contextual scenarios for tabular coverage. Synthetic reward is not a measure of perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
