@@ -431,6 +431,9 @@ void CompanionUI::executeInteraction(const std::string& label,
 std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward) {
     observation = EnvironmentObservation{0, 1, 0, 0, 0.45f};
     reward = 0.25f;
+    std::string lowered = text;
+    std::transform(lowered.begin(), lowered.end(), lowered.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
     const std::string output = callNlp(nlpScript, text);
     try {
         if (!output.empty()) {
@@ -438,7 +441,12 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
             const std::string intent = parsed.value("intent", std::string("unknown"));
             observation = EnvironmentObservation{
                 parsed.value("goal_state", 0), parsed.value("target_proximity", 1),
-                parsed.value("task_status", 0), 0, parsed.value("signal_strength", 0.45f)};
+                parsed.value("task_status", 0), 0, parsed.value("signal_strength", 0.45f),
+                parsed.value("food_available", false), parsed.value("play_available", false)};
+            observation.food_available = observation.food_available ||
+                lowered.find("food") != std::string::npos || lowered.find("feed") != std::string::npos;
+            observation.play_available = observation.play_available ||
+                lowered.find("play") != std::string::npos || lowered.find("toy") != std::string::npos;
             reward = parsed.value("reward", 0.25f);
             nlpMethod = parsed.value("method", std::string("unknown"));
             return intent;
@@ -446,12 +454,9 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
     } catch (const std::exception&) {
         // Continue with a local fallback if Python is missing or returns invalid JSON.
     }
-    std::string lowered = text;
-    std::transform(lowered.begin(), lowered.end(), lowered.begin(),
-                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
     nlpMethod = "C++ keyword fallback";
     if (lowered.find("stop") != std::string::npos || lowered.find("annoy") != std::string::npos ||
-        lowered.find("don't") != std::string::npos || lowered.find("do not") != std::string::npos) {
+        lowered.find("don't") != std::string::npos || lowered.find("do not") != std::string::npos || lowered.find("scold") != std::string::npos) {
         observation = EnvironmentObservation{0, 1, 2, 0, 0.45f}; reward = -1.0f; return "negative_feedback";
     }
     if (lowered.find("fetch") != std::string::npos || lowered.find("ball") != std::string::npos ||
@@ -461,6 +466,15 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
     if (lowered.find("noise") != std::string::npos || lowered.find("scared") != std::string::npos ||
         lowered.find("loud") != std::string::npos) {
         observation = EnvironmentObservation{2, 0, 0, 0, 0.95f}; reward = 0.0f; return "disturbance";
+    }
+    if (lowered.find("feed") != std::string::npos || lowered.find("food") != std::string::npos ||
+        lowered.find("eat") != std::string::npos) {
+        observation = EnvironmentObservation{2, 0, 1, 0, 0.30f, true, false};
+        reward = 0.5f; return "feeding";
+    }
+    if (lowered.find("play") != std::string::npos || lowered.find("toy") != std::string::npos) {
+        observation = EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true};
+        reward = 0.5f; return "play";
     }
     if (lowered.find("rest") != std::string::npos || lowered.find("tired") != std::string::npos ||
         lowered.find("quiet") != std::string::npos) {
