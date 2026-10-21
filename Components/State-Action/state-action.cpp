@@ -904,8 +904,15 @@ bool testActionMaskUsesOnlyObservableAvailability() {
         return false;
     }
 
+    const EnvironmentObservation noResponse{1, 1, 0, 1, 0.82f};
+    const auto noResponseActions = validActionsForObservation(noResponse);
+    if (std::find(noResponseActions.begin(), noResponseActions.end(), "INSIST") == noResponseActions.end())
+        return false;
+
     const EnvironmentObservation rejection{0, 1, 2, 0, 0.45f};
     const auto rejectionActions = validActionsForObservation(rejection);
+    if (std::find(rejectionActions.begin(), rejectionActions.end(), "INSIST") != rejectionActions.end())
+        return false;
     for (const auto& disallowed : {"GREETING", "NUZZLE", "APPROACH_FOLLOW"}) {
         if (std::find(rejectionActions.begin(), rejectionActions.end(), disallowed) != rejectionActions.end())
             return false;
@@ -920,7 +927,7 @@ bool testActionMaskUsesOnlyObservableAvailability() {
     ProposedAgent proposed(config);
     baseline.setExplorationRate(1.0f);
     proposed.setExplorationRate(1.0f);
-    for (const auto& observation : {ordinary, food, play, rejection}) {
+    for (const auto& observation : {ordinary, food, play, noResponse, rejection}) {
         const std::string baselineAction = baseline.selectAction(observation);
         const std::string proposedAction = proposed.selectAction(observation);
         if (!isActionValidForObservation(baselineAction, observation) ||
