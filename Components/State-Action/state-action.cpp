@@ -422,7 +422,32 @@ bool testContextualFallbackMatchesIntent() {
     EnvironmentObservation rest = disturbance;
     rest.signal_strength = 0.20f;
     const bool restOk = agent.selectAction(rest) == "SLEEP_LAY";
-    return greetingOk && requestOk && disturbanceOk && restOk;
+
+    EnvironmentObservation food;
+    food.goal_state = 2; food.user_status = 1; food.target_proximity = 0;
+    food.task_status = 0; food.signal_strength = 0.30f; food.food_available = true;
+    const bool foodOk = agent.selectAction(food) == "EAT";
+
+    EnvironmentObservation play;
+    play.goal_state = 0; play.user_status = 1; play.target_proximity = 1;
+    play.task_status = 0; play.signal_strength = 0.70f; play.play_available = true;
+    const bool playOk = agent.selectAction(play) == "PLAY";
+
+    EnvironmentObservation rejection;
+    rejection.goal_state = 0; rejection.user_status = 2; rejection.target_proximity = 1;
+    rejection.task_status = 0; rejection.signal_strength = 0.45f;
+    const bool rejectionOk = agent.selectAction(rejection) == "HIDE_AVOID";
+
+    ProposedAgent proposed(config);
+    proposed.setExplorationRate(0.0f);
+    proposed.setLearningEnabled(false);
+    const bool proposedFoodOk = proposed.selectAction(food) == "EAT";
+    const bool proposedPlayOk = proposed.selectAction(play) == "PLAY";
+    const bool proposedRejectionOk = proposed.selectAction(rejection) == "HIDE_AVOID";
+
+    return greetingOk && requestOk && disturbanceOk && restOk &&
+           foodOk && playOk && rejectionOk &&
+           proposedFoodOk && proposedPlayOk && proposedRejectionOk;
 }
 
 bool testProposedAgentAdaptsAfterNegativeFeedback() {
@@ -1072,6 +1097,12 @@ namespace {
 std::string contextualAction(const EnvironmentObservation& observation,
                              const AffectiveState* affect = nullptr,
                              const std::vector<record>* memories = nullptr) {
+    // Respond to concrete offered resources/invitations before generic context
+    // fallbacks, including when a loaded Q-table has no matching state.
+    if (observation.food_available) return "EAT";
+    if (observation.play_available && observation.user_status != 2) return "PLAY";
+    if (observation.goal_state == 0 && observation.user_status == 2) return "HIDE_AVOID";
+
     // Explicit semantic preferences are consulted before generic fallbacks.
     if (memories != nullptr) {
         for (auto it = memories->rbegin(); it != memories->rend(); ++it) {
