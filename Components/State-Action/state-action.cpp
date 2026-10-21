@@ -1145,7 +1145,7 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
         observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
     current_state = observedState;
     session_context.current_action = q_policy.chooseAction(
-        observedState, contextualAction(observation));
+        observedState, contextualAction(observation), validActionsForObservation(observation));
     return session_context.current_action;
 }
 
@@ -1264,7 +1264,8 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
     const std::string fallback = contextualAction(observation, &affective_state, &memory_records);
-    std::string selected = q_policy.chooseAction(current_state, fallback);
+    std::string selected = q_policy.chooseAction(
+        current_state, fallback, validActionsForObservation(observation));
     // Explicit, sufficiently confident preferences take precedence over a
     // learned action when the current scenario directly matches the preference.
     for (auto it = memory_records.rbegin(); it != memory_records.rend(); ++it) {
@@ -1291,6 +1292,7 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     if (wasActionRejected(selected, memory_records)) {
         selected = alternativeAfterRejection(selected);
     }
+    selected = validActionOrFallback(selected, fallback, observation);
     session_context.current_action = selected;
     return session_context.current_action;
 }
