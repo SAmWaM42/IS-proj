@@ -80,7 +80,7 @@ Launch the replacement three-screen simulation interface:
 
 The UI follows the Chapter 3.5.3 wireframes: **Main Simulation** provides the environment, preset interaction controls and text input; **Agent State** exposes proposed-agent affect and recent stored memory records; **Comparison** presents both agents' responses to the same interaction stream.
 
-The text input is routed through the persistent spaCy NLP service when available, with a C++ keyword fallback. It recognises fetch/request, praise, disturbance, rest, negative feedback, feeding, and play contexts. Preset controls use fixed development reward signals, so this UI is for simulation and debugging, not a substitute for the controlled participant-study protocol. The interface saves a session summary and session Q-table copies under `artifacts/simulation/`.
+The text input is routed through the persistent spaCy NLP service when available, with a C++ keyword fallback. It recognises fetch/request, praise, disturbance, rest, negative feedback, feeding, and play contexts. Preset controls use fixed development reward signals, so this UI is for simulation and debugging, not a substitute for the controlled participant-study protocol. The interface saves a session summary and session Q-table copies under `artifacts/simulation/`. Explicit general preferences are stored without forcing an immediate action; the proposed agent may use a preference only when the later context is relevant (for example, a dislike of sound during a loud disturbance). Such general preferences do not override urgent affective needs or a directly matching explicit fetch request. Interaction logs include general semantic preference records among the proposed agent's memory candidates.
 
 ### NLP-enabled simulation and dog sprites
 
@@ -109,7 +109,7 @@ After training the policies, launch the SFML study interface:
 
 The interface presents two blinded conditions (A/B) in random order, uses the same five scenarios for both, records positive/neutral/negative/no-response feedback, and asks four 1–5 ratings after each condition. Policy learning is disabled during participant sessions; feedback can update the proposed agent's affect and memory state, while the questionnaire ratings remain separate from the agent's reward signal.
 
-Participant data is written as an anonymous session JSON file under `artifacts/study/`, which is git-ignored. The file includes the condition key for later analysis, so treat it as restricted research data. This prototype does not replace supervisor/institutional ethics approval, an approved consent process, or a piloted questionnaire. Do not collect real participant data until those requirements are met.
+Participant data is written as an anonymous session JSON file under `artifacts/study/`, which is git-ignored. The file includes the condition key for later analysis, so treat it as restricted research data. A recorded "no response" is treated as missing feedback: the trial is retained in the dataset, but it does not update either agent's state, affect, or memory. Neutral feedback remains a distinct observed response. This prototype does not replace supervisor/institutional ethics approval, an approved consent process, or a piloted questionnaire. Do not collect real participant data until those requirements are met.
 
 ## Architecture
 
