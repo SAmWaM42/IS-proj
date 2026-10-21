@@ -719,14 +719,6 @@ QLearning::QLearning(float learningRate, float discountFactor, float epsilon, un
       epsilon(epsilon),
       rng(seed) {}
 
-float QLearning::getQValue(const state& stateRef, const std::string& action) const {
-    return static_cast<float>(q_table.getQValue(stateRef.encode(), action));
-}
-
-void QLearning::setQValue(const state& stateRef, const std::string& action, float value) {
-    q_table.table[stateRef.encode()][action] = value;
-}
-
 
 void QLearning::setActions(const std::vector<std::string>& newActions) {
     actions = newActions;
@@ -1493,47 +1485,6 @@ void ProposedAgent::recordUserPreference(const std::string& action, bool likes) 
     memory_records.push_back(preference);
 }
 
-AgentComparisonRun runAgentComparison(const EnvironmentConfig& config, int steps) {
-    AgentComparisonRun run{config, BaselineAgent(config), ProposedAgent(config), {}};
-
-    for (int stepIndex = 0; stepIndex < steps; ++stepIndex) {
-        EnvironmentObservation observation;
-        observation.goal_state = stepIndex % 3;
-        observation.target_proximity = (stepIndex + 1) % 3;
-        observation.user_status = stepIndex % 2;
-        observation.task_status = (stepIndex + 1) % 2;
-        observation.signal_strength = 0.35f + 0.12f * static_cast<float>((stepIndex % 5));
-
-        const std::string baselineAction = run.baseline_agent.selectAction(observation);
-        const std::string proposedAction = run.proposed_agent.selectAction(observation);
-
-        const float baselineReward = scoreActionAgainstObservation(baselineAction, observation);
-        const float proposedReward = scoreActionAgainstObservation(proposedAction, observation);
-
-        ActionOutcome baselineOutcome;
-        baselineOutcome.action_id = stepIndex;
-        baselineOutcome.reward = baselineReward;
-        baselineOutcome.terminal = (stepIndex + 1 == steps);
-        baselineOutcome.outcome_tag = "baseline_" + baselineAction;
-
-        ActionOutcome proposedOutcome;
-        proposedOutcome.action_id = stepIndex;
-        proposedOutcome.reward = proposedReward;
-        proposedOutcome.terminal = (stepIndex + 1 == steps);
-        proposedOutcome.outcome_tag = "proposed_" + proposedAction;
-
-        run.baseline_agent.applyOutcome(observation, baselineAction, baselineOutcome);
-        run.proposed_agent.applyOutcome(observation, proposedAction, proposedOutcome);
-
-        SimulationTick tick;
-        tick.observation = observation;
-        tick.action_result = baselineOutcome;
-        tick.timestamp = currentTimeStamp();
-        run.tick_log.push_back(tick);
-    }
-
-    return run;
-}
 
 bool testProposedMemoryConfidenceTracksOutcome() {
     EnvironmentConfig config;
