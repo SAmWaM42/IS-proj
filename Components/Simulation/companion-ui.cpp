@@ -146,14 +146,14 @@ enum class AnimationGroup { Idle, Walk, Sleep, Bark, Sit, Lay };
 
 AnimationGroup animationGroupForAction(const std::string& action) {
     if (action == "FETCH" || action == "WANDER" || action == "APPROACH_FOLLOW" ||
-        action == "SNIFF" || action == "PLAY")
+        action == "SNIFF" || action == "HIDE_AVOID" || action == "PLAY")
         return AnimationGroup::Walk;
     if (action == "SLEEP_LAY") return AnimationGroup::Sleep;
     if (action == "BARK" || action == "ACT_CONFUSED" || action == "WHINE")
         return AnimationGroup::Bark;
     if (action == "NUZZLE" || action == "GREETING" || action == "EAT")
         return AnimationGroup::Sit;
-    if (action == "INSIST" || action == "HIDE_AVOID")
+    if (action == "INSIST")
         return AnimationGroup::Lay;
     return AnimationGroup::Idle;
 }
@@ -292,8 +292,11 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
             const std::size_t count = std::max<std::size_t>(1, frames->size());
             animationFrame = (animationFrame + 1) % static_cast<int>(count);
         }
-        if (visibleAction == "FETCH" || visibleAction == "WANDER") {
-            const float direction = visibleAction == "FETCH" ? 1.0f : -1.0f;
+        if (visibleAction == "FETCH" || visibleAction == "WANDER" ||
+            visibleAction == "APPROACH_FOLLOW" || visibleAction == "SNIFF" ||
+            visibleAction == "HIDE_AVOID" || visibleAction == "PLAY") {
+            const float direction =
+                (visibleAction == "WANDER" || visibleAction == "HIDE_AVOID") ? -1.0f : 1.0f;
             agentX += direction * elapsedSeconds * 70.0f;
             agentX = std::clamp(agentX, 320.0f, 950.0f);
         }
