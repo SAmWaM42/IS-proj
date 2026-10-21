@@ -9,7 +9,6 @@ add_executable(IS-2
    main.c++
    Components/State-Action/state-action.cpp
    Components/Memory/memory.cpp
-   Components/Environment/environment.cpp
    Components/Training/training.cpp
    Components/Study/study.cpp
    Components/Simulation/companion-ui.cpp
@@ -18,7 +17,6 @@ add_executable(IS-2
 target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}
    ${CMAKE_SOURCE_DIR}/Inc
-   ${CMAKE_SOURCE_DIR}/Components/Environment
    ${CMAKE_SOURCE_DIR}/Components/Memory
    ${CMAKE_SOURCE_DIR}/Components/State-Action
    ${CMAKE_SOURCE_DIR}/Components/Training
