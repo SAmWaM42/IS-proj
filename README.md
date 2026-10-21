@@ -36,12 +36,12 @@ Verified milestones:
 
 - A minimal C++ baseline Q-learning loop has been implemented and validated.
 - Shared state/action contracts are formalised and documented.
+- The 14-action vocabulary, observable-context action mask, food/play affordances, and shared animation mapping are documented in [Docs/20-stage-minus-one-action-architecture.md](Docs/20-stage-minus-one-action-architecture.md).
 - Memory and affect scaffolding was added as an explicit staged extension point.
 - Bounded memory/affect state integration has been implemented without destabilising the baseline policy.
 - Live memory retrieval, ranking, and state summarisation are in place.
 - Persistence and rest-state aggregation are implemented for Q-table, memory records, affective state, session context, interaction history, and low-confidence aggregated facts.
-- A minimal backyard simulation shell has been added using SFML, with policy-driven random stimuli and on-screen state display.
-- A baseline-vs-proposed comparison harness has been scaffolded and executed under a shared environment contract.
+- The headless `--compare` workflow compares the trained baseline and proposed policies using shared scenario inputs.
 - A headless synthetic training/evaluation runner is available through `--train`, `--validate`, and `--compare`; it writes mode-specific per-step JSONL logs and episode summaries.
 - A keyboard-driven participant-study prototype is available through `--study`, with randomized A/B condition order, fixed shared scenarios, participant feedback, and a separate questionnaire.
 - Terminal transitions no longer bootstrap from next-state Q-values, and policy exploration uses a per-agent seed derived from the experiment configuration.
@@ -80,7 +80,7 @@ Launch the replacement three-screen simulation interface:
 
 The UI follows the Chapter 3.5.3 wireframes: **Main Simulation** provides the environment, preset interaction controls and text input; **Agent State** exposes proposed-agent affect and recent stored memory records; **Comparison** presents both agents' responses to the same interaction stream.
 
-The text input currently uses a small keyword-based intent mapper (fetch/request, praise, disturbance, rest, and negative feedback); it is not yet connected to the spaCy NLP service. Preset controls use fixed development reward signals, so this UI is for simulation and debugging, not a substitute for the controlled participant-study protocol. The interface saves a session summary and session Q-table copies under `artifacts/simulation/`.
+The text input is routed through the persistent spaCy NLP service when available, with a C++ keyword fallback. It recognises fetch/request, praise, disturbance, rest, negative feedback, feeding, and play contexts. Preset controls use fixed development reward signals, so this UI is for simulation and debugging, not a substitute for the controlled participant-study protocol. The interface saves a session summary and session Q-table copies under `artifacts/simulation/`.
 
 ### NLP-enabled simulation and dog sprites
 
@@ -95,7 +95,7 @@ python -m pip install spacy
 python -m spacy download en_core_web_sm
 ```
 
-The UI currently launches `python3` by name, so ensure the desired Python environment is active before starting the application. The included dog sprite sheet is loaded from `Data/Assets/DogMegaPackFree/DogMegaPackFree/Dogs.png`; the renderer divides it into a 4-by-4 frame grid and changes animation row based on the proposed agent's selected action. If the image cannot be loaded, it falls back to the vector placeholder. The larger window and Hide Controls button provide more room for the yard view.
+The UI currently launches `python3` by name, so ensure the desired Python environment is active before starting the application. The renderer maps both agents' selected actions to the same available animation groups. The included dog sprite sheet is loaded from `Data/Assets/DogMegaPackFree/DogMegaPackFree/Dogs.png`; verify the source sheet's exact frame layout visually and adjust the 4-by-4 frame mapping if its cells do not correspond to animation frames. If the image cannot be loaded, it falls back to the vector placeholder. The larger window and Hide Controls button provide more room for the yard view.
 
 This is an initial sprite-sheet integration: verify the source sheet's exact frame layout visually and adjust the 4-by-4 frame mapping if its cells do not correspond to animation frames. The NLP intent mapper still emits a small set of discrete intents and fixed development reward signals; it is not a general dialogue model or a validated participant-feedback mechanism.
 
