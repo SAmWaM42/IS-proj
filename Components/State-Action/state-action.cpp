@@ -995,26 +995,6 @@ void writeValidationReport(const std::vector<TestResultRecord>& results, const s
 }
 
 namespace {
-float scoreActionAgainstObservation(const std::string& action, const EnvironmentObservation& observation) {
-    float score = 0.0f;
-    const std::string lowered = action;
-    if (action == "FETCH") {
-        score += observation.task_status == 1 ? 0.6f : 0.2f;
-        score += observation.signal_strength * 0.5f;
-    } else if (action == "GREETING") {
-        score += observation.user_status == 1 ? 0.5f : 0.1f;
-    } else if (action == "ACT_CONFUSED") {
-        score += observation.signal_strength > 0.75f ? 0.2f : -0.2f;
-    } else if (action == "SLEEP_LAY") {
-        score += observation.task_status == 0 ? 0.5f : -0.1f;
-    } else if (action == "BARK") {
-        score += observation.signal_strength > 0.7f ? 0.1f : -0.2f;
-    } else if (action == "INSIST") {
-        score += observation.user_status == 1 ? 0.2f : -0.1f;
-    }
-    return std::clamp(score, -1.0f, 1.0f);
-}
-
 std::string contextualAction(const EnvironmentObservation& observation,
                              const AffectiveState* affect = nullptr,
                              const std::vector<record>* memories = nullptr) {
