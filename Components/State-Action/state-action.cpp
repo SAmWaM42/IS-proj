@@ -208,6 +208,38 @@ bool testBasicQUpdate() {
     return nearlyEqual(qValue, expected, 1e-6);
 }
 
+bool testMaskedBootstrapUpdate() {
+    const auto path = std::filesystem::temp_directory_path() / "is2_masked_bootstrap_test.qtable";
+    QLearning learner(1.0f, 0.9f, 0.0f, 19u);
+    learner.setActions(companionActionSet());
+
+    const state next = makeState(1, distance::MEDIUM, Level::MEDIUM, Level::LOW,
+                                 Level::MEDIUM, Level::LOW, 1, 0.0f);
+    const state current = makeState(0, distance::CLOSE, Level::MEDIUM, Level::LOW,
+                                    Level::MEDIUM, Level::LOW, 0, 0.0f);
+
+    // Give an action that will be invalid in the next context a large Q-value.
+    learner.update(next, "FETCH", 10.0f, next, true);
+    // The valid next-action set excludes FETCH, so it must not bootstrap into this update.
+    learner.update(current, "WANDER", 0.0f, next, false, {"ACT_CONFUSED"});
+    learner.saveQTable(path.string());
+
+    std::ifstream in(path);
+    std::size_t key = 0;
+    std::string action;
+    double value = 0.0;
+    bool found = false;
+    while (in >> key >> action >> value) {
+        if (key == current.encode() && action == "WANDER") {
+            found = nearlyEqual(value, 0.0, 1e-6);
+            break;
+        }
+    }
+    in.close();
+    std::filesystem::remove(path);
+    return found;
+}
+
 bool testContextSummaryChangesState() {
     const AffectiveState neutralAffect{};
     const state baseline = makeStateWithContext(
@@ -484,7 +516,13 @@ bool testTaskAndSignalAreEncoded() {
     taskVariant.task_status = 1;
     state signalVariant = base;
     signalVariant.signal_strength_bucket = 2;
-    return base.encode() != taskVariant.encode() && base.encode() != signalVariant.encode();
+    state proximityVariant = makeState(1, distance::FAR, Level::MEDIUM, Level::LOW,
+                                       Level::MEDIUM, Level::LOW, 1, 0.0f);
+    proximityVariant.task_status = base.task_status;
+    proximityVariant.signal_strength_bucket = base.signal_strength_bucket;
+    return base.encode() != taskVariant.encode() &&
+           base.encode() != signalVariant.encode() &&
+           base.encode() != proximityVariant.encode();
 }
 bool testPersistence() {
     const std::filesystem::path savePath = std::filesystem::temp_directory_path() / "is2_qtable_test.txt";
@@ -1668,6 +1706,7 @@ bool testNegativeFeedbackUpdatesAffectDimensions() {
 bool runBaselineValidation() {
     std::vector<TestResultRecord> results;
     results.push_back({"Basic Q update", "PASS", testBasicQUpdate(), "baseline"});
+    results.push_back({"Q update excludes invalid next actions", "PASS", testMaskedBootstrapUpdate(), "training"});
     results.push_back({"Unseen state handling", "PASS", testUnseenStateHandling(), "baseline"});
     results.push_back({"Intent-appropriate fallback actions", "PASS", testContextualFallbackMatchesIntent(), "policy"});
     results.push_back({"Task and signal state encoding", "PASS", testTaskAndSignalAreEncoded(), "state"});
