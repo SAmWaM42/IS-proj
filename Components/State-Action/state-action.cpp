@@ -526,10 +526,8 @@ bool testRuntimeLifecycleAndEnvironmentContract() {
     actionResult.terminal = false;
     actionResult.outcome_tag = "observed";
 
-    SimulationTick tick{observation, actionResult, "2026-10-11T00:00:00Z"};
-
     return stateChanged && normalized.memory_bias > 0.0f && normalized.affect_trend > 0.0f &&
-           observation.target_proximity == 1 && tick.action_result.reward > 0.0f;
+           observation.target_proximity == 1 && actionResult.reward > 0.0f;
 }
 
 state makeState(int intent,
