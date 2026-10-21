@@ -1,6 +1,6 @@
 # Phase 3 — Transition Semantics and Experiment Trace Identity
 
-**Status:** Implementation committed on `feat/phase-3-transition-semantics`; local verification pending.  
+**Status:** Local CMake build, full self-test suite, and 5-episode smoke training run verified by the developer. Generated trace/summary field inspection is still pending.  
 **Parent plan:** [Docs/19-training-and-evaluation-redesign-spec.md](19-training-and-evaluation-redesign-spec.md), Stage 0.
 
 ## Scope of this increment
@@ -27,7 +27,7 @@ Training step records include `schema_version`, `step_index`, `action_id`, `term
 - A Q-learning regression check seeds a known next-state value and verifies that a truncated transition bootstraps from it.
 - An action-ID regression check verifies uniqueness across the canonical action set and the unknown-action sentinel.
 
-## Local verification required
+## Local verification completed; trace inspection pending
 
 From the project root on this branch:
 
@@ -37,7 +37,7 @@ cmake --build build -j"$(nproc)"
 ./build/IS-2 --train --episodes 5 --steps 7 --seed 42 --out /tmp/is2-phase3-smoke
 ```
 
-Inspect the smoke-run JSONL to confirm each episode's final step has `truncated: true`, `terminated: false`, a stable `action_id`, and a distinct `step_index`. Confirm the summary contains the schema/version labels and hyperparameters.
+The developer confirmed that the build succeeded, all listed self-tests passed, and the smoke training command completed. Still inspect the generated JSONL to confirm each episode's final step has `truncated: true`, `terminated: false`, a stable `action_id`, and a distinct `step_index`; inspect `train_summary.json` for schema/version labels and hyperparameters.
 
 ## Intentionally deferred
 
