@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-20T09:22:36Z",
+  "generated_at": "2026-10-21T08:00:51Z",
   "project": "IS-2",
   "status": "PASS",
   "summary": {
     "failed": 0,
-    "passed": 22,
-    "total": 22
+    "passed": 24,
+    "total": 24
   },
   "tests": [
     {
@@ -69,6 +69,12 @@
       "status": "PASS"
     },
     {
+      "category": "fairness",
+      "name": "Environment energy visible only to proposed agent",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
       "category": "affect",
       "name": "Negative feedback updates all affect dimensions",
       "passed": true,
@@ -89,6 +95,12 @@
     {
       "category": "baseline",
       "name": "Terminal handling",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "policy",
+      "name": "Observable action masking and food/play availability",
       "passed": true,
       "status": "PASS"
     },
