@@ -1158,6 +1158,60 @@ void writeValidationReport(const std::vector<TestResultRecord>& results, const s
 }
 
 namespace {
+std::string generalPreferenceActionOverride(const EnvironmentObservation& observation,
+                                            const std::vector<record>* memories,
+                                            const AffectiveState* affect = nullptr) {
+    if (memories == nullptr) return {};
+
+    // Respect urgent affective needs before applying a general preference.
+    if (affect != nullptr &&
+        (affect->stress >= 0.80f ||
+         (affect->energy == AffectEnergy::LOW && !observation.food_available)) &&
+        (observation.goal_state != 2 || observation.signal_strength < 0.80f)) {
+        return {};
+    }
+    if (observation.food_available) return {};
+
+    const record* ballPreference = nullptr;
+    const record* soundPreference = nullptr;
+    const record* restPreference = nullptr;
+    for (auto it = memories->rbegin(); it != memories->rend(); ++it) {
+        if (it->raw_fact.subject != "user" || it->confidence < 0.4f) continue;
+        const auto& relation = it->raw_fact.relation;
+        if (relation != "likes" && relation != "dislikes") continue;
+        if (it->raw_fact.object == "ball" && ballPreference == nullptr) ballPreference = &*it;
+        else if (it->raw_fact.object == "sound" && soundPreference == nullptr) soundPreference = &*it;
+        else if (it->raw_fact.object == "rest" && restPreference == nullptr) restPreference = &*it;
+    }
+
+    const bool explicitFetchRequest = observation.goal_state == 1 &&
+        observation.task_status == 1 && observation.target_proximity <= 1;
+    if (observation.play_available && observation.user_status != 2 && !explicitFetchRequest &&
+        ballPreference != nullptr) {
+        if (ballPreference->raw_fact.relation == "likes") return "PLAY";
+        // Avoid initiating ball play when the user has explicitly said they
+        // dislike the ball; choose a non-play social response instead.
+        return observation.goal_state == 0
+            ? (observation.target_proximity == 0 ? "NUZZLE" : "GREETING")
+            : "WANDER";
+    }
+
+    if (observation.goal_state == 2 && observation.signal_strength >= 0.80f &&
+        soundPreference != nullptr && soundPreference->raw_fact.relation == "dislikes") {
+        // A dislike of sound is relevant to a loud disturbance, but is not
+        // treated as proof that every sound or every bark is disliked.
+        return "ACT_CONFUSED";
+    }
+
+    if (observation.goal_state == 2 && observation.task_status == 0 &&
+        observation.signal_strength < 0.80f && restPreference != nullptr) {
+        if (restPreference->raw_fact.relation == "likes") return "SLEEP_LAY";
+        return "WANDER";
+    }
+
+    return {};
+}
+
 std::string contextualAction(const EnvironmentObservation& observation,
                              const AffectiveState* affect = nullptr,
                              const std::vector<record>* memories = nullptr) {
@@ -1172,6 +1226,9 @@ std::string contextualAction(const EnvironmentObservation& observation,
             return "SLEEP_LAY";
     }
     if (observation.food_available) return "EAT";
+    const std::string generalPreferenceAction =
+        generalPreferenceActionOverride(observation, memories, affect);
+    if (!generalPreferenceAction.empty()) return generalPreferenceAction;
     if (observation.play_available && observation.user_status != 2) return "PLAY";
     if (observation.goal_state == 0 && observation.user_status == 2) return "HIDE_AVOID";
 
@@ -1453,6 +1510,12 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     const std::string fallback = contextualAction(observation, &affective_state, &memory_records);
     std::string selected = q_policy.chooseAction(
         current_state, fallback, validActionsForObservation(observation));
+    // General semantic preferences influence only matching contexts. More
+    // specific action preferences below take precedence when both apply.
+    const std::string generalPreferenceAction =
+        generalPreferenceActionOverride(observation, &memory_records, &affective_state);
+    if (!generalPreferenceAction.empty()) selected = generalPreferenceAction;
+
     // Explicit, sufficiently confident preferences take precedence over a
     // learned action when the current scenario directly matches the preference.
     for (auto it = memory_records.rbegin(); it != memory_records.rend(); ++it) {
@@ -1742,6 +1805,42 @@ bool testUserStatementsAreStoredAsSemanticMemory() {
 }
 
 
+bool testGeneralSemanticPreferencesInfluenceContextualActions() {
+    EnvironmentConfig config;
+    config.seed = 31;
+
+    ProposedAgent soundAgent(config);
+    soundAgent.setExplorationRate(0.0f);
+    soundAgent.setLearningEnabled(false);
+    soundAgent.recordUserStatement("dislikes", "sound");
+    const EnvironmentObservation disturbance{2, 0, 0, 0, 0.95f};
+    const bool soundPreferenceApplied = soundAgent.selectAction(disturbance) == "ACT_CONFUSED";
+
+    ProposedAgent ballAgent(config);
+    ballAgent.setExplorationRate(0.0f);
+    ballAgent.setLearningEnabled(false);
+    ballAgent.recordUserStatement("dislikes", "ball");
+    const EnvironmentObservation playContext{0, 1, 0, 1, 0.70f, false, true};
+    const bool ballPreferenceApplied = ballAgent.selectAction(playContext) == "GREETING";
+
+    ProposedAgent restAgent(config);
+    restAgent.setExplorationRate(0.0f);
+    restAgent.setLearningEnabled(false);
+    restAgent.recordUserStatement("dislikes", "rest");
+    const EnvironmentObservation restContext{2, 2, 0, 0, 0.20f};
+    const bool restPreferenceApplied = restAgent.selectAction(restContext) == "WANDER";
+
+    ProposedAgent explicitRequestAgent(config);
+    explicitRequestAgent.setExplorationRate(0.0f);
+    explicitRequestAgent.setLearningEnabled(false);
+    explicitRequestAgent.recordUserStatement("dislikes", "ball");
+    const EnvironmentObservation fetchRequest{1, 1, 1, 1, 0.85f};
+    const bool explicitRequestPreserved = explicitRequestAgent.selectAction(fetchRequest) == "FETCH";
+
+    return soundPreferenceApplied && ballPreferenceApplied &&
+           restPreferenceApplied && explicitRequestPreserved;
+}
+
 bool testProposedMemoryConfidenceTracksOutcome() {
     EnvironmentConfig config;
     ProposedAgent agent(config);
@@ -1872,6 +1971,7 @@ bool runBaselineValidation() {
     results.push_back({"Memory retention after intervening interactions", "PASS", testMemoryRetentionAfterInterveningInteractions(), "memory"});
     results.push_back({"Semantic preference survives intervening interactions", "PASS", testSemanticPreferenceSurvivesInterveningInteractions(), "memory"});
     results.push_back({"User statements are stored as semantic memory", "PASS", testUserStatementsAreStoredAsSemanticMemory(), "memory"});
+    results.push_back({"General semantic preferences influence contextual actions", "PASS", testGeneralSemanticPreferencesInfluenceContextualActions(), "memory"});
     results.push_back({"Memory confidence follows outcome history", "PASS", testProposedMemoryConfidenceTracksOutcome(), "memory"});
     results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
     results.push_back({"Environment energy visible only to proposed agent", "PASS", testEnvironmentEnergyVisibleOnlyToProposedAgent(), "fairness"});
