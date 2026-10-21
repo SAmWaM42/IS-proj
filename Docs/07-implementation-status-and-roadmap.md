@@ -21,10 +21,12 @@ Implemented changes:
 - expanded synthetic training and participant-study contexts for food, play, and negative feedback
 - centralised UI action labels and action-to-animation grouping
 - removed the disconnected legacy backyard simulation, placeholder environment scaffolding, unused action hierarchy, duplicate comparison harness, unused Q-learning helpers, and no-op training-data loader
+- began the approved environment-transition extension: far fetch is reachable, approach changes proximity, fetch effort/success depend on distance and hidden environment energy, rest/eating restore energy, and the proposed agent alone observes energy in its policy state
+- added a far-fetch follow-up scenario and a self-test for action-dependent approach/rest transitions
 
 Tracking document: [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md)
 
-**Remaining gate:** Build the project, run `--self-test`, and verify that training never selects a masked action before beginning Stage 0.
+**Remaining gate:** Pull the latest `Dev`, build, run `--self-test`, and inspect a short `--train` run for action-dependent distance changes, energy logs, successful/failed fetch outcomes, and no selection of genuinely impossible actions. The GitHub edits have not been compiled in this session.
 
 ## Completed work
 
