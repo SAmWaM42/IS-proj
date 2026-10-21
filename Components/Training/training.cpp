@@ -50,7 +50,7 @@ namespace
             observation = {0, 0, 1, 0, 0.72f};
             break;
         case 5: // Request where the target is too far away.
-            observation = {1, 3, 1, 1, 0.56f};
+            observation = {1, 2, 1, 1, 0.56f};
             break;
         case 6: // Food is explicitly available.
             observation = {2, 0, 1, 0, 0.30f, true, false};
@@ -68,23 +68,34 @@ namespace
         return observation;
     }
 
-    float rewardFor(const std::string &action, const EnvironmentObservation &observation)
+    struct EnvironmentStep
     {
-        // Reward is conditioned on the interaction intent, not just generic environment values.
+        EnvironmentObservation next_observation;
+        float reward = 0.0f;
+        float energy_after = 0.8f;
+        bool completed = false;
+    };
+
+    float rewardFor(const std::string &action,
+                    const EnvironmentObservation &observation,
+                    bool fetchSucceeded)
+    {
+        // External task/social reward is shared by both agents. Energy and effort
+        // are environment variables; only the proposed policy observes energy.
         if (action == "EAT") return observation.food_available ? 0.80f : -0.50f;
         if (action == "PLAY") return observation.play_available ? 0.65f : -0.40f;
         if (action == "WHINE") return observation.user_status == 2 ? 0.35f : -0.15f;
         if (action == "HIDE_AVOID")
             return (observation.user_status == 2 || observation.signal_strength >= 0.90f) ? 0.45f : -0.10f;
         if (action == "APPROACH_FOLLOW")
-            return observation.user_status != 2 ? 0.25f : -0.20f;
+            return observation.user_status != 2 ? 0.20f : -0.20f;
         if (action == "SNIFF")
             return observation.target_proximity <= 1 ? 0.30f : -0.05f;
 
         float reward = -0.10f;
         switch (observation.goal_state)
         {
-        case 0: // Social approach
+        case 0:
             if (action == "GREETING")
                 reward += observation.user_status == 0 ? 0.85f : 0.65f;
             else if (action == "NUZZLE")
@@ -96,13 +107,15 @@ namespace
             else if (action == "WANDER")
                 reward -= 0.10f;
             break;
-        case 1: // Explicit request / task
+        case 1:
             if (action == "FETCH")
             {
-                reward += observation.task_status == 1 ? 0.75f : -0.55f;
-                reward += observation.target_proximity <= 1 ? 0.25f : -0.30f;
-                reward += observation.signal_strength * 0.10f;
+                if (observation.task_status != 1) reward -= 0.55f;
+                else if (fetchSucceeded) reward += 0.75f + observation.signal_strength * 0.10f;
+                else reward -= 0.20f;
             }
+            else if (action == "APPROACH_FOLLOW")
+                reward += observation.task_status == 1 ? 0.20f : -0.20f;
             else if (action == "ACT_CONFUSED")
                 reward += observation.task_status == 0 ? 0.15f : -0.20f;
             else if (action == "WANDER")
@@ -112,36 +125,116 @@ namespace
             else
                 reward -= 0.35f;
             break;
-        case 2: // Disturbance / rest
+        case 2:
         default:
             if (observation.signal_strength >= 0.80f)
             {
-                if (action == "ACT_CONFUSED")
-                    reward += 0.55f;
-                else if (action == "BARK")
-                    reward += 0.35f;
-                else if (action == "INSIST" || action == "FETCH")
-                    reward -= 0.45f;
+                if (action == "ACT_CONFUSED") reward += 0.55f;
+                else if (action == "BARK") reward += 0.35f;
+                else if (action == "INSIST" || action == "FETCH") reward -= 0.45f;
             }
             else if (observation.task_status == 0)
             {
-                if (action == "SLEEP_LAY")
-                    reward += 0.65f;
-                else if (action == "WANDER")
-                    reward += 0.15f;
-                else if (action == "FETCH" || action == "INSIST")
-                    reward -= 0.35f;
+                if (action == "SLEEP_LAY") reward += 0.65f;
+                else if (action == "WANDER") reward += 0.15f;
+                else if (action == "FETCH" || action == "INSIST") reward -= 0.35f;
             }
             else
             {
-                if (action == "ACT_CONFUSED")
-                    reward += 0.20f;
-                else if (action == "WANDER")
-                    reward += 0.10f;
+                if (action == "ACT_CONFUSED") reward += 0.20f;
+                else if (action == "WANDER") reward += 0.10f;
             }
             break;
         }
-        return std::clamp(reward, -1.0f, 1.0f);
+        return reward;
+    }
+
+    EnvironmentStep applyEnvironmentAction(const std::string &action,
+                                           const EnvironmentObservation &observation,
+                                           float energy,
+                                           std::mt19937 &rng)
+    {
+        EnvironmentStep result;
+        result.next_observation = observation;
+        energy = std::clamp(energy, 0.0f, 1.0f);
+
+        const int proximity = std::clamp(observation.target_proximity, 0, 2);
+        const float distanceCost[] = {0.035f, 0.085f, 0.16f};
+        float effort = 0.012f;
+        bool fetchSucceeded = false;
+
+        if (action == "FETCH" && observation.task_status == 1 && observation.target_proximity < 3)
+        {
+            const float baseProbability[] = {0.96f, 0.78f, 0.52f};
+            const float successProbability = std::clamp(
+                baseProbability[proximity] * (0.55f + 0.45f * energy), 0.0f, 1.0f);
+            std::bernoulli_distribution success(successProbability);
+            fetchSucceeded = success(rng);
+            effort = distanceCost[proximity] * (1.0f + 0.8f * (1.0f - energy));
+            if (fetchSucceeded) result.next_observation.task_status = 0;
+        }
+        else if (action == "APPROACH_FOLLOW" && observation.target_proximity > 0 &&
+                 observation.target_proximity < 3 && observation.user_status != 2)
+        {
+            effort = 0.045f * (1.0f + 0.8f * (1.0f - energy));
+            result.next_observation.target_proximity = std::max(0, observation.target_proximity - 1);
+        }
+        else if (action == "SLEEP_LAY")
+        {
+            effort = 0.0f;
+            energy = std::min(1.0f, energy + 0.28f);
+        }
+        else if (action == "EAT" && observation.food_available)
+        {
+            energy = std::min(1.0f, energy + 0.24f);
+            result.next_observation.food_available = false;
+        }
+        else if (action == "PLAY" && observation.play_available)
+        {
+            effort = 0.055f * (1.0f + 0.8f * (1.0f - energy));
+            result.next_observation.play_available = false;
+        }
+
+        if (action != "SLEEP_LAY" && !(action == "EAT" && observation.food_available))
+            energy = std::max(0.0f, energy - effort * 1.5f);
+
+        result.energy_after = std::clamp(energy, 0.0f, 1.0f);
+        result.reward = std::clamp(
+            rewardFor(action, observation, fetchSucceeded) - effort - 0.05f,
+            -1.0f, 1.0f);
+        result.completed = action == "FETCH" && fetchSucceeded &&
+                           observation.task_status == 1 && observation.target_proximity < 3;
+        return result;
+    }
+
+    EnvironmentObservation mergeTaskTransition(const EnvironmentObservation &current,
+                                               const EnvironmentObservation &transitioned,
+                                               const EnvironmentObservation &nextScenario)
+    {
+        // Preserve action-caused changes while a multi-step fetch request is still
+        // active. A genuinely different scenario remains an external context change.
+        if (current.goal_state == 1 && current.task_status == 1 &&
+            nextScenario.goal_state == 1 && nextScenario.task_status == 1)
+        {
+            EnvironmentObservation merged = nextScenario;
+            merged.target_proximity = transitioned.target_proximity;
+            merged.task_status = transitioned.task_status;
+            return merged;
+        }
+        return nextScenario;
+    }
+
+    bool testEnvironmentActionTransitions()
+    {
+        EnvironmentObservation farRequest{1, 2, 1, 1, 0.56f};
+        std::mt19937 rng(17);
+        const EnvironmentStep approached = applyEnvironmentAction("APPROACH_FOLLOW", farRequest, 0.8f, rng);
+        const EnvironmentStep rested = applyEnvironmentAction(
+            "SLEEP_LAY", EnvironmentObservation{2, 1, 0, 0, 0.18f}, 0.25f, rng);
+        return approached.next_observation.target_proximity == 1 &&
+               approached.energy_after < 0.8f &&
+               approached.next_observation.task_status == 1 &&
+               rested.energy_after > 0.25f;
     }
 
     template <typename Agent>
@@ -158,35 +251,47 @@ namespace
         agent.setExplorationRate(epsilon);
 
         EpisodeMetrics metrics;
+        float environmentEnergy = 0.8f;
+        EnvironmentObservation currentObservation = observations.front();
+        std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
+                                   static_cast<unsigned int>(agentName == "proposed" ? 1 : 0));
+
         for (std::size_t step = 0; step < observations.size(); ++step)
         {
-            const auto &observation = observations[step];
+            if (step > 0) {
+                currentObservation = mergeTaskTransition(
+                    observations[step - 1], currentObservation, observations[step]);
+            }
+            const EnvironmentObservation observation = currentObservation;
             const std::string action = agent.selectAction(observation);
             metrics.visited_states.insert(agent.getCurrentState().encode());
-            const float reward = rewardFor(action, observation);
-            const bool completed = observation.goal_state == 1 &&
-                                   action == "FETCH" &&
-                                   observation.task_status == 1 &&
-                                   observation.target_proximity <= 1 &&
-                                   observation.signal_strength >= 0.72f;
-            // A successful subtask is a metric, not the end of the companion
-            // interaction episode; later contexts are needed to train memory
-            // and affect adaptation. Only the final transition is terminal.
+
+            const EnvironmentStep transition =
+                applyEnvironmentAction(action, observation, environmentEnergy, transitionRng);
+            environmentEnergy = transition.energy_after;
             const bool terminal = step + 1 == observations.size();
 
+            EnvironmentObservation nextObservation = transition.next_observation;
+            if (!terminal) {
+                nextObservation = mergeTaskTransition(
+                    observation, transition.next_observation, observations[step + 1]);
+            }
+
             ActionOutcome outcome;
-            outcome.action_id = static_cast<int>(step);
-            outcome.reward = reward;
+            outcome.action_id = static_cast<int>(std::distance(
+                companionActionSet().begin(),
+                std::find(companionActionSet().begin(), companionActionSet().end(), action)));
+            outcome.reward = transition.reward;
             outcome.terminal = terminal;
-            outcome.outcome_tag = completed ? "goal_completed" : (terminal ? "step_limit" : "interaction");
-            const EnvironmentObservation& nextObservation =
-                terminal ? observation : observations[step + 1];
+            outcome.outcome_tag = transition.completed ? "goal_completed" :
+                                  (terminal ? "step_limit" : "interaction");
+            outcome.energy_after = transition.energy_after;
 
             agent.applyOutcome(observation, action, outcome, nextObservation);
 
-            metrics.total_reward += reward;
+            metrics.total_reward += transition.reward;
             metrics.steps = static_cast<int>(step + 1);
-            metrics.completed = metrics.completed || completed;
+            metrics.completed = metrics.completed || transition.completed;
             ++metrics.action_counts[action];
 
             nlohmann::json row;
@@ -200,13 +305,17 @@ namespace
             row["signal_strength"] = observation.signal_strength;
             row["food_available"] = observation.food_available;
             row["play_available"] = observation.play_available;
+            row["energy_before"] = environmentEnergy + 0.0f; // environment energy after this action
+            row["energy_after"] = transition.energy_after;
             row["action"] = action;
             row["encoded_state"] = agent.getCurrentState().encode();
-            row["reward"] = reward;
+            row["reward"] = transition.reward;
             row["terminal"] = terminal;
-            row["completed"] = completed;
+            row["completed"] = transition.completed;
+            row["fetch_succeeded"] = transition.completed;
             stepLog << row.dump() << '\n';
 
+            currentObservation = nextObservation;
             if (terminal) break;
         }
         return metrics;
