@@ -112,7 +112,6 @@ public:
                 const std::vector<std::string>& validNextActions = {});
 
     void setEpsilon(float epsilon);
-    float getEpsilon() const;
 
     void loadQTable(const std::string& path);
     void saveQTable(const std::string& path);
