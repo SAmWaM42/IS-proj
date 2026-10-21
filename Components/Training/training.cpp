@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <set>
 #include <vector>
+#include <utility>
 
 namespace
 {
