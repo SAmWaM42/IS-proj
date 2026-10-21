@@ -16,6 +16,26 @@ inline const std::vector<std::string>& companionActionSet() {
     return actions;
 }
 
+// Stable IDs are explicit rather than derived from vector position, so adding or
+// reordering actions does not silently change the meaning of recorded action_id.
+inline int companionActionId(const std::string& action) {
+    if (action == "FETCH") return 0;
+    if (action == "WANDER") return 1;
+    if (action == "BARK") return 2;
+    if (action == "ACT_CONFUSED") return 3;
+    if (action == "SLEEP_LAY") return 4;
+    if (action == "NUZZLE") return 5;
+    if (action == "INSIST") return 6;
+    if (action == "GREETING") return 7;
+    if (action == "APPROACH_FOLLOW") return 8;
+    if (action == "SNIFF") return 9;
+    if (action == "WHINE") return 10;
+    if (action == "HIDE_AVOID") return 11;
+    if (action == "EAT") return 12;
+    if (action == "PLAY") return 13;
+    return -1;
+}
+
 // Availability depends only on observable environment context, never on hidden
 // simulated-user traits or on whether the agent is baseline/proposed.
 inline bool isActionValidForObservation(
