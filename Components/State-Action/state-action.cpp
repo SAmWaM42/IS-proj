@@ -16,15 +16,7 @@
 #include <vector>
 
 namespace {
-const std::vector<std::string> kActions = {
-    "FETCH",
-    "WANDER",
-    "BARK",
-    "ACT_CONFUSED",
-    "SLEEP_LAY",
-    "NUZZLE",
-    "INSIST"
-};
+const std::vector<std::string>& kActions = companionActionSet();
 
 bool nearlyEqual(double lhs, double rhs, double tolerance = 1e-6) {
     return std::abs(lhs - rhs) <= tolerance;
@@ -788,47 +780,50 @@ void QLearning::setActions(const std::vector<std::string>& newActions) {
 }
 
 std::string QLearning::chooseAction(const state& stateRef) const {
-    const std::string fallback = actions.empty() ? "FETCH" : actions.front();
+    const std::string fallback = actions.empty() ? "WANDER" : actions.front();
     return chooseAction(stateRef, fallback);
 }
 
 std::string QLearning::chooseAction(const state& stateRef,
                                     const std::string& contextualFallback) const {
-    if (actions.empty()) {
-        return contextualFallback.empty() ? "FETCH" : contextualFallback;
-    }
+    return chooseAction(stateRef, contextualFallback, actions);
+}
 
+std::string QLearning::chooseAction(const state& stateRef,
+                                    const std::string& contextualFallback,
+                                    const std::vector<std::string>& validActions) const {
+    if (validActions.empty())
+        return "WANDER";
+
+    const auto isValid = [&](const std::string& action) {
+        return std::find(validActions.begin(), validActions.end(), action) != validActions.end();
+    };
+    const std::string fallback = isValid(contextualFallback) ? contextualFallback : validActions.front();
     const auto stateIt = q_table.table.find(stateRef.encode());
-    const bool hasLearnedValues = stateIt != q_table.table.end() &&
-        std::any_of(stateIt->second.begin(), stateIt->second.end(),
-                    [](const auto& entry) { return std::abs(entry.second) > 1e-9; });
-
-    if (!hasLearnedValues) {
-        return std::find(actions.begin(), actions.end(), contextualFallback) != actions.end()
-            ? contextualFallback : actions.front();
-    }
 
     if (epsilon > 0.0f) {
-        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-        if (dist(rng) < epsilon) {
-            return getRandomAction(stateRef);
+        std::uniform_real_distribution<float> chance(0.0f, 1.0f);
+        if (chance(rng) < epsilon) {
+            std::uniform_int_distribution<std::size_t> choice(0, validActions.size() - 1);
+            return validActions[choice(rng)];
         }
     }
 
-    // Ignore zero-valued actions that have never been learned in this state.
-    // Otherwise an unvisited action's implicit Q=0 can beat all learned negative
-    // values and accidentally send the agent back to the first action.
-    const auto& learnedActions = stateIt->second;
+    if (stateIt == q_table.table.end())
+        return fallback;
+
+    // Greedy choice is restricted to valid actions. Unvisited actions do not
+    // silently beat learned negative values through their implicit Q=0.
     std::string bestAction;
-    double bestValue = 0.0;
-    for (const auto& action : actions) {
-        const auto found = learnedActions.find(action);
-        if (found != learnedActions.end() && found->second > bestValue) {
+    double bestValue = -std::numeric_limits<double>::infinity();
+    for (const auto& action : validActions) {
+        const auto found = stateIt->second.find(action);
+        if (found != stateIt->second.end() && found->second > bestValue) {
             bestValue = found->second;
             bestAction = action;
         }
     }
-    return bestAction.empty() ? contextualFallback : bestAction;
+    return bestAction.empty() ? fallback : bestAction;
 }
 
 void QLearning::update(const state& current_state, const std::string& action, float reward, const state& next_state, bool terminal) {
@@ -862,10 +857,6 @@ void QLearning::loadQTable(const std::string& path) {
 
 void QLearning::saveQTable(const std::string& path) {
     q_table.save(path);
-}
-
-void QLearning::loadTrainingData(const std::string&) {
-    // intentionally left as no-op for the minimal prototype
 }
 
 bool testEvaluationDoesNotUpdatePolicy() {
