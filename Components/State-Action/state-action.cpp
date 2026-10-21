@@ -489,7 +489,7 @@ bool testProposedAgentAdaptsAfterNegativeFeedback() {
     disturbance.goal_state = 2; disturbance.user_status = 0; disturbance.target_proximity = 0; disturbance.task_status = 0; disturbance.signal_strength = 0.95f;
     const std::string firstAction = agent.selectAction(disturbance);
     ActionOutcome negative;
-    negative.reward = -1.0f; negative.terminal = true; negative.outcome_tag = "participant_negative";
+    negative.reward = -1.0f; negative.terminated = true; negative.outcome_tag = "participant_negative";
     agent.applyOutcome(disturbance, firstAction, negative);
     const std::string nextAction = agent.selectAction(disturbance);
     return firstAction == "BARK" && nextAction == "ACT_CONFUSED";
@@ -504,7 +504,7 @@ bool testSemanticPreferenceSurvivesInterveningInteractions() {
     const EnvironmentObservation greeting{0, 1, 0, 0, 0.55f};
     ActionOutcome positive;
     positive.reward = 1.0f;
-    positive.terminal = true;
+    positive.terminated = true;
     positive.outcome_tag = "positive";
     for (int i = 0; i < 3; ++i) {
         const std::string action = agent.selectAction(greeting);
@@ -524,14 +524,14 @@ bool testMemoryRetentionAfterInterveningInteractions() {
     const std::string firstAction = agent.selectAction(disturbance);
     ActionOutcome negative;
     negative.reward = -1.0f;
-    negative.terminal = true;
+    negative.terminated = true;
     negative.outcome_tag = "negative";
     agent.applyOutcome(disturbance, firstAction, negative);
 
     const EnvironmentObservation greeting{0, 1, 0, 0, 0.55f};
     ActionOutcome positive;
     positive.reward = 1.0f;
-    positive.terminal = true;
+    positive.terminated = true;
     positive.outcome_tag = "positive";
     for (int i = 0; i < 4; ++i) {
         const std::string action = agent.selectAction(greeting);
@@ -554,7 +554,7 @@ bool testProposedAgentAvoidsRejectedAction() {
     greeting.goal_state = 0; greeting.user_status = 0; greeting.target_proximity = 1; greeting.task_status = 0; greeting.signal_strength = 0.55f;
     const std::string firstAction = agent.selectAction(greeting);
     ActionOutcome negative;
-    negative.reward = -1.0f; negative.terminal = true; negative.outcome_tag = "participant_negative";
+    negative.reward = -1.0f; negative.terminated = true; negative.outcome_tag = "participant_negative";
     agent.applyOutcome(greeting, firstAction, negative);
     const std::string nextAction = agent.selectAction(greeting);
     return firstAction == "GREETING" &&
@@ -638,6 +638,37 @@ bool testTerminalHandling() {
     return nearlyEqual(value, -0.1, 1e-6);
 }
 
+bool testTruncatedTransitionBootstraps() {
+    const auto path = std::filesystem::temp_directory_path() / "is2_truncated_bootstrap_test.qtable";
+    QLearning learner(1.0f, 0.9f, 0.0f, 23u);
+    learner.setActions(companionActionSet());
+
+    const state next = makeState(1, distance::MEDIUM, Level::MEDIUM, Level::LOW,
+                                 Level::MEDIUM, Level::LOW, 1, 0.0f);
+    const state current = makeState(0, distance::CLOSE, Level::MEDIUM, Level::LOW,
+                                    Level::MEDIUM, Level::LOW, 0, 0.0f);
+
+    // Seed a known next-state value, then end the current transition by time limit.
+    learner.update(next, "ACT_CONFUSED", 10.0f, next, true);
+    learner.update(current, "WANDER", 0.0f, next, false, {"ACT_CONFUSED"}, true);
+    learner.saveQTable(path.string());
+
+    std::ifstream in(path);
+    std::size_t key = 0;
+    std::string action;
+    double value = 0.0;
+    bool found = false;
+    while (in >> key >> action >> value) {
+        if (key == current.encode() && action == "WANDER") {
+            found = nearlyEqual(value, 9.0, 1e-6);
+            break;
+        }
+    }
+    in.close();
+    std::filesystem::remove(path);
+    return found;
+}
+
 bool testRuntimeLifecycleAndEnvironmentContract() {
     RuntimeContext runtime;
     runtime.session_context.current_intent = 2;
@@ -666,7 +697,7 @@ bool testRuntimeLifecycleAndEnvironmentContract() {
     ActionResult actionResult;
     actionResult.action_id = 0;
     actionResult.reward = 1.0f;
-    actionResult.terminal = false;
+    actionResult.terminated = false;
     actionResult.outcome_tag = "observed";
 
     return stateChanged && normalized.memory_bias > 0.0f && normalized.affect_trend > 0.0f &&
@@ -916,12 +947,20 @@ std::string QLearning::chooseAction(const state& stateRef,
 }
 
 void QLearning::update(const state& current_state, const std::string& action, float reward,
-                       const state& next_state, bool terminal,
-                       const std::vector<std::string>& validNextActions) {
+                       const state& next_state, bool terminated,
+                       const std::vector<std::string>& validNextActions,
+                       bool truncated) {
+    if (terminated && truncated) {
+        throw std::invalid_argument("A transition cannot be both terminated and truncated.");
+    }
+
     const double currentValue = q_table.getQValue(current_state.encode(), action);
     double bestNextValue = 0.0;
     const auto& bootstrapActions = validNextActions.empty() ? actions : validNextActions;
-    if (!terminal) {
+
+    // A true terminal state has no future value. A time-limit truncation still
+    // has a valid final observation and therefore must bootstrap from it.
+    if (!terminated) {
         for (const auto& candidate : bootstrapActions) {
             const double candidateValue = q_table.getQValue(next_state.encode(), candidate);
             if (candidateValue > bestNextValue) {
@@ -930,7 +969,7 @@ void QLearning::update(const state& current_state, const std::string& action, fl
         }
     }
 
-    const double bootstrapValue = terminal ? 0.0 : discount_factor * bestNextValue;
+    const double bootstrapValue = terminated ? 0.0 : discount_factor * bestNextValue;
     const double updatedValue = currentValue + learning_rate * (reward + bootstrapValue - currentValue);
     q_table.table[current_state.encode()][action] = updatedValue;
 }
@@ -967,7 +1006,7 @@ bool testEvaluationDoesNotUpdatePolicy() {
     const std::string action = agent.selectAction(observation);
     ActionOutcome outcome;
     outcome.reward = 1.0f;
-    outcome.terminal = true;
+    outcome.terminated = true;
     outcome.outcome_tag = "evaluation_test";
     agent.applyOutcome(observation, action, outcome);
     agent.savePersistentState(afterPath.string());
@@ -1414,7 +1453,8 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
     next_state.play_available = nextObservation.play_available;
 
     if (learning_enabled) {
-        q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal, validActionsForObservation(nextObservation));
+        q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminated,
+                         validActionsForObservation(nextObservation), outcome.truncated);
     }
     session_context.last_reward = outcome.reward;
     session_context.last_timestamp = currentTimeStamp();
@@ -1651,8 +1691,8 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     next_state.food_available = nextObservation.food_available;
     next_state.play_available = nextObservation.play_available;
     if (learning_enabled) {
-        q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal,
-                         validActionsForObservation(nextObservation));
+        q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminated,
+                         validActionsForObservation(nextObservation), outcome.truncated);
     }
 
     InteractionEvent event;
@@ -1849,12 +1889,12 @@ bool testProposedMemoryConfidenceTracksOutcome() {
     EnvironmentObservation observation{0, 1, 0, 0, 0.55f};
     ActionOutcome positive;
     positive.reward = 1.0f;
-    positive.terminal = true;
+    positive.terminated = true;
     positive.outcome_tag = "positive";
     agent.applyOutcome(observation, "GREETING", positive);
     ActionOutcome negative;
     negative.reward = -1.0f;
-    negative.terminal = true;
+    negative.terminated = true;
     negative.outcome_tag = "negative";
     agent.applyOutcome(observation, "GREETING", negative);
     const auto& records = agent.getMemoryRecords();
@@ -1873,7 +1913,7 @@ bool testProposedMemoryPersistsAcrossResetAndDisk() {
     original.setLearningEnabled(false);
     ActionOutcome outcome;
     outcome.reward = 1.0f;
-    outcome.terminal = true;
+    outcome.terminated = true;
     outcome.outcome_tag = "positive";
     original.applyOutcome(EnvironmentObservation{0, 1, 0, 0, 0.55f}, "GREETING", outcome);
     original.reset();
@@ -1900,7 +1940,7 @@ bool testOutcomeUsesExplicitNextObservation() {
     const std::string proposedAction = proposed.selectAction(current);
     ActionOutcome outcome;
     outcome.reward = 0.5f;
-    outcome.terminal = false;
+    outcome.terminated = false;
     outcome.outcome_tag = "transition_test";
     baseline.applyOutcome(current, baselineAction, outcome, next);
     proposed.applyOutcome(current, proposedAction, outcome, next);
@@ -1919,7 +1959,7 @@ bool testEnvironmentEnergyVisibleOnlyToProposedAgent() {
     const EnvironmentObservation observation{0, 1, 0, 0, 0.45f};
     ActionOutcome highEnergy;
     highEnergy.reward = 0.25f;
-    highEnergy.terminal = false;
+    highEnergy.terminated = false;
     highEnergy.outcome_tag = "energy_visibility_test";
     highEnergy.energy_after = 0.9f;
     ActionOutcome lowEnergy = highEnergy;
@@ -1979,6 +2019,7 @@ bool runBaselineValidation() {
     results.push_back({"Outcome uses explicit next observation", "PASS", testOutcomeUsesExplicitNextObservation(), "training"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
+    results.push_back({"Truncated transitions bootstrap from final observation", "PASS", testTruncatedTransitionBootstraps(), "training"});
     results.push_back({"Observable action masking and food/play availability", "PASS", testActionMaskUsesOnlyObservableAvailability(), "policy"});
     results.push_back({"Seeded exploration reproducibility", "PASS", testSeededExplorationIsReproducible(), "training"});
     results.push_back({"Baseline excludes memory and affect inputs", "PASS", testBaselineExcludesMemoryAndAffectInputs(), "training"});
