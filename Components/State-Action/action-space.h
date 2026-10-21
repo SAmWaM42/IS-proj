@@ -26,7 +26,7 @@ inline bool isActionValidForObservation(
     if (action == "NUZZLE")
         return observation.target_proximity == 0 && observation.user_status != 2;
     if (action == "GREETING")
-        return observation.goal_state == 0 || observation.user_status == 0;
+        return observation.user_status == 0 || (observation.goal_state == 0 && observation.user_status != 2);
     if (action == "BARK")
         return observation.signal_strength >= 0.80f;
     if (action == "SLEEP_LAY")
