@@ -175,6 +175,9 @@ struct EnvironmentObservation
     int user_status = 0;
     int task_status = 0;
     float signal_strength = 0.0f;
+    // Explicit observable affordances used by the shared action mask.
+    bool food_available = false;
+    bool play_available = false;
 };
 
 struct ActionResult
