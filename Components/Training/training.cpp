@@ -280,7 +280,8 @@ namespace
             }
             const EnvironmentObservation observation = currentObservation;
             const std::string action = agent.selectAction(observation);
-            metrics.visited_states.insert(agent.getCurrentState().encode());
+            const std::size_t stateKeyBeforeAction = agent.getCurrentState().encode();
+            metrics.visited_states.insert(stateKeyBeforeAction);
 
             const float energyBefore = environmentEnergy;
             // Same seed per episode/step gives both agents paired environmental noise,
@@ -329,7 +330,8 @@ namespace
             row["energy_before"] = energyBefore;
             row["energy_after"] = transition.energy_after;
             row["action"] = action;
-            row["encoded_state"] = agent.getCurrentState().encode();
+            row["encoded_state"] = stateKeyBeforeAction;
+            row["next_encoded_state"] = agent.getCurrentState().encode();
             row["reward"] = transition.reward;
             row["terminal"] = terminal;
             row["completed"] = transition.completed;
