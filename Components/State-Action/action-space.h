@@ -51,6 +51,18 @@ inline bool isActionValidForObservation(
     return action == "WANDER" || action == "ACT_CONFUSED";
 }
 
+inline std::vector<std::string> validActionsForObservation(
+    const EnvironmentObservation& observation) {
+    std::vector<std::string> valid;
+    for (const auto& action : companionActionSet()) {
+        if (isActionValidForObservation(action, observation))
+            valid.push_back(action);
+    }
+    if (valid.empty())
+        valid.push_back("WANDER");
+    return valid;
+}
+
 inline std::string validActionOrFallback(
     const std::string& proposedAction,
     const std::string& contextualFallback,
