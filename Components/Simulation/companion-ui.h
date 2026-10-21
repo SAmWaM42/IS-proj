@@ -67,7 +67,6 @@ private:
 
     std::string nlpMethod = "not used";
     std::string assetsDirectory = "assets";
-    std::string nlpScript = "Components/NLP/nlp_intent_service.py";
     std::string interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward);
     void updateAnimation(float elapsedSeconds);
     void drawCompanion(float x, float y);
