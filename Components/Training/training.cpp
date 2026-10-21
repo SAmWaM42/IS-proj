@@ -95,69 +95,83 @@ namespace
         bool completed = false;
     };
 
+    struct ActionProfile
+    {
+        float fetch;
+        float food;
+        float play;
+        float social;
+        float disturbance;
+        float rest;
+        float rejection;
+        float energyRelief;
+        float stressRelief;
+        float curiosityRelief;
+    };
+
+    const ActionProfile &actionProfileFor(const std::string &action)
+    {
+        // Profiles express broad affordances and drive effects. They are not a
+        // scenario-to-correct-action lookup table.
+        static const std::map<std::string, ActionProfile> profiles = {
+            {"FETCH",           { 1.00f, -0.40f, -0.10f, -0.40f, -0.90f, -0.80f, -0.70f, -0.40f, -0.20f, -0.20f}},
+            {"APPROACH_FOLLOW", { 0.65f, -0.20f,  0.50f,  0.55f, -0.30f, -0.20f, -0.80f, -0.15f, -0.10f,  0.10f}},
+            {"EAT",             {-0.15f,  1.00f, -0.20f, -0.10f, -0.70f,  0.20f, -0.30f,  0.55f,  0.05f,  0.00f}},
+            {"SLEEP_LAY",       {-0.25f, -0.20f, -0.35f, -0.25f, -0.90f,  1.00f,  0.25f,  0.60f,  2.00f, -0.15f}},
+            {"PLAY",            { 0.05f, -0.25f,  1.00f,  0.60f, -0.65f, -0.50f, -0.40f, -0.20f, -0.45f,  0.40f}},
+            {"SNIFF",           {-0.85f, -0.55f, -0.25f, -0.35f, -0.80f,  0.15f, -0.55f, -0.10f, -0.10f,  0.35f}},
+            {"INSIST",          { 0.35f, -0.40f, -0.40f, -0.30f, -0.60f, -0.70f, -1.00f, -0.10f, -0.30f,  0.00f}},
+            {"HIDE_AVOID",      {-0.45f, -0.30f, -0.60f, -0.30f,  0.85f,  0.10f,  0.95f,  0.05f,  0.70f, -0.10f}},
+            {"WHINE",           {-0.25f, -0.20f, -0.25f, -0.10f,  0.35f, -0.20f,  0.50f, -0.10f,  0.20f, -0.10f}},
+            {"BARK",            {-0.45f, -0.20f, -0.20f, -0.25f,  0.60f, -0.40f, -0.10f, -0.10f,  0.10f,  0.00f}},
+            {"ACT_CONFUSED",    {-0.10f, -0.10f, -0.10f,  0.10f,  0.70f,  0.10f,  0.40f,  0.00f,  0.40f,  0.10f}},
+            {"GREETING",        {-0.20f, -0.10f,  0.40f,  1.00f, -0.30f, -0.30f, -0.50f, -0.10f, -0.10f,  0.10f}},
+            {"NUZZLE",          {-0.25f, -0.10f,  0.45f,  0.90f, -0.40f, -0.30f, -0.60f, -0.10f, -0.10f,  0.10f}},
+            {"WANDER",          {-0.30f, -0.10f,  0.15f,  0.10f, -0.20f,  0.50f, -0.30f,  0.10f,  0.10f,  0.35f}}
+        };
+        static const ActionProfile fallback{-0.10f, -0.10f, -0.10f, 0.0f, -0.10f, 0.0f, -0.10f, 0.0f, 0.0f, 0.0f};
+        const auto it = profiles.find(action);
+        return it == profiles.end() ? fallback : it->second;
+    }
+
     float actionContextFit(const std::string &action,
                            const EnvironmentObservation &observation,
                            float energy,
                            float stress)
     {
-        const bool activeRequest = observation.goal_state == 1 && observation.task_status == 1;
-        const bool rejection = observation.user_status == 2;
+        const ActionProfile &profile = actionProfileFor(action);
+        float weightedFit = 0.0f;
+        float totalWeight = 0.0f;
+        const auto addCue = [&](float weight, float fit) {
+            weightedFit += weight * fit;
+            totalWeight += weight;
+        };
 
-        // Graded action relevance: the user request is one stimulus, not an
-        // oracle that makes every alternative wrong.
-        if (activeRequest)
-        {
-            if (action == "FETCH") return observation.target_proximity >= 2 ? 0.42f : 0.58f;
-            if (action == "APPROACH_FOLLOW") return observation.target_proximity >= 2 ? 0.48f : 0.20f;
-            if (action == "EAT" && observation.food_available) return 0.28f;
-            if (action == "SLEEP_LAY") return (energy < 0.25f || stress > 0.78f) ? 0.48f : -0.18f;
-            if (action == "PLAY" && observation.play_available) return 0.20f;
-            if (action == "INSIST") return observation.user_status == 0 ? 0.12f : -0.08f;
-            if (action == "SNIFF") return -0.38f;
-            return -0.12f;
-        }
+        if (observation.goal_state == 1 && observation.task_status == 1)
+            addCue(1.00f, profile.fetch);
+        if (observation.food_available)
+            addCue(0.80f, profile.food);
+        if (observation.play_available)
+            addCue(0.70f, profile.play);
+        if (observation.goal_state == 0 && observation.user_status != 2)
+            addCue(0.55f, profile.social);
+        if (observation.signal_strength >= 0.80f)
+            addCue(0.95f, profile.disturbance);
+        if (observation.goal_state == 2 && observation.task_status == 0 &&
+            observation.signal_strength < 0.80f)
+            addCue(0.45f, profile.rest);
+        if (observation.user_status == 2)
+            addCue(0.90f, profile.rejection);
 
-        if (observation.food_available && action == "EAT") return 0.48f;
-        if (observation.play_available && action == "PLAY")
-            return stress > 0.78f || energy < 0.20f ? 0.12f : 0.48f;
-
-        if (observation.goal_state == 0 && rejection)
-        {
-            if (action == "HIDE_AVOID") return 0.48f;
-            if (action == "WHINE" || action == "ACT_CONFUSED") return 0.28f;
-            if (action == "SNIFF") return -0.28f;
-            return -0.10f;
-        }
-
-        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
-        {
-            if (action == "HIDE_AVOID") return 0.55f;
-            if (action == "ACT_CONFUSED") return 0.48f;
-            if (action == "BARK") return 0.30f;
-            if (action == "SNIFF" || action == "SLEEP_LAY") return -0.35f;
-            return -0.12f;
-        }
-
-        if (observation.goal_state == 2 && observation.task_status == 0)
-        {
-            if (action == "SLEEP_LAY") return 0.38f;
-            if (action == "WANDER") return 0.18f;
-            if (action == "SNIFF") return observation.target_proximity <= 1 ? 0.10f : 0.0f;
-        }
-
-        if (observation.goal_state == 0)
-        {
-            if (action == "GREETING") return 0.46f;
-            if (action == "NUZZLE") return observation.target_proximity == 0 && !rejection ? 0.48f : 0.05f;
-            if (action == "APPROACH_FOLLOW") return !rejection ? 0.22f : -0.10f;
-            if (action == "SNIFF") return -0.12f;
-        }
-
-        if (action == "SLEEP_LAY" && (energy < 0.20f || stress > 0.82f)) return 0.40f;
-        if (action == "SNIFF")
-            return observation.target_proximity <= 1 ? 0.08f : -0.05f;
-        if (action == "WANDER" || action == "ACT_CONFUSED") return 0.02f;
-        return -0.08f;
+        const float contextualFit = totalWeight > 0.0f
+            ? weightedFit / totalWeight
+            : 0.25f * profile.curiosityRelief;
+        const float energyDrive = std::clamp(1.0f - energy, 0.0f, 1.0f);
+        const float stressDrive = std::clamp(stress, 0.0f, 1.0f);
+        const float driveFit = 0.30f * profile.energyRelief * energyDrive +
+                               0.30f * profile.stressRelief * stressDrive +
+                               0.10f * profile.curiosityRelief;
+        return std::clamp(contextualFit + driveFit, -1.0f, 1.0f);
     }
 
     float rewardFor(const std::string &action,
@@ -176,7 +190,7 @@ namespace
         if (action == "EAT" && observation.food_available)
             driveRelief = 0.18f + 0.42f * (1.0f - energy);
         else if (action == "SLEEP_LAY")
-            driveRelief = 0.24f * (1.0f - energy) + 0.22f * stress;
+            driveRelief = 0.28f * (1.0f - energy) + 0.45f * stress;
         else if (action == "PLAY" && observation.play_available)
             driveRelief = 0.12f * energy - 0.10f * stress;
         else if (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2 &&
