@@ -8,6 +8,24 @@ This document records the implementation status of the current project state and
 
 The authoritative project baseline remains [Docs/project-context.md](Docs/project-context.md). This document is a working record of implementation progress and not a replacement for the project-context document.
 
+## Current in-progress work
+
+### Stage −1 — Shared action architecture and complexity reduction
+
+**Status:** Source edits committed; compile and test verification pending.
+
+Implemented changes:
+- centralised the 14 actions and shared observable-context validity rules
+- masked invalid actions during selection and next-state Q-value bootstrapping for both agents
+- added food/play affordances to observations and encoded them into policy state
+- expanded synthetic training and participant-study contexts for food, play, and negative feedback
+- centralised UI action labels and action-to-animation grouping
+- removed the disconnected legacy backyard simulation, placeholder environment scaffolding, unused action hierarchy, duplicate comparison harness, unused Q-learning helpers, and no-op training-data loader
+
+Tracking document: [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md)
+
+**Remaining gate:** Build the project, run `--self-test`, and verify that training never selects a masked action before beginning Stage 0.
+
 ## Completed work
 
 ### 1. Baseline learning loop validation
