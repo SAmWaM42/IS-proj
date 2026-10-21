@@ -1,22 +1,22 @@
 {
   "baseline_action": "FETCH",
   "condition_code": "A",
-  "interaction_count": 11,
+  "interaction_count": 5,
   "interactions": [
-    "You: i like ball [request / spacy]",
-    "Baseline: Pauses, appearing uncertain",
-    "Proposed: Explores the yard",
-    "Queued interaction (1 waiting): i hate sound [negative_feedback / spacy]",
-    "You: i hate sound [negative_feedback / spacy]",
-    "Baseline: Greets you warmly",
-    "Proposed: Greets you warmly",
-    "Loaded blind condition A",
+    "Baseline: Vocalises",
+    "Proposed: Explores the environment",
+    "You: i hate sound [preference statement]",
+    "Memory: stored user dislikes sound",
+    "Context: candidate association with preceding interaction.",
+    "You: i like ball [preference statement]",
+    "Memory: stored user likes ball",
+    "Context: no relevant preceding interaction; stored as a general preference record.",
     "Queued interaction (1 waiting): Ask the companion to fetch the ball",
     "You: Ask the companion to fetch the ball",
-    "Baseline: Fetches the nearby object",
-    "Proposed: Fetches the nearby object"
+    "Baseline: Attempts to retrieve the requested object",
+    "Proposed: Attempts to retrieve the requested object"
   ],
   "latest_stimulus": "Ask the companion to fetch the ball",
   "proposed_action": "FETCH",
-  "run_id": "run-1792488250610"
+  "run_id": "run-1792580632499"
 }
