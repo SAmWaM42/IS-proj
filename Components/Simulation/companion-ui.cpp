@@ -389,11 +389,13 @@ void CompanionUI::executeInteraction(const std::string& label,
     actionDisplayTimer = 0.85f;
 
     ActionOutcome baselineOutcome;
+    baselineOutcome.action_id = companionActionId(latestBaselineAction);
     baselineOutcome.reward = feedbackRewardValue;
     baselineOutcome.terminated = true;
     baselineOutcome.outcome_tag = "simulation_" + (feedbackRewardValue > 0 ? std::string("positive") :
                                                     feedbackRewardValue < 0 ? std::string("negative") : std::string("neutral"));
     ActionOutcome proposedOutcome = baselineOutcome;
+    proposedOutcome.action_id = companionActionId(latestProposedAction);
     baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome);
     proposed.applyOutcome(observation, latestProposedAction, proposedOutcome);
 
@@ -422,12 +424,12 @@ void CompanionUI::executeInteraction(const std::string& label,
             {"food_available", observation.food_available},
             {"play_available", observation.play_available}
         };
-        row["baseline"] = {{"action", latestBaselineAction}, {"reward", baselineOutcome.reward},
+        row["baseline"] = {{"action", latestBaselineAction}, {"action_id", baselineOutcome.action_id}, {"reward", baselineOutcome.reward},
                            {"state_before_outcome", baselineStateBeforeOutcome},
                            {"state_after_outcome", baseline.getCurrentState().encode()},
                            {"learning_update_enabled", false}};
         row["proposed"] = {
-            {"action", latestProposedAction}, {"reward", proposedOutcome.reward},
+            {"action", latestProposedAction}, {"action_id", proposedOutcome.action_id}, {"reward", proposedOutcome.reward},
             {"state_before_outcome", proposedStateBeforeOutcome},
             {"state_after_outcome", proposed.getCurrentState().encode()},
             {"memory_candidates", memoryCandidates},
