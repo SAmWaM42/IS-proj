@@ -63,6 +63,18 @@ distance proximityFromValue(int value) {
 
 } // namespace
 
+// State builders are defined below the self-test functions that exercise them.
+state makeState(int intent, distance proximity, Level energy, Level stress,
+                Level curiosity, Level attachment, int userStatus, float memory);
+state makeStateWithContext(int intent, distance proximity, Level energy, Level stress,
+                           Level curiosity, Level attachment, int userStatus, float memory,
+                           float confidence, float relevance, float recency,
+                           const AffectiveState& affect);
+state makeStateFromMemoryRecords(int intent, distance proximity, Level energy, Level stress,
+                                 Level curiosity, Level attachment, int userStatus, float memory,
+                                 const std::vector<record>& records, const AffectiveState& affect);
+state makeRuntimeState(const RuntimeContext& runtimeContext);
+
 int summarizeMemoryBias(float confidence, float relevance, float recency) {
     const float normalized = std::clamp(
         0.45f * confidence + 0.35f * relevance + 0.20f * recency,
@@ -354,9 +366,10 @@ bool testPersistenceRoundTripAndAggregation() {
 }
 
 bool testUnseenStateHandling() {
-    QTable table(0.1, 0.9);
+    QLearning learner(0.1f, 0.9f, 0.0f, 42);
+    learner.setActions(kActions);
     const state unseen = makeState(3, distance::FAR, Level::HIGH, Level::MEDIUM, Level::LOW, Level::MEDIUM, 2, 0.0f);
-    const std::string action = table.chooseAction(unseen.encode());
+    const std::string action = learner.chooseAction(unseen);
     return std::find(kActions.begin(), kActions.end(), action) != kActions.end();
 }
 
