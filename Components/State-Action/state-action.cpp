@@ -796,10 +796,6 @@ void QLearning::setEpsilon(float epsilonValue) {
     epsilon = epsilonValue;
 }
 
-float QLearning::getEpsilon() const {
-    return epsilon;
-}
-
 void QLearning::loadQTable(const std::string& path) {
     q_table.load(path);
 }
