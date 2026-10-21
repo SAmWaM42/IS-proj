@@ -78,7 +78,7 @@ Launch the replacement three-screen simulation interface:
 ./build/IS-2 --sim
 ```
 
-The UI follows the Chapter 3.5.3 wireframes: **Main Simulation** provides the environment, preset interaction controls and text input; **Agent State** exposes proposed-agent affect and recent stored memory records; **Comparison** presents both agents' responses to the same interaction stream. The old scripted backyard window remains available as `--legacy-sim`; `--sim-history` remains available for the scripted event history.
+The UI follows the Chapter 3.5.3 wireframes: **Main Simulation** provides the environment, preset interaction controls and text input; **Agent State** exposes proposed-agent affect and recent stored memory records; **Comparison** presents both agents' responses to the same interaction stream.
 
 The text input currently uses a small keyword-based intent mapper (fetch/request, praise, disturbance, rest, and negative feedback); it is not yet connected to the spaCy NLP service. Preset controls use fixed development reward signals, so this UI is for simulation and debugging, not a substitute for the controlled participant-study protocol. The interface saves a session summary and session Q-table copies under `artifacts/simulation/`.
 
