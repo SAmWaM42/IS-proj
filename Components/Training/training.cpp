@@ -102,11 +102,20 @@ namespace
             return observation.user_status != 2 ? 0.20f : -0.20f;
         if (action == "SNIFF")
         {
-            // Sniffing can be useful exploration, but should not receive the
-            // same positive reward while an explicit fetch task is pending.
-            // Otherwise it can outscore FETCH even when the target is nearby.
+            // Sniffing is exploration, not a substitute for a direct response
+            // to an explicit request, disturbance, offered food/play, or rejection.
             if (observation.goal_state == 1 && observation.task_status == 1)
                 return -0.05f;
+            if (observation.goal_state == 2 &&
+                (observation.signal_strength >= 0.80f ||
+                 observation.food_available || observation.play_available))
+                return -0.20f;
+            if (observation.goal_state == 2 && observation.task_status == 0)
+                return -0.05f;
+            if (observation.goal_state == 0 &&
+                (observation.user_status == 2 ||
+                 observation.food_available || observation.play_available))
+                return -0.10f;
             return observation.target_proximity <= 1 ? 0.30f : -0.05f;
         }
 
