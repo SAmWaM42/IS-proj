@@ -32,8 +32,9 @@ inline bool isActionValidForObservation(
     if (action == "BARK")
         return observation.signal_strength >= 0.80f;
     if (action == "SLEEP_LAY")
-        return observation.goal_state == 2 && observation.task_status == 0 &&
-               observation.signal_strength < 0.80f;
+        // Rest can be a justified alternative during ordinary interactions,
+        // including an active request, but not during a high-intensity disturbance.
+        return observation.signal_strength < 0.80f;
     if (action == "INSIST")
         return observation.task_status == 1 && observation.user_status == 0;
     if (action == "APPROACH_FOLLOW")
