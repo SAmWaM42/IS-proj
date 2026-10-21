@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
     }
 
     if (mode.empty() || mode == "self-test") {
-        if (!runBaselineValidation()) {
+        if (!runBaselineValidation() || !runTrainingSelfTests()) {
             return 1;
         }
         std::cout << "Component validation passed.\n";
