@@ -471,7 +471,10 @@ bool testProposedAgentAvoidsRejectedAction() {
     negative.reward = -1.0f; negative.terminal = true; negative.outcome_tag = "participant_negative";
     agent.applyOutcome(greeting, firstAction, negative);
     const std::string nextAction = agent.selectAction(greeting);
-    return firstAction == "GREETING" && nextAction == "NUZZLE";
+    return firstAction == "GREETING" &&
+           nextAction != firstAction &&
+           isActionValidForObservation(nextAction, greeting) &&
+           !agent.getMemoryRecords().empty();
 }
 bool testTaskAndSignalAreEncoded() {
     state base = makeState(1, distance::CLOSE, Level::MEDIUM, Level::LOW, Level::MEDIUM, Level::LOW, 1, 0.0f);
@@ -1082,15 +1085,29 @@ bool wasActionRejected(const std::string& action, const std::vector<record>& mem
     return false;
 }
 
-std::string alternativeAfterRejection(const std::string& action) {
-    if (action == "GREETING") return "NUZZLE";
-    if (action == "NUZZLE") return "GREETING";
-    if (action == "BARK") return "ACT_CONFUSED";
-    if (action == "ACT_CONFUSED") return "WANDER";
-    if (action == "FETCH") return "ACT_CONFUSED";
-    if (action == "INSIST") return "WANDER";
-    if (action == "SLEEP_LAY") return "WANDER";
-    return "GREETING";
+std::string alternativeAfterRejection(
+    const std::string& rejectedAction,
+    const EnvironmentObservation& observation) {
+    // Keep the preferred alternative when it is possible in this context,
+    // otherwise choose the first valid action that differs from the rejected one.
+    std::vector<std::string> candidates;
+    if (rejectedAction == "GREETING") candidates.push_back("NUZZLE");
+    else if (rejectedAction == "NUZZLE") candidates.push_back("GREETING");
+    else if (rejectedAction == "BARK") candidates.push_back("ACT_CONFUSED");
+    else if (rejectedAction == "ACT_CONFUSED") candidates.push_back("WANDER");
+    else if (rejectedAction == "FETCH") candidates.push_back("ACT_CONFUSED");
+    else if (rejectedAction == "INSIST" || rejectedAction == "SLEEP_LAY") candidates.push_back("WANDER");
+
+    for (const auto& candidate : companionActionSet()) {
+        if (candidate != rejectedAction &&
+            std::find(candidates.begin(), candidates.end(), candidate) == candidates.end())
+            candidates.push_back(candidate);
+    }
+    for (const auto& candidate : candidates) {
+        if (candidate != rejectedAction && isActionValidForObservation(candidate, observation))
+            return candidate;
+    }
+    return "WANDER";
 }
 std::string currentTimeStamp() {
     const auto now = std::chrono::system_clock::now();
@@ -1304,7 +1321,7 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
         }
     }
     if (wasActionRejected(selected, memory_records)) {
-        selected = alternativeAfterRejection(selected);
+        selected = alternativeAfterRejection(selected, observation);
     }
     selected = validActionOrFallback(selected, fallback, observation);
     session_context.current_action = selected;
