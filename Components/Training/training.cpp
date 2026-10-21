@@ -87,109 +87,150 @@ namespace
         EnvironmentObservation next_observation;
         float reward = 0.0f;
         float energy_after = 0.8f;
+        float stress_after = 0.2f;
+        float user_satisfaction_after = 0.5f;
         bool completed = false;
     };
 
-    float rewardFor(const std::string &action,
-                    const EnvironmentObservation &observation,
-                    bool fetchSucceeded)
+    float actionContextFit(const std::string &action,
+                           const EnvironmentObservation &observation,
+                           float energy,
+                           float stress)
     {
-        // External task/social reward is shared by both agents. Energy and effort
-        // are environment variables; only the proposed policy observes energy.
-        if (action == "EAT") return observation.food_available ? 0.80f : -0.50f;
-        if (action == "PLAY") return observation.play_available ? 0.65f : -0.40f;
-        if (action == "WHINE") return observation.user_status == 2 ? 0.35f : -0.15f;
-        if (action == "HIDE_AVOID")
-            return (observation.user_status == 2 || observation.signal_strength >= 0.90f) ? 0.45f : -0.10f;
-        if (action == "APPROACH_FOLLOW")
-            return observation.user_status != 2 ? 0.20f : -0.20f;
-        if (action == "SNIFF")
+        const bool activeRequest = observation.goal_state == 1 && observation.task_status == 1;
+        const bool rejection = observation.user_status == 2;
+
+        // Graded action relevance: the user request is one stimulus, not an
+        // oracle that makes every alternative wrong.
+        if (activeRequest)
         {
-            // Sniffing is exploration, not a substitute for a direct response
-            // to an explicit request, disturbance, offered food/play, or rejection.
-            if (observation.goal_state == 1 && observation.task_status == 1)
-                return -0.05f;
-            if (observation.goal_state == 2 &&
-                (observation.signal_strength >= 0.80f ||
-                 observation.food_available || observation.play_available))
-                return -0.20f;
-            if (observation.goal_state == 2 && observation.task_status == 0)
-                return -0.05f;
-            if (observation.goal_state == 0 &&
-                (observation.user_status == 2 ||
-                 observation.food_available || observation.play_available))
-                return -0.10f;
-            return observation.target_proximity <= 1 ? 0.30f : -0.05f;
+            if (action == "FETCH") return observation.target_proximity >= 2 ? 0.42f : 0.58f;
+            if (action == "APPROACH_FOLLOW") return observation.target_proximity >= 2 ? 0.48f : 0.20f;
+            if (action == "EAT" && observation.food_available) return 0.28f;
+            if (action == "SLEEP_LAY") return (energy < 0.25f || stress > 0.78f) ? 0.48f : -0.18f;
+            if (action == "PLAY" && observation.play_available) return 0.20f;
+            if (action == "INSIST") return observation.user_status == 0 ? 0.12f : -0.08f;
+            if (action == "SNIFF") return -0.38f;
+            return -0.12f;
         }
 
-        float reward = -0.10f;
-        switch (observation.goal_state)
+        if (observation.food_available && action == "EAT") return 0.48f;
+        if (observation.play_available && action == "PLAY")
+            return stress > 0.78f || energy < 0.20f ? 0.12f : 0.48f;
+
+        if (observation.goal_state == 0 && rejection)
         {
-        case 0:
-            if (action == "GREETING")
-                reward += observation.user_status == 0 ? 0.85f : 0.65f;
-            else if (action == "NUZZLE")
-                reward += observation.target_proximity == 0 && observation.user_status != 2 ? 0.75f : -0.20f;
-            else if (action == "BARK")
-                reward -= 0.30f;
-            else if (action == "FETCH" || action == "INSIST")
-                reward -= 0.45f;
-            else if (action == "WANDER")
-                reward -= 0.10f;
-            break;
-        case 1:
-            if (action == "FETCH")
-            {
-                if (observation.task_status != 1) reward -= 0.55f;
-                else if (fetchSucceeded)
-                    // Explicit task-completion credit should outweigh short-term
-                    // distractors such as SNIFF when a fetch was requested.
-                    reward += 0.75f + observation.signal_strength * 0.10f + 0.35f;
-                else reward -= 0.20f;
-            }
-            else if (action == "APPROACH_FOLLOW")
-                reward += observation.task_status == 1 ? 0.20f : -0.20f;
-            else if (action == "ACT_CONFUSED")
-                reward += observation.task_status == 0 ? 0.15f : -0.20f;
-            else if (action == "WANDER")
-                reward += observation.target_proximity >= 2 ? 0.10f : -0.15f;
-            else if (action == "INSIST")
-                reward += observation.user_status == 0 ? 0.15f : -0.25f;
-            else
-                reward -= 0.35f;
-            break;
-        case 2:
-        default:
-            if (observation.signal_strength >= 0.80f)
-            {
-                if (action == "ACT_CONFUSED") reward += 0.55f;
-                else if (action == "BARK") reward += 0.35f;
-                else if (action == "INSIST" || action == "FETCH") reward -= 0.45f;
-            }
-            else if (observation.task_status == 0)
-            {
-                if (action == "SLEEP_LAY") reward += 0.65f;
-                else if (action == "WANDER") reward += 0.15f;
-                else if (action == "FETCH" || action == "INSIST") reward -= 0.35f;
-            }
-            else
-            {
-                if (action == "ACT_CONFUSED") reward += 0.20f;
-                else if (action == "WANDER") reward += 0.10f;
-            }
-            break;
+            if (action == "HIDE_AVOID") return 0.48f;
+            if (action == "WHINE" || action == "ACT_CONFUSED") return 0.28f;
+            if (action == "SNIFF") return -0.28f;
+            return -0.10f;
         }
-        return reward;
+
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+        {
+            if (action == "HIDE_AVOID") return 0.55f;
+            if (action == "ACT_CONFUSED") return 0.48f;
+            if (action == "BARK") return 0.30f;
+            if (action == "SNIFF" || action == "SLEEP_LAY") return -0.35f;
+            return -0.12f;
+        }
+
+        if (observation.goal_state == 2 && observation.task_status == 0)
+        {
+            if (action == "SLEEP_LAY") return 0.38f;
+            if (action == "WANDER") return 0.18f;
+            if (action == "SNIFF") return observation.target_proximity <= 1 ? 0.10f : 0.0f;
+        }
+
+        if (observation.goal_state == 0)
+        {
+            if (action == "GREETING") return 0.46f;
+            if (action == "NUZZLE") return observation.target_proximity == 0 && !rejection ? 0.48f : 0.05f;
+            if (action == "APPROACH_FOLLOW") return !rejection ? 0.22f : -0.10f;
+            if (action == "SNIFF") return -0.12f;
+        }
+
+        if (action == "SLEEP_LAY" && (energy < 0.20f || stress > 0.82f)) return 0.40f;
+        if (action == "SNIFF")
+            return observation.target_proximity <= 1 ? 0.08f : -0.05f;
+        if (action == "WANDER" || action == "ACT_CONFUSED") return 0.02f;
+        return -0.08f;
+    }
+
+    float rewardFor(const std::string &action,
+                    const EnvironmentObservation &observation,
+                    bool fetchSucceeded,
+                    float energyBefore = 0.8f,
+                    float stressBefore = 0.2f,
+                    float userSatisfaction = 0.5f)
+    {
+        const float energy = std::clamp(energyBefore, 0.0f, 1.0f);
+        const float stress = std::clamp(stressBefore, 0.0f, 1.0f);
+        const float satisfaction = std::clamp(userSatisfaction, 0.0f, 1.0f);
+        const float fit = actionContextFit(action, observation, energy, stress);
+
+        float driveRelief = 0.0f;
+        if (action == "EAT" && observation.food_available)
+            driveRelief = 0.18f + 0.42f * (1.0f - energy);
+        else if (action == "SLEEP_LAY")
+            driveRelief = 0.24f * (1.0f - energy) + 0.22f * stress;
+        else if (action == "PLAY" && observation.play_available)
+            driveRelief = 0.12f * energy - 0.10f * stress;
+        else if (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2 &&
+                 observation.task_status == 1)
+            driveRelief = 0.08f;
+
+        // Compliance is rewarded only on successful completion. Deviation itself
+        // is not punished; the separate user-response term models disappointment.
+        const float complianceBonus =
+            observation.goal_state == 1 && observation.task_status == 1 &&
+            action == "FETCH" && fetchSucceeded ? 0.62f : 0.0f;
+
+        float userResponse = 0.0f;
+        if (observation.goal_state == 1 && observation.task_status == 1 && !fetchSucceeded)
+        {
+            const bool justifiedDeviation =
+                (action == "EAT" && observation.food_available && energy < 0.45f) ||
+                (action == "SLEEP_LAY" && (energy < 0.25f || stress > 0.78f)) ||
+                (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2);
+            if (action != "FETCH")
+                userResponse = justifiedDeviation
+                    ? -0.035f * (0.5f + satisfaction)
+                    : -0.16f * (0.5f + satisfaction);
+        }
+        else if (observation.user_status == 2)
+        {
+            const bool responseAcknowledgesRejection =
+                action == "HIDE_AVOID" || action == "WHINE" || action == "ACT_CONFUSED";
+            userResponse = responseAcknowledgesRejection
+                ? 0.06f * (0.5f + satisfaction)
+                : -0.12f * (0.5f + satisfaction);
+        }
+        else if (fit >= 0.40f)
+        {
+            userResponse = 0.05f * satisfaction;
+        }
+
+        const float incongruencePenalty = fit < 0.0f ? 0.55f * fit : 0.0f;
+        return std::clamp(fit + driveRelief + complianceBonus + userResponse +
+                          incongruencePenalty - 0.05f, -1.0f, 1.0f);
     }
 
     EnvironmentStep applyEnvironmentAction(const std::string &action,
                                            const EnvironmentObservation &observation,
                                            float energy,
+                                           float stress,
+                                           float userSatisfaction,
                                            std::mt19937 &rng)
     {
         EnvironmentStep result;
         result.next_observation = observation;
         energy = std::clamp(energy, 0.0f, 1.0f);
+        stress = std::clamp(stress, 0.0f, 1.0f);
+        userSatisfaction = std::clamp(userSatisfaction, 0.0f, 1.0f);
+        const float energyBefore = energy;
+        const float stressBefore = stress;
+        const float satisfactionBefore = userSatisfaction;
 
         const int proximity = std::clamp(observation.target_proximity, 0, 2);
         const float distanceCost[] = {0.035f, 0.085f, 0.16f};
@@ -231,9 +272,35 @@ namespace
         if (action != "SLEEP_LAY" && !(action == "EAT" && observation.food_available))
             energy = std::max(0.0f, energy - effort * 1.5f);
 
+        const float fit = actionContextFit(action, observation, energyBefore, stressBefore);
+        if (observation.signal_strength >= 0.80f) stress += 0.16f;
+        if (observation.user_status == 2) stress += 0.10f;
+        if (action == "SLEEP_LAY") stress -= 0.28f;
+        if (action == "PLAY" && observation.play_available && stress < 0.75f) stress -= 0.08f;
+        if (action == "FETCH" && fetchSucceeded) stress -= 0.04f;
+        stress = std::clamp(stress, 0.0f, 1.0f);
+
+        const bool taskPending = observation.goal_state == 1 && observation.task_status == 1;
+        const bool justifiedDeviation =
+            (action == "EAT" && observation.food_available && energyBefore < 0.45f) ||
+            (action == "SLEEP_LAY" && (energyBefore < 0.25f || stressBefore > 0.78f)) ||
+            (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2);
+        if (taskPending && fetchSucceeded)
+            userSatisfaction += 0.10f;
+        else if (taskPending && action != "FETCH")
+            userSatisfaction -= justifiedDeviation ? 0.025f : 0.08f;
+        else if (fit >= 0.40f)
+            userSatisfaction += 0.025f;
+        else if (fit < 0.0f)
+            userSatisfaction -= 0.025f;
+        userSatisfaction = std::clamp(userSatisfaction, 0.0f, 1.0f);
+
         result.energy_after = std::clamp(energy, 0.0f, 1.0f);
+        result.stress_after = stress;
+        result.user_satisfaction_after = userSatisfaction;
         result.reward = std::clamp(
-            rewardFor(action, observation, fetchSucceeded) - effort - 0.05f,
+            rewardFor(action, observation, fetchSucceeded, energyBefore, stressBefore,
+                      satisfactionBefore) - effort,
             -1.0f, 1.0f);
         result.completed = action == "FETCH" && fetchSucceeded &&
                            observation.task_status == 1 && observation.target_proximity < 3;
@@ -325,13 +392,18 @@ namespace
 
     bool testTaskPriorityReward()
     {
-        const EnvironmentObservation request{1, 0, 1, 1, 0.82f};
-        const EnvironmentObservation noTask{1, 0, 1, 0, 0.82f};
-        const float fetchReward = rewardFor("FETCH", request, true);
-        const float sniffDuringRequest = rewardFor("SNIFF", request, false);
-        const float sniffWithoutRequest = rewardFor("SNIFF", noTask, false);
-        return fetchReward > sniffDuringRequest &&
-               sniffWithoutRequest > sniffDuringRequest;
+        const EnvironmentObservation request{1, 0, 1, 1, 0.56f};
+        const EnvironmentObservation feedingTimeRequest{1, 0, 1, 1, 0.56f, true, true};
+        const EnvironmentObservation idle{2, 1, 0, 0, 0.20f};
+        const float fetchReward = rewardFor("FETCH", request, true, 0.75f, 0.20f, 0.5f);
+        const float eatWhenHungry = rewardFor("EAT", feedingTimeRequest, false, 0.15f, 0.20f, 0.5f);
+        const float sleepWhenOverwhelmed = rewardFor("SLEEP_LAY", feedingTimeRequest, false, 0.20f, 0.90f, 0.5f);
+        const float sniffWhenCompetingNeeds = rewardFor("SNIFF", feedingTimeRequest, false, 0.15f, 0.20f, 0.5f);
+        const float sniffWhenIdle = rewardFor("SNIFF", idle, false, 0.75f, 0.20f, 0.5f);
+        return fetchReward > sniffWhenCompetingNeeds &&
+               eatWhenHungry > sniffWhenCompetingNeeds &&
+               sleepWhenOverwhelmed > sniffWhenCompetingNeeds &&
+               sniffWhenIdle > sniffWhenCompetingNeeds;
     }
 
     bool testSuccessfulFetchAdvancesContext()
@@ -441,6 +513,8 @@ namespace
 
         EpisodeMetrics metrics;
         float environmentEnergy = 0.8f;
+        float environmentStress = 0.2f;
+        float userSatisfaction = 0.5f;
         EnvironmentObservation currentObservation = observations.front();
         for (std::size_t step = 0; step < observations.size(); ++step)
         {
@@ -459,8 +533,11 @@ namespace
             std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
                                        static_cast<unsigned int>(step) * 104729u);
             const EnvironmentStep transition =
-                applyEnvironmentAction(action, observation, environmentEnergy, transitionRng);
+                applyEnvironmentAction(action, observation, environmentEnergy,
+                                       environmentStress, userSatisfaction, transitionRng);
             environmentEnergy = transition.energy_after;
+            environmentStress = transition.stress_after;
+            userSatisfaction = transition.user_satisfaction_after;
             const bool terminal = step + 1 == observations.size();
 
             EnvironmentObservation nextObservation = transition.next_observation;
@@ -512,6 +589,8 @@ namespace
             row["play_available"] = observation.play_available;
             row["energy_before"] = energyBefore;
             row["energy_after"] = transition.energy_after;
+            row["environment_stress_after"] = transition.stress_after;
+            row["user_satisfaction_after"] = transition.user_satisfaction_after;
             row["action"] = action;
             row["encoded_state"] = stateKeyBeforeAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
