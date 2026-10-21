@@ -769,11 +769,14 @@ std::string QLearning::chooseAction(const state& stateRef,
     return bestAction.empty() ? fallback : bestAction;
 }
 
-void QLearning::update(const state& current_state, const std::string& action, float reward, const state& next_state, bool terminal) {
+void QLearning::update(const state& current_state, const std::string& action, float reward,
+                       const state& next_state, bool terminal,
+                       const std::vector<std::string>& validNextActions) {
     const double currentValue = q_table.getQValue(current_state.encode(), action);
     double bestNextValue = 0.0;
+    const auto& bootstrapActions = validNextActions.empty() ? actions : validNextActions;
     if (!terminal) {
-        for (const auto& candidate : actions) {
+        for (const auto& candidate : bootstrapActions) {
             const double candidateValue = q_table.getQValue(next_state.encode(), candidate);
             if (candidateValue > bestNextValue) {
                 bestNextValue = candidateValue;
@@ -1168,7 +1171,7 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
         nextObservation.signal_strength < 0.33f ? 0 : (nextObservation.signal_strength < 0.67f ? 1 : 2);
 
     if (learning_enabled) {
-        q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
+        q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal, validActionsForObservation(nextObservation));
     }
     session_context.last_reward = outcome.reward;
     session_context.last_timestamp = currentTimeStamp();
