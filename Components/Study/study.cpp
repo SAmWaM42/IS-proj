@@ -292,15 +292,26 @@ bool runParticipantStudy(const std::string& policyDirectory,
                     outcome.terminal = scenarioIndex + 1 == kScenarios.size();
                     outcome.outcome_tag = "participant_" + feedbackLabel(feedbackKey);
                     const std::string action = studyData["pending_trial"]["action_internal"].get<std::string>();
-                    if (currentAgentKind == "baseline") {
-                        baseline.applyOutcome(scenario.observation, action, outcome);
-                    } else {
-                        proposed.applyOutcome(scenario.observation, action, outcome);
+                    // "No response" is missing feedback, not a neutral judgement.
+                    // Preserve it in the study record but do not update either agent.
+                    const bool responseObserved = feedbackKey != 4;
+                    if (responseObserved) {
+                        if (currentAgentKind == "baseline") {
+                            baseline.applyOutcome(scenario.observation, action, outcome);
+                        } else {
+                            proposed.applyOutcome(scenario.observation, action, outcome);
+                        }
                     }
                     nlohmann::json row = studyData["pending_trial"];
                     row["participant_response"] = feedbackLabel(feedbackKey);
                     row["participant_response_code"] = feedbackKey;
-                    row["feedback_reward_used_for_state_update"] = reward;
+                    row["response_observed"] = responseObserved;
+                    row["feedback_reward_used_for_state_update"] =
+                        responseObserved ? nlohmann::json(reward) : nlohmann::json(nullptr);
+                    row["state_update_applied"] = responseObserved;
+                    row["affect_memory_update_applied"] =
+                        responseObserved && currentAgentKind == "proposed";
+                    row["policy_update_applied"] = false;
                     trialRows.push_back(row);
                     studyData.erase("pending_trial");
 

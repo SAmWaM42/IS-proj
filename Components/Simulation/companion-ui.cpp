@@ -372,7 +372,8 @@ void CompanionUI::executeInteraction(const std::string& label,
     nlohmann::json memoryCandidates = nlohmann::json::array();
     for (const auto& memory : proposed.getMemoryRecords()) {
         if (memory.raw_fact.subject == latestProposedAction ||
-            memory.raw_fact.relation == "prefers_action" || memory.raw_fact.relation == "dislikes_action") {
+            memory.raw_fact.relation == "prefers_action" || memory.raw_fact.relation == "dislikes_action" ||
+            memory.raw_fact.relation == "likes" || memory.raw_fact.relation == "dislikes") {
             memoryCandidates.push_back({
                 {"subject", memory.raw_fact.subject},
                 {"relation", memory.raw_fact.relation},
