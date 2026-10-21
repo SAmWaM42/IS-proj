@@ -21,6 +21,8 @@ namespace
         bool completed = false;
         int stimulus_checks = 0;
         int stimulus_aligned_actions = 0;
+        std::map<std::string, int> stimulus_checks_by_type;
+        std::map<std::string, int> stimulus_aligned_by_type;
         std::map<std::string, int> action_counts;
         std::set<std::size_t> visited_states;
     };
@@ -271,6 +273,22 @@ namespace
         return nextScenario;
     }
 
+    std::string stimulusCategory(const EnvironmentObservation &observation)
+    {
+        if (observation.goal_state == 1 && observation.task_status == 1)
+            return observation.target_proximity >= 2 ? "fetch_far" : "fetch_near";
+        if (observation.goal_state == 0 && observation.user_status == 2)
+            return "negative_feedback";
+        if (observation.food_available) return "food_offer";
+        if (observation.play_available) return "play_invitation";
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+            return "disturbance";
+        if (observation.goal_state == 2 && observation.task_status == 0)
+            return "quiet_rest";
+        if (observation.goal_state == 0) return "social_contact";
+        return "other";
+    }
+
     bool stimulusResponseAligned(const std::string &action,
                                  const EnvironmentObservation &observation)
     {
@@ -471,8 +489,13 @@ namespace
             if (observation.goal_state != 1 || observation.task_status == 1)
             {
                 ++metrics.stimulus_checks;
+                const std::string category = stimulusCategory(observation);
+                ++metrics.stimulus_checks_by_type[category];
                 if (stimulusResponseAligned(action, observation))
+                {
                     ++metrics.stimulus_aligned_actions;
+                    ++metrics.stimulus_aligned_by_type[category];
+                }
             }
 
             nlohmann::json row;
@@ -517,6 +540,8 @@ namespace
             metrics.stimulus_checks > 0
                 ? static_cast<double>(metrics.stimulus_aligned_actions) / metrics.stimulus_checks
                 : 0.0;
+        result["stimulus_checks_by_type"] = metrics.stimulus_checks_by_type;
+        result["stimulus_aligned_by_type"] = metrics.stimulus_aligned_by_type;
         return result;
     }
 } // namespace
@@ -638,29 +663,56 @@ bool runTrainingExperiment(const std::string &mode,
         proposed.savePersistentState(proposedPolicy.string());
     }
 
-    int baselineStimulusChecks = 0;
-    int baselineAlignedActions = 0;
-    int proposedStimulusChecks = 0;
-    int proposedAlignedActions = 0;
-    for (const auto &episode : baselineEpisodes)
-    {
-        baselineStimulusChecks += episode["stimulus_checks"].get<int>();
-        baselineAlignedActions += episode["stimulus_aligned_actions"].get<int>();
-    }
-    for (const auto &episode : proposedEpisodes)
-    {
-        proposedStimulusChecks += episode["stimulus_checks"].get<int>();
-        proposedAlignedActions += episode["stimulus_aligned_actions"].get<int>();
-    }
+    const auto buildStimulusAudit = [](const nlohmann::json &episodes) {
+        nlohmann::json audit = nlohmann::json::object();
+        int checks = 0;
+        int aligned = 0;
+        for (const auto &episode : episodes)
+        {
+            checks += episode["stimulus_checks"].get<int>();
+            aligned += episode["stimulus_aligned_actions"].get<int>();
+            for (auto it = episode["stimulus_checks_by_type"].begin();
+                 it != episode["stimulus_checks_by_type"].end(); ++it)
+            {
+                const std::string category = it.key();
+                if (!audit.contains(category))
+                    audit[category] = {{"checks", 0}, {"aligned", 0}};
+                audit[category]["checks"] = audit[category]["checks"].get<int>() + it.value().get<int>();
+            }
+            for (auto it = episode["stimulus_aligned_by_type"].begin();
+                 it != episode["stimulus_aligned_by_type"].end(); ++it)
+            {
+                const std::string category = it.key();
+                if (!audit.contains(category))
+                    audit[category] = {{"checks", 0}, {"aligned", 0}};
+                audit[category]["aligned"] = audit[category]["aligned"].get<int>() + it.value().get<int>();
+            }
+        }
+        for (auto it = audit.begin(); it != audit.end(); ++it)
+        {
+            const int categoryChecks = it.value()["checks"].get<int>();
+            const int categoryAligned = it.value()["aligned"].get<int>();
+            it.value()["alignment_rate"] = categoryChecks > 0
+                ? static_cast<double>(categoryAligned) / categoryChecks : 0.0;
+        }
+        return std::pair<nlohmann::json, std::pair<int, int>>{
+            audit, {checks, aligned}};
+    };
 
-    summary["baseline"]["stimulus_checks"] = baselineStimulusChecks;
-    summary["baseline"]["stimulus_aligned_actions"] = baselineAlignedActions;
+    const auto baselineAudit = buildStimulusAudit(baselineEpisodes);
+    const auto proposedAudit = buildStimulusAudit(proposedEpisodes);
+    summary["baseline"]["stimulus_checks"] = baselineAudit.second.first;
+    summary["baseline"]["stimulus_aligned_actions"] = baselineAudit.second.second;
     summary["baseline"]["stimulus_response_alignment_rate"] =
-        baselineStimulusChecks > 0 ? static_cast<double>(baselineAlignedActions) / baselineStimulusChecks : 0.0;
-    summary["proposed"]["stimulus_checks"] = proposedStimulusChecks;
-    summary["proposed"]["stimulus_aligned_actions"] = proposedAlignedActions;
+        baselineAudit.second.first > 0
+            ? static_cast<double>(baselineAudit.second.second) / baselineAudit.second.first : 0.0;
+    summary["baseline"]["stimulus_response_audit_by_type"] = baselineAudit.first;
+    summary["proposed"]["stimulus_checks"] = proposedAudit.second.first;
+    summary["proposed"]["stimulus_aligned_actions"] = proposedAudit.second.second;
     summary["proposed"]["stimulus_response_alignment_rate"] =
-        proposedStimulusChecks > 0 ? static_cast<double>(proposedAlignedActions) / proposedStimulusChecks : 0.0;
+        proposedAudit.second.first > 0
+            ? static_cast<double>(proposedAudit.second.second) / proposedAudit.second.first : 0.0;
+    summary["proposed"]["stimulus_response_audit_by_type"] = proposedAudit.first;
     summary["stimulus_alignment_note"] =
         "Heuristic engineering diagnostic for broad stimulus/action compatibility only; not a validated animal-behaviour model or measure of perceived believability.";
 
