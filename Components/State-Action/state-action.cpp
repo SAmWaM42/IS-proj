@@ -683,21 +683,6 @@ void QTable::update(std::size_t stateKey, std::string action, double reward, std
     table[stateKey][action] = newValue;
 }
 
-std::string QTable::chooseAction(std::size_t stateKey) {
-    const auto stateIt = table.find(stateKey);
-    if (stateIt == table.end() || stateIt->second.empty()) {
-        return kActions.front();
-    }
-
-    std::pair<std::string, double> bestEntry{"", -std::numeric_limits<double>::infinity()};
-    for (const auto& entry : stateIt->second) {
-        if (entry.second > bestEntry.second) {
-            bestEntry = entry;
-        }
-    }
-
-    return bestEntry.first;
-}
 
 void QTable::save(const std::string& filename) {
     std::ofstream out(filename);
@@ -742,38 +727,6 @@ void QLearning::setQValue(const state& stateRef, const std::string& action, floa
     q_table.table[stateRef.encode()][action] = value;
 }
 
-float QLearning::getMaxQValue(const state& stateRef) const {
-    float best = -std::numeric_limits<float>::infinity();
-    for (const auto& action : actions) {
-        const float value = getQValue(stateRef, action);
-        if (value > best) {
-            best = value;
-        }
-    }
-    return best;
-}
-
-std::string QLearning::getBestAction(const state& stateRef) const {
-    std::string bestAction = actions.empty() ? "FETCH" : actions.front();
-    float bestValue = -std::numeric_limits<float>::infinity();
-    for (const auto& action : actions) {
-        const float value = getQValue(stateRef, action);
-        if (value > bestValue) {
-            bestValue = value;
-            bestAction = action;
-        }
-    }
-    return bestAction;
-}
-
-std::string QLearning::getRandomAction(const state& stateRef) const {
-    (void)stateRef;
-    if (actions.empty()) {
-        return "FETCH";
-    }
-    std::uniform_int_distribution<std::size_t> dist(0, actions.size() - 1);
-    return actions[dist(rng)];
-}
 
 void QLearning::setActions(const std::vector<std::string>& newActions) {
     actions = newActions;
