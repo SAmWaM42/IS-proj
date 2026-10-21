@@ -32,7 +32,7 @@ namespace
         std::uniform_int_distribution<int> nearDist(0, 1);
         std::uniform_int_distribution<int> socialDist(0, 1);
         EnvironmentObservation observation;
-        switch (stepIndex % 10)
+        switch (stepIndex % 11)
         {
         case 0: // User initiates a social interaction.
             observation = {0, 1, socialDist(rng), 0, 0.45f};
@@ -52,13 +52,16 @@ namespace
         case 5: // Request where the target is too far away.
             observation = {1, 2, 1, 1, 0.56f};
             break;
-        case 6: // Food is explicitly available.
+        case 6: // The far-fetch request persists for another decision.
+            observation = {1, 2, 1, 1, 0.56f};
+            break;
+        case 7: // Food is explicitly available.
             observation = {2, 0, 1, 0, 0.30f, true, false};
             break;
-        case 7: // The user explicitly invites play.
+        case 8: // The user explicitly invites play.
             observation = {0, 1, 1, 0, 0.70f, false, true};
             break;
-        case 8: // The user rejects an unwanted behaviour.
+        case 9: // The user rejects an unwanted behaviour.
             observation = {0, 1, 2, 0, 0.45f};
             break;
         default: // A task is pending but the user has not responded.
@@ -253,9 +256,6 @@ namespace
         EpisodeMetrics metrics;
         float environmentEnergy = 0.8f;
         EnvironmentObservation currentObservation = observations.front();
-        std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
-                                   static_cast<unsigned int>(agentName == "proposed" ? 1 : 0));
-
         for (std::size_t step = 0; step < observations.size(); ++step)
         {
             if (step > 0) {
@@ -266,6 +266,11 @@ namespace
             const std::string action = agent.selectAction(observation);
             metrics.visited_states.insert(agent.getCurrentState().encode());
 
+            const float energyBefore = environmentEnergy;
+            // Same seed per episode/step gives both agents paired environmental noise,
+            // independent of how many stochastic actions either policy selected.
+            std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
+                                       static_cast<unsigned int>(step) * 104729u);
             const EnvironmentStep transition =
                 applyEnvironmentAction(action, observation, environmentEnergy, transitionRng);
             environmentEnergy = transition.energy_after;
@@ -305,7 +310,7 @@ namespace
             row["signal_strength"] = observation.signal_strength;
             row["food_available"] = observation.food_available;
             row["play_available"] = observation.play_available;
-            row["energy_before"] = environmentEnergy + 0.0f; // environment energy after this action
+            row["energy_before"] = energyBefore;
             row["energy_after"] = transition.energy_after;
             row["action"] = action;
             row["encoded_state"] = agent.getCurrentState().encode();
@@ -395,7 +400,7 @@ bool runTrainingExperiment(const std::string &mode,
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v2_context_sequence";
-    summary["scenario_pattern"] = {"social", "fetch_near", "disturbance", "rest", "positive_social", "fetch_far", "food_offer", "play_invitation", "negative_feedback", "ignored_request"};
+    summary["scenario_pattern"] = {"social", "fetch_near", "disturbance", "rest", "positive_social", "fetch_far", "fetch_follow_up", "food_offer", "play_invitation", "negative_feedback", "ignored_request"};
     summary["note"] = "Training uses repeated contextual scenarios for tabular coverage. Synthetic reward is not a measure of perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
@@ -478,4 +483,12 @@ bool runTrainingExperiment(const std::string &mode,
               << "Results: " << (outDir / (mode + "_summary.json")) << '\n';
 
     return true;
+}
+
+
+bool runTrainingSelfTests()
+{
+    const bool passed = testEnvironmentActionTransitions();
+    std::cout << "Action-dependent environment transitions: " << (passed ? "PASS" : "FAIL") << '\n';
+    return passed;
 }
