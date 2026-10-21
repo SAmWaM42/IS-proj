@@ -1,8 +1,8 @@
 {
-  "affinity": 0.5999999642372131,
+  "affinity": 1.0,
   "arousal": 1.0,
   "energy": 1,
-  "engagement": 0.75,
-  "stress": 0.6999999284744263,
+  "engagement": 1.0,
+  "stress": 0.0,
   "valence": 1
 }
