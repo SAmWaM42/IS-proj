@@ -2,7 +2,6 @@
 #include <iostream>
 #include <string>
 
-#include "Components/Environment/environment.h"
 #include "Components/State-Action/state-action.h"
 #include "Components/Training/training.h"
 #include "Components/Study/study.h"
@@ -30,7 +29,6 @@ void printUsage(const char* executable) {
         << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
         << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
         << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
-        << "  " << executable << " --sim | --sim-history\n\n"
         << "Run --train before --validate, --compare, or --study. Evaluation disables policy updates.\n";
 }
 } // namespace
@@ -55,16 +53,6 @@ int main(int argc, char** argv) {
                 std::cerr << "Unable to start companion UI: " << error.what() << '\n';
                 return 1;
             }
-            return 0;
-        }
-        if (arg == "--legacy-sim") {
-            BackyardSimulation simulation;
-            simulation.run();
-            return 0;
-        }
-        if (arg == "--sim-history" || arg == "sim-history" || arg == "--history") {
-            BackyardSimulation simulation;
-            simulation.runScenarioHistory();
             return 0;
         }
         if (arg == "--help" || arg == "-h") {
