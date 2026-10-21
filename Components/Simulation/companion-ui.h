@@ -50,6 +50,7 @@ private:
     std::vector<float> baselineRewards;
     std::vector<float> proposedRewards;
     int interactionCount = 0;
+    int lastActionInteractionId = 0;
     float agentX = 500.0f;
     float agentY = 320.0f;
     float userX = 220.0f;

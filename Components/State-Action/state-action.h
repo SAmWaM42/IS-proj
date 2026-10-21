@@ -169,6 +169,7 @@ public:
     const AffectiveState& getAffectiveState() const;
     void clearMemory();
     void recordUserPreference(const std::string& action, bool likes);
+    void recordUserStatement(const std::string& relation, const std::string& object);
 
 private:
     EnvironmentConfig config;
