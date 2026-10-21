@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-21T13:05:43Z",
+  "generated_at": "2026-10-21T13:47:45Z",
   "project": "IS-2",
   "status": "PASS",
   "summary": {
     "failed": 0,
-    "passed": 27,
-    "total": 27
+    "passed": 29,
+    "total": 29
   },
   "tests": [
     {
@@ -76,6 +76,12 @@
     },
     {
       "category": "memory",
+      "name": "General semantic preferences influence contextual actions",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "memory",
       "name": "Memory confidence follows outcome history",
       "passed": true,
       "status": "PASS"
@@ -113,6 +119,12 @@
     {
       "category": "baseline",
       "name": "Terminal handling",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "training",
+      "name": "Truncated transitions bootstrap from final observation",
       "passed": true,
       "status": "PASS"
     },
