@@ -876,6 +876,47 @@ bool testSeededExplorationIsReproducible() {
     return true;
 }
 
+bool testActionMaskUsesOnlyObservableAvailability() {
+    if (companionActionSet().size() != 14) return false;
+
+    const EnvironmentObservation ordinary{1, 1, 1, 1, 0.85f};
+    const auto ordinaryActions = validActionsForObservation(ordinary);
+    if (std::find(ordinaryActions.begin(), ordinaryActions.end(), "FETCH") == ordinaryActions.end() ||
+        std::find(ordinaryActions.begin(), ordinaryActions.end(), "EAT") != ordinaryActions.end() ||
+        std::find(ordinaryActions.begin(), ordinaryActions.end(), "PLAY") != ordinaryActions.end()) {
+        return false;
+    }
+
+    const EnvironmentObservation food{2, 0, 1, 0, 0.30f, true, false};
+    const auto foodActions = validActionsForObservation(food);
+    if (std::find(foodActions.begin(), foodActions.end(), "EAT") == foodActions.end() ||
+        std::find(foodActions.begin(), foodActions.end(), "PLAY") != foodActions.end()) {
+        return false;
+    }
+
+    const EnvironmentObservation play{0, 1, 1, 0, 0.70f, false, true};
+    const auto playActions = validActionsForObservation(play);
+    if (std::find(playActions.begin(), playActions.end(), "PLAY") == playActions.end() ||
+        std::find(playActions.begin(), playActions.end(), "EAT") != playActions.end()) {
+        return false;
+    }
+
+    EnvironmentConfig config;
+    BaselineAgent baseline(config);
+    ProposedAgent proposed(config);
+    baseline.setExplorationRate(1.0f);
+    proposed.setExplorationRate(1.0f);
+    for (const auto& observation : {ordinary, food, play}) {
+        const std::string baselineAction = baseline.selectAction(observation);
+        const std::string proposedAction = proposed.selectAction(observation);
+        if (!isActionValidForObservation(baselineAction, observation) ||
+            !isActionValidForObservation(proposedAction, observation)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool testMemoryAffectStateEncoding() {
     const state neutral = makeState(1, distance::CLOSE, Level::LOW, Level::LOW, Level::MEDIUM, Level::LOW, 0, 0.0f);
     state positive = neutral;
@@ -1583,6 +1624,7 @@ bool runBaselineValidation() {
     results.push_back({"Outcome uses explicit next observation", "PASS", testOutcomeUsesExplicitNextObservation(), "training"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
+    results.push_back({"Observable action masking and food/play availability", "PASS", testActionMaskUsesOnlyObservableAvailability(), "policy"});
     results.push_back({"Seeded exploration reproducibility", "PASS", testSeededExplorationIsReproducible(), "training"});
     results.push_back({"Baseline excludes memory and affect inputs", "PASS", testBaselineExcludesMemoryAndAffectInputs(), "training"});
     results.push_back({"Evaluation does not update policy", "PASS", testEvaluationDoesNotUpdatePolicy(), "training"});
