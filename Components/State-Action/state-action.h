@@ -97,8 +97,6 @@ private:
     std::vector<std::string> actions;
     mutable std::mt19937 rng;
 
-    float getQValue(const state& stateRef, const std::string& action) const;
-    void setQValue(const state& stateRef, const std::string& action, float value);
 
 public:
     QLearning(float learning_rate, float discount_factor, float epsilon, unsigned int seed = 42);
@@ -189,50 +187,5 @@ private:
     bool learning_enabled = true;
 };
 
-struct AgentComparisonRun {
-    EnvironmentConfig config;
-    BaselineAgent baseline_agent;
-    ProposedAgent proposed_agent;
-    std::vector<SimulationTick> tick_log;
-};
-
-AgentComparisonRun runAgentComparison(const EnvironmentConfig& config, int steps = 10);
-
-state makeState(int intent,
-                distance proximity,
-                Level energy,
-                Level stress,
-                Level curiosity,
-                Level attachment,
-                int userStatus = 0,
-                float memory = 0.0f);
-
-state makeStateWithContext(int intent,
-                          distance proximity,
-                          Level energy,
-                          Level stress,
-                          Level curiosity,
-                          Level attachment,
-                          int userStatus,
-                          float memory,
-                          float confidence,
-                          float relevance,
-                          float recency,
-                          const AffectiveState& affect);
-
-state makeStateFromMemoryRecords(int intent,
-                                distance proximity,
-                                Level energy,
-                                Level stress,
-                                Level curiosity,
-                                Level attachment,
-                                int userStatus,
-                                float memory,
-                                const std::vector<record>& records,
-                                const AffectiveState& affect);
-
-state makeRuntimeState(const RuntimeContext& runtimeContext);
-int summarizeMemoryBias(float confidence, float relevance, float recency);
-int summarizeAffectTrend(const AffectiveState& affect, Level energy);
 
 bool runBaselineValidation();
