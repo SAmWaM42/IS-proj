@@ -37,7 +37,7 @@ namespace
         std::uniform_int_distribution<int> nearDist(0, 1);
         std::uniform_int_distribution<int> socialDist(0, 1);
         EnvironmentObservation observation;
-        switch (stepIndex % 13)
+        switch (stepIndex % 14)
         {
         case 0: // User initiates a social interaction.
             observation = {0, 1, socialDist(rng), 0, 0.45f};
@@ -75,8 +75,11 @@ namespace
         case 11: // The user rejects an unwanted behaviour.
             observation = {0, 1, 2, 0, 0.45f};
             break;
-        default: // A task is pending but the user has not responded.
+        case 12: // A task is pending but the user has not responded.
             observation = {1, 1, 0, 1, 0.82f};
+            break;
+        default: // Fetch is requested during feeding time: the ball and food coexist.
+            observation = {1, 1, 1, 1, 0.56f, true, false};
             break;
         }
         return observation;
@@ -344,7 +347,10 @@ namespace
     std::string stimulusCategory(const EnvironmentObservation &observation)
     {
         if (observation.goal_state == 1 && observation.task_status == 1)
+        {
+            if (observation.food_available) return "fetch_with_food";
             return observation.target_proximity >= 2 ? "fetch_far" : "fetch_near";
+        }
         if (observation.goal_state == 0 && observation.user_status == 2)
             return "negative_feedback";
         if (observation.food_available) return "food_offer";
@@ -358,36 +364,13 @@ namespace
     }
 
     bool stimulusResponseAligned(const std::string &action,
-                                 const EnvironmentObservation &observation)
+                                 const EnvironmentObservation &observation,
+                                 float energy,
+                                 float stress)
     {
-        // Explicit engineering sanity check for broad stimulus/action compatibility;
-        // this is not a validated animal-behaviour model or believability measure.
-        if (observation.goal_state == 1)
-        {
-            if (observation.task_status != 1) return true;
-            if (observation.target_proximity >= 2)
-                return action == "APPROACH_FOLLOW" || action == "FETCH";
-            return action == "FETCH" || action == "APPROACH_FOLLOW" || action == "INSIST";
-        }
-
-        if (observation.goal_state == 0)
-        {
-            if (observation.user_status == 2)
-                return action == "HIDE_AVOID" || action == "ACT_CONFUSED" || action == "WHINE";
-            if (observation.play_available)
-                return action == "PLAY" || action == "GREETING" || action == "APPROACH_FOLLOW";
-            if (observation.target_proximity == 0)
-                return action == "NUZZLE" || action == "GREETING" || action == "APPROACH_FOLLOW";
-            return action == "GREETING" || action == "NUZZLE" ||
-                   action == "APPROACH_FOLLOW" || action == "WANDER";
-        }
-
-        if (observation.food_available) return action == "EAT";
-        if (observation.play_available) return action == "PLAY" || action == "GREETING";
-        if (observation.signal_strength >= 0.80f)
-            return action == "ACT_CONFUSED" || action == "BARK" ||
-                   action == "HIDE_AVOID" || action == "WHINE";
-        return action == "SLEEP_LAY" || action == "WANDER" || action == "ACT_CONFUSED";
+        // Use the graded context-fit model, not a one-correct-action oracle.
+        // This is an engineering diagnostic only, not a believability measure.
+        return actionContextFit(action, observation, energy, stress) >= 0.0f;
     }
 
     bool testTaskPriorityReward()
@@ -569,7 +552,7 @@ namespace
                 ++metrics.stimulus_checks;
                 const std::string category = stimulusCategory(observation);
                 ++metrics.stimulus_checks_by_type[category];
-                if (stimulusResponseAligned(action, observation))
+                if (stimulusResponseAligned(action, observation, energyBefore, environmentStress))
                 {
                     ++metrics.stimulus_aligned_actions;
                     ++metrics.stimulus_aligned_by_type[category];
@@ -688,7 +671,7 @@ bool runTrainingExperiment(const std::string &mode,
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v3_task_priority";
-    summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request"};
+    summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request", "fetch_at_feeding_time"};
     summary["note"] = "Training uses repeated contextual scenarios for tabular coverage. SNIFF receives no positive reward while an explicit fetch task is pending, so exploration does not outscore task fulfilment. Synthetic reward is not a measure of perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
