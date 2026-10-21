@@ -1,16 +1,22 @@
 {
-  "generated_at": "2026-10-21T08:00:51Z",
+  "generated_at": "2026-10-21T09:11:43Z",
   "project": "IS-2",
   "status": "PASS",
   "summary": {
     "failed": 0,
-    "passed": 24,
-    "total": 24
+    "passed": 25,
+    "total": 25
   },
   "tests": [
     {
       "category": "baseline",
       "name": "Basic Q update",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "training",
+      "name": "Q update excludes invalid next actions",
       "passed": true,
       "status": "PASS"
     },
