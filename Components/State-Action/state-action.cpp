@@ -405,6 +405,12 @@ bool testUnseenStateHandling() {
     return std::find(kActions.begin(), kActions.end(), action) != kActions.end();
 }
 
+namespace {
+std::string contextualAction(const EnvironmentObservation& observation,
+                             const AffectiveState* affect,
+                             const std::vector<record>* memories);
+}
+
 bool testContextualFallbackMatchesIntent() {
     EnvironmentConfig config;
     config.seed = 7;
@@ -455,8 +461,8 @@ bool testContextualFallbackMatchesIntent() {
     AffectiveState overwhelmed;
     overwhelmed.energy = AffectEnergy::MODERATE;
     overwhelmed.stress = 0.90f;
-    const bool tiredAgentEats = contextualAction(feedingTimeRequest, &tired) == "EAT";
-    const bool overwhelmedAgentRests = contextualAction(feedingTimeRequest, &overwhelmed) == "SLEEP_LAY";
+    const bool tiredAgentEats = contextualAction(feedingTimeRequest, &tired, nullptr) == "EAT";
+    const bool overwhelmedAgentRests = contextualAction(feedingTimeRequest, &overwhelmed, nullptr) == "SLEEP_LAY";
 
     return greetingOk && requestOk && disturbanceOk && restOk &&
            foodOk && playOk && rejectionOk &&
