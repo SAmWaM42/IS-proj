@@ -310,6 +310,15 @@ namespace
         return result;
     }
 
+    // Compatibility wrapper for deterministic transition tests.
+    EnvironmentStep applyEnvironmentAction(const std::string &action,
+                                           const EnvironmentObservation &observation,
+                                           float energy,
+                                           std::mt19937 &rng)
+    {
+        return applyEnvironmentAction(action, observation, energy, 0.2f, 0.5f, rng);
+    }
+
     EnvironmentObservation mergeTaskTransition(const EnvironmentObservation &current,
                                                const EnvironmentObservation &transitioned,
                                                const EnvironmentObservation &nextScenario)
@@ -376,17 +385,24 @@ namespace
     bool testTaskPriorityReward()
     {
         const EnvironmentObservation request{1, 0, 1, 1, 0.56f};
-        const EnvironmentObservation feedingTimeRequest{1, 0, 1, 1, 0.56f, true, true};
+        const EnvironmentObservation feedingTimeRequest{1, 1, 1, 1, 0.56f, true, false};
         const EnvironmentObservation idle{2, 1, 0, 0, 0.20f};
-        const float fetchReward = rewardFor("FETCH", request, true, 0.75f, 0.20f, 0.5f);
-        const float eatWhenHungry = rewardFor("EAT", feedingTimeRequest, false, 0.15f, 0.20f, 0.5f);
-        const float sleepWhenOverwhelmed = rewardFor("SLEEP_LAY", feedingTimeRequest, false, 0.20f, 0.90f, 0.5f);
-        const float sniffWhenCompetingNeeds = rewardFor("SNIFF", feedingTimeRequest, false, 0.15f, 0.20f, 0.5f);
-        const float sniffWhenIdle = rewardFor("SNIFF", idle, false, 0.75f, 0.20f, 0.5f);
+        const float fetchReward = rewardFor("FETCH", request, true, 0.75f, 0.20f);
+        const float eatWhenHungry = rewardFor("EAT", feedingTimeRequest, false, 0.15f, 0.20f);
+        const float sleepWhenOverwhelmed = rewardFor("SLEEP_LAY", feedingTimeRequest, false, 0.20f, 0.90f);
+        const float sniffWhenCompetingNeeds = rewardFor("SNIFF", feedingTimeRequest, false, 0.15f, 0.20f);
+        const float sniffWhenIdle = rewardFor("SNIFF", idle, false, 0.75f, 0.20f);
+        std::mt19937 scenarioRng(42);
+        const EnvironmentObservation generated = makeObservation(scenarioRng, 13);
         return fetchReward > sniffWhenCompetingNeeds &&
                eatWhenHungry > sniffWhenCompetingNeeds &&
                sleepWhenOverwhelmed > sniffWhenCompetingNeeds &&
-               sniffWhenIdle > sniffWhenCompetingNeeds;
+               sniffWhenIdle > sniffWhenCompetingNeeds &&
+               generated.goal_state == 1 && generated.task_status == 1 &&
+               generated.food_available &&
+               isActionValidForObservation("FETCH", generated) &&
+               isActionValidForObservation("EAT", generated) &&
+               isActionValidForObservation("SLEEP_LAY", generated);
     }
 
     bool testSuccessfulFetchAdvancesContext()
@@ -511,6 +527,7 @@ namespace
             metrics.visited_states.insert(stateKeyBeforeAction);
 
             const float energyBefore = environmentEnergy;
+            const float stressBefore = environmentStress;
             // Same seed per episode/step gives both agents paired environmental noise,
             // independent of how many stochastic actions either policy selected.
             std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
@@ -552,7 +569,7 @@ namespace
                 ++metrics.stimulus_checks;
                 const std::string category = stimulusCategory(observation);
                 ++metrics.stimulus_checks_by_type[category];
-                if (stimulusResponseAligned(action, observation, energyBefore, environmentStress))
+                if (stimulusResponseAligned(action, observation, energyBefore, stressBefore))
                 {
                     ++metrics.stimulus_aligned_actions;
                     ++metrics.stimulus_aligned_by_type[category];
@@ -670,9 +687,9 @@ bool runTrainingExperiment(const std::string &mode,
     summary["environment_seed"] = environmentSeed;
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
-    summary["reward_model"] = "synthetic_v3_task_priority";
+    summary["reward_model"] = "synthetic_v4_graded_context_fit";
     summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request", "fetch_at_feeding_time"};
-    summary["note"] = "Training uses repeated contextual scenarios for tabular coverage. SNIFF receives no positive reward while an explicit fetch task is pending, so exploration does not outscore task fulfilment. Synthetic reward is not a measure of perceived believability.";
+    summary["note"] = "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
     nlohmann::json proposedEpisodes = nlohmann::json::array();
