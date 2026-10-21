@@ -48,7 +48,7 @@ The UI already serialises queued interactions and displays the selected action f
 
 ## 4. Scenario coverage and feedback
 
-The synthetic training sequence now includes explicit food, play, and negative-feedback contexts in addition to social, fetch, disturbance, rest, and positive-feedback contexts. The participant study includes food-offer, play-invitation, and rejection scenarios. Observation logs record food/play availability so these contexts are reconstructable.
+The synthetic training sequence now includes explicit food, play, and negative-feedback contexts in addition to social, fetch, disturbance, rest, and positive-feedback contexts. The participant study includes food-offer, play-invitation, and rejection scenarios. Food/play availability is also encoded into the policy state and preserved across transitions. Observation logs record these flags so contexts are reconstructable. Q-learning bootstrapping uses only valid next actions.
 
 The current synthetic reward values for these new actions are provisional coverage rewards. They are useful for exercising the action vocabulary, not evidence that the model is believable. The broader training redesign in [the training/evaluation specification](19-training-and-evaluation-redesign-spec.md) remains required before research evaluation.
 
