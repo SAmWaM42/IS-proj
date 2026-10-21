@@ -188,13 +188,6 @@ struct ActionResult
     std::string outcome_tag;
 };
 
-struct SimulationTick
-{
-    EnvironmentObservation observation;
-    ActionResult action_result;
-    std::string timestamp;
-};
-
 float summarizeMemorySignal(const std::vector<record> &records);
 float calculateMemoryRecordWeight(const record &entry);
 float calculateRecordSignal(const record &entry);
