@@ -1,0 +1,1696 @@
+{
+  "baseline": {
+    "completion_rate": 0.82,
+    "episodes": [
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 0,
+        "steps": 44,
+        "total_reward": 16.640392303466797,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 1,
+        "steps": 44,
+        "total_reward": 17.64963722229004,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 2,
+        "steps": 44,
+        "total_reward": 17.247377395629883,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 3,
+        "steps": 44,
+        "total_reward": 17.64963722229004,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 4,
+        "steps": 44,
+        "total_reward": 17.242650985717773,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 5,
+        "steps": 44,
+        "total_reward": 17.04039192199707,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": false,
+        "episode": 6,
+        "steps": 44,
+        "total_reward": 15.808389663696289,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 16
+        },
+        "completed": false,
+        "episode": 7,
+        "steps": 44,
+        "total_reward": 16.23340606689453,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 8,
+        "steps": 44,
+        "total_reward": 18.04963493347168,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 9,
+        "steps": 44,
+        "total_reward": 16.440391540527344,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 16
+        },
+        "completed": false,
+        "episode": 10,
+        "steps": 44,
+        "total_reward": 16.23340606689453,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 11,
+        "steps": 44,
+        "total_reward": 16.010650634765625,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 12,
+        "steps": 44,
+        "total_reward": 17.242650985717773,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 13,
+        "steps": 44,
+        "total_reward": 16.63566780090332,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 14,
+        "steps": 44,
+        "total_reward": 17.449636459350586,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 15,
+        "steps": 44,
+        "total_reward": 17.654359817504883,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 16
+        },
+        "completed": false,
+        "episode": 16,
+        "steps": 44,
+        "total_reward": 16.433406829833984,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 12
+        },
+        "completed": true,
+        "episode": 17,
+        "steps": 44,
+        "total_reward": 18.256620407104492,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 18,
+        "steps": 44,
+        "total_reward": 17.449636459350586,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 19,
+        "steps": 44,
+        "total_reward": 16.817636489868164,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 20,
+        "steps": 44,
+        "total_reward": 17.654359817504883,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 21,
+        "steps": 44,
+        "total_reward": 17.247373580932617,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 22,
+        "steps": 44,
+        "total_reward": 16.840391159057617,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 23,
+        "steps": 44,
+        "total_reward": 17.242650985717773,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 24,
+        "steps": 44,
+        "total_reward": 17.654359817504883,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 25,
+        "steps": 44,
+        "total_reward": 16.840391159057617,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 26,
+        "steps": 44,
+        "total_reward": 17.04265022277832,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 27,
+        "steps": 44,
+        "total_reward": 17.854360580444336,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 28,
+        "steps": 44,
+        "total_reward": 16.640390396118164,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 16
+        },
+        "completed": false,
+        "episode": 29,
+        "steps": 44,
+        "total_reward": 16.633407592773438,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 30,
+        "steps": 44,
+        "total_reward": 17.64963722229004,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 31,
+        "steps": 44,
+        "total_reward": 17.449636459350586,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": false,
+        "episode": 32,
+        "steps": 44,
+        "total_reward": 15.803666114807129,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 33,
+        "steps": 44,
+        "total_reward": 16.640392303466797,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 3,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 34,
+        "steps": 44,
+        "total_reward": 17.249635696411133,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 12
+        },
+        "completed": true,
+        "episode": 35,
+        "steps": 44,
+        "total_reward": 18.256620407104492,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 36,
+        "steps": 44,
+        "total_reward": 17.04039192199707,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 12
+        },
+        "completed": true,
+        "episode": 37,
+        "steps": 44,
+        "total_reward": 17.6566219329834,
+        "unique_states_visited": 11
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 38,
+        "steps": 44,
+        "total_reward": 17.04737663269043,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 39,
+        "steps": 44,
+        "total_reward": 16.41065216064453,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 40,
+        "steps": 44,
+        "total_reward": 16.835668563842773,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 41,
+        "steps": 44,
+        "total_reward": 17.242650985717773,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 16
+        },
+        "completed": false,
+        "episode": 42,
+        "steps": 44,
+        "total_reward": 16.633407592773438,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 43,
+        "steps": 44,
+        "total_reward": 16.415374755859375,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 44,
+        "steps": 44,
+        "total_reward": 17.04039192199707,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 2,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14
+        },
+        "completed": true,
+        "episode": 45,
+        "steps": 44,
+        "total_reward": 17.647375106811523,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 16
+        },
+        "completed": false,
+        "episode": 46,
+        "steps": 44,
+        "total_reward": 16.833406448364258,
+        "unique_states_visited": 11
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 16
+        },
+        "completed": false,
+        "episode": 47,
+        "steps": 44,
+        "total_reward": 16.23340606689453,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 4,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 12
+        },
+        "completed": true,
+        "episode": 48,
+        "steps": 44,
+        "total_reward": 16.824621200561523,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 1,
+          "GREETING": 8,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 15
+        },
+        "completed": true,
+        "episode": 49,
+        "steps": 44,
+        "total_reward": 16.640390396118164,
+        "unique_states_visited": 13
+      }
+    ],
+    "mean_reward": 17.02774480819702,
+    "mean_reward_per_step": 0.38699420018629593,
+    "mean_steps_per_episode": 44.0,
+    "mean_total_reward_per_episode": 17.02774480819702
+  },
+  "environment_seed": 1000045,
+  "episodes": 50,
+  "max_steps_per_episode": 44,
+  "mode": "validate",
+  "note": "Training uses repeated contextual scenarios for tabular coverage. Synthetic reward is not a measure of perceived believability.",
+  "proposed": {
+    "completion_rate": 1.0,
+    "episodes": [
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 6,
+          "BARK": 2,
+          "FETCH": 9,
+          "HIDE_AVOID": 2,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 12,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 0,
+        "steps": 44,
+        "total_reward": 12.923873901367188,
+        "unique_states_visited": 16
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "BARK": 1,
+          "FETCH": 11,
+          "HIDE_AVOID": 3,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 11,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 1,
+        "steps": 44,
+        "total_reward": 13.732718467712402,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 3,
+          "APPROACH_FOLLOW": 5,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 8
+        },
+        "completed": true,
+        "episode": 2,
+        "steps": 44,
+        "total_reward": 12.968851089477539,
+        "unique_states_visited": 19
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 6,
+          "BARK": 3,
+          "FETCH": 11,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 11
+        },
+        "completed": true,
+        "episode": 3,
+        "steps": 44,
+        "total_reward": 16.076757431030273,
+        "unique_states_visited": 19
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 6,
+          "BARK": 3,
+          "FETCH": 10,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 12
+        },
+        "completed": true,
+        "episode": 4,
+        "steps": 44,
+        "total_reward": 13.644445419311523,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 3,
+          "APPROACH_FOLLOW": 4,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 6,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 5,
+        "steps": 44,
+        "total_reward": 11.649001121520996,
+        "unique_states_visited": 24
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "APPROACH_FOLLOW": 3,
+          "BARK": 3,
+          "FETCH": 12,
+          "HIDE_AVOID": 1,
+          "INSIST": 1,
+          "NUZZLE": 3,
+          "PLAY": 1,
+          "SLEEP_LAY": 8,
+          "SNIFF": 5,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 6,
+        "steps": 44,
+        "total_reward": 8.727989196777344,
+        "unique_states_visited": 37
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "BARK": 4,
+          "FETCH": 12,
+          "HIDE_AVOID": 1,
+          "INSIST": 1,
+          "NUZZLE": 3,
+          "PLAY": 1,
+          "SLEEP_LAY": 8,
+          "SNIFF": 5,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 7,
+        "steps": 44,
+        "total_reward": 9.109105110168457,
+        "unique_states_visited": 35
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "APPROACH_FOLLOW": 4,
+          "BARK": 3,
+          "FETCH": 12,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 10,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 8,
+        "steps": 44,
+        "total_reward": 13.742172241210938,
+        "unique_states_visited": 20
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 5,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 2,
+          "SLEEP_LAY": 8,
+          "SNIFF": 4,
+          "WANDER": 9
+        },
+        "completed": true,
+        "episode": 9,
+        "steps": 44,
+        "total_reward": 8.561933517456055,
+        "unique_states_visited": 30
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "APPROACH_FOLLOW": 4,
+          "BARK": 3,
+          "FETCH": 12,
+          "NUZZLE": 3,
+          "SLEEP_LAY": 8,
+          "SNIFF": 6,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 10,
+        "steps": 44,
+        "total_reward": 11.133039474487305,
+        "unique_states_visited": 29
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 4,
+          "APPROACH_FOLLOW": 2,
+          "BARK": 3,
+          "FETCH": 13,
+          "INSIST": 1,
+          "NUZZLE": 3,
+          "SLEEP_LAY": 8,
+          "SNIFF": 4,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 11,
+        "steps": 44,
+        "total_reward": 4.365305423736572,
+        "unique_states_visited": 36
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 1,
+          "BARK": 5,
+          "FETCH": 10,
+          "HIDE_AVOID": 3,
+          "INSIST": 3,
+          "NUZZLE": 3,
+          "PLAY": 3,
+          "SLEEP_LAY": 7,
+          "SNIFF": 1,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 12,
+        "steps": 44,
+        "total_reward": 7.672967910766602,
+        "unique_states_visited": 36
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 6,
+          "BARK": 3,
+          "FETCH": 9,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 12,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 13,
+        "steps": 44,
+        "total_reward": 13.753053665161133,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 5,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 9,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 14,
+        "steps": 44,
+        "total_reward": 12.283467292785645,
+        "unique_states_visited": 23
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 3,
+          "APPROACH_FOLLOW": 5,
+          "BARK": 3,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 8,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 15,
+        "steps": 44,
+        "total_reward": 14.708596229553223,
+        "unique_states_visited": 20
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 3,
+          "APPROACH_FOLLOW": 3,
+          "BARK": 4,
+          "FETCH": 12,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 3,
+          "SLEEP_LAY": 7,
+          "SNIFF": 2,
+          "WANDER": 9
+        },
+        "completed": true,
+        "episode": 16,
+        "steps": 44,
+        "total_reward": 3.832676649093628,
+        "unique_states_visited": 39
+      },
+      {
+        "action_counts": {
+          "BARK": 5,
+          "FETCH": 9,
+          "HIDE_AVOID": 3,
+          "INSIST": 3,
+          "NUZZLE": 3,
+          "PLAY": 4,
+          "SLEEP_LAY": 7,
+          "WANDER": 10
+        },
+        "completed": true,
+        "episode": 17,
+        "steps": 44,
+        "total_reward": 7.888357162475586,
+        "unique_states_visited": 30
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 6,
+          "BARK": 3,
+          "FETCH": 11,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 10,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 18,
+        "steps": 44,
+        "total_reward": 15.560260772705078,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "APPROACH_FOLLOW": 4,
+          "BARK": 1,
+          "FETCH": 11,
+          "HIDE_AVOID": 2,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 11,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 19,
+        "steps": 44,
+        "total_reward": 15.454018592834473,
+        "unique_states_visited": 26
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "APPROACH_FOLLOW": 4,
+          "FETCH": 11,
+          "HIDE_AVOID": 4,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 11,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 20,
+        "steps": 44,
+        "total_reward": 12.977540969848633,
+        "unique_states_visited": 15
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "APPROACH_FOLLOW": 5,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 9
+        },
+        "completed": true,
+        "episode": 21,
+        "steps": 44,
+        "total_reward": 13.351859092712402,
+        "unique_states_visited": 20
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 3,
+          "APPROACH_FOLLOW": 4,
+          "BARK": 5,
+          "FETCH": 10,
+          "NUZZLE": 2,
+          "SLEEP_LAY": 8,
+          "SNIFF": 2,
+          "WANDER": 10
+        },
+        "completed": true,
+        "episode": 22,
+        "steps": 44,
+        "total_reward": 5.683084011077881,
+        "unique_states_visited": 35
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "APPROACH_FOLLOW": 3,
+          "BARK": 5,
+          "FETCH": 10,
+          "HIDE_AVOID": 1,
+          "INSIST": 2,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 7,
+          "SNIFF": 5,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 23,
+        "steps": 44,
+        "total_reward": 6.924893856048584,
+        "unique_states_visited": 36
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 5,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 10,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 24,
+        "steps": 44,
+        "total_reward": 15.820981979370117,
+        "unique_states_visited": 20
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "APPROACH_FOLLOW": 3,
+          "BARK": 5,
+          "FETCH": 10,
+          "HIDE_AVOID": 1,
+          "INSIST": 1,
+          "NUZZLE": 3,
+          "PLAY": 1,
+          "SLEEP_LAY": 8,
+          "SNIFF": 3,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 25,
+        "steps": 44,
+        "total_reward": 6.134464740753174,
+        "unique_states_visited": 41
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 5,
+          "BARK": 3,
+          "FETCH": 11,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 10,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 26,
+        "steps": 44,
+        "total_reward": 14.126778602600098,
+        "unique_states_visited": 23
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "APPROACH_FOLLOW": 5,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 9
+        },
+        "completed": true,
+        "episode": 27,
+        "steps": 44,
+        "total_reward": 11.408597946166992,
+        "unique_states_visited": 19
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 5,
+          "BARK": 2,
+          "FETCH": 10,
+          "HIDE_AVOID": 2,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 11,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 28,
+        "steps": 44,
+        "total_reward": 12.900206565856934,
+        "unique_states_visited": 19
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "APPROACH_FOLLOW": 5,
+          "BARK": 2,
+          "FETCH": 10,
+          "HIDE_AVOID": 2,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 12
+        },
+        "completed": true,
+        "episode": 29,
+        "steps": 44,
+        "total_reward": 10.339253425598145,
+        "unique_states_visited": 24
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 5,
+          "BARK": 2,
+          "FETCH": 11,
+          "HIDE_AVOID": 2,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 11,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 30,
+        "steps": 44,
+        "total_reward": 14.893280029296875,
+        "unique_states_visited": 19
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 5,
+          "BARK": 2,
+          "FETCH": 11,
+          "HIDE_AVOID": 2,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 10,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 31,
+        "steps": 44,
+        "total_reward": 14.399701118469238,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "APPROACH_FOLLOW": 6,
+          "BARK": 3,
+          "FETCH": 11,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 10
+        },
+        "completed": true,
+        "episode": 32,
+        "steps": 44,
+        "total_reward": 12.42712688446045,
+        "unique_states_visited": 25
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 3,
+          "APPROACH_FOLLOW": 3,
+          "BARK": 5,
+          "FETCH": 11,
+          "HIDE_AVOID": 1,
+          "INSIST": 1,
+          "NUZZLE": 3,
+          "PLAY": 1,
+          "SLEEP_LAY": 8,
+          "SNIFF": 3,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 33,
+        "steps": 44,
+        "total_reward": 7.6964640617370605,
+        "unique_states_visited": 41
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 7,
+          "BARK": 4,
+          "FETCH": 11,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 9,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 34,
+        "steps": 44,
+        "total_reward": 14.234820365905762,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "APPROACH_FOLLOW": 4,
+          "BARK": 1,
+          "FETCH": 12,
+          "HIDE_AVOID": 3,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 10,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 35,
+        "steps": 44,
+        "total_reward": 14.184534072875977,
+        "unique_states_visited": 15
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 3,
+          "APPROACH_FOLLOW": 4,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 9
+        },
+        "completed": true,
+        "episode": 36,
+        "steps": 44,
+        "total_reward": 11.97909164428711,
+        "unique_states_visited": 22
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "APPROACH_FOLLOW": 7,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 8
+        },
+        "completed": true,
+        "episode": 37,
+        "steps": 44,
+        "total_reward": 13.674213409423828,
+        "unique_states_visited": 15
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "APPROACH_FOLLOW": 5,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 8,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 38,
+        "steps": 44,
+        "total_reward": 10.768694877624512,
+        "unique_states_visited": 19
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 5,
+          "BARK": 2,
+          "FETCH": 10,
+          "HIDE_AVOID": 2,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 13
+        },
+        "completed": true,
+        "episode": 39,
+        "steps": 44,
+        "total_reward": 13.957462310791016,
+        "unique_states_visited": 18
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "APPROACH_FOLLOW": 4,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 8,
+          "WANDER": 3
+        },
+        "completed": true,
+        "episode": 40,
+        "steps": 44,
+        "total_reward": 10.322772026062012,
+        "unique_states_visited": 21
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 6,
+          "BARK": 3,
+          "FETCH": 10,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 12
+        },
+        "completed": true,
+        "episode": 41,
+        "steps": 44,
+        "total_reward": 15.688867568969727,
+        "unique_states_visited": 15
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "BARK": 1,
+          "FETCH": 9,
+          "HIDE_AVOID": 3,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 14,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 42,
+        "steps": 44,
+        "total_reward": 12.3294095993042,
+        "unique_states_visited": 18
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 3,
+          "APPROACH_FOLLOW": 5,
+          "BARK": 3,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 8,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 43,
+        "steps": 44,
+        "total_reward": 11.600062370300293,
+        "unique_states_visited": 24
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "APPROACH_FOLLOW": 2,
+          "BARK": 4,
+          "FETCH": 12,
+          "HIDE_AVOID": 2,
+          "INSIST": 2,
+          "NUZZLE": 4,
+          "PLAY": 2,
+          "SLEEP_LAY": 8,
+          "SNIFF": 2,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 44,
+        "steps": 44,
+        "total_reward": 9.237651824951172,
+        "unique_states_visited": 36
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 4,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 11,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 45,
+        "steps": 44,
+        "total_reward": 12.785833358764648,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 3,
+          "APPROACH_FOLLOW": 4,
+          "BARK": 4,
+          "FETCH": 12,
+          "NUZZLE": 3,
+          "SLEEP_LAY": 8,
+          "SNIFF": 6,
+          "WANDER": 4
+        },
+        "completed": true,
+        "episode": 46,
+        "steps": 44,
+        "total_reward": 12.615039825439453,
+        "unique_states_visited": 23
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "APPROACH_FOLLOW": 3,
+          "BARK": 4,
+          "FETCH": 12,
+          "HIDE_AVOID": 1,
+          "INSIST": 1,
+          "NUZZLE": 3,
+          "PLAY": 1,
+          "SLEEP_LAY": 8,
+          "SNIFF": 7,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 47,
+        "steps": 44,
+        "total_reward": 9.987920761108398,
+        "unique_states_visited": 27
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 6,
+          "BARK": 3,
+          "FETCH": 12,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 8,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 48,
+        "steps": 44,
+        "total_reward": 13.419652938842773,
+        "unique_states_visited": 18
+      },
+      {
+        "action_counts": {
+          "APPROACH_FOLLOW": 6,
+          "BARK": 3,
+          "FETCH": 11,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 4,
+          "SLEEP_LAY": 8,
+          "SNIFF": 10,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 49,
+        "steps": 44,
+        "total_reward": 15.40562629699707,
+        "unique_states_visited": 22
+      }
+    ],
+    "mean_reward": 11.78128954410553,
+    "mean_reward_per_step": 0.26775658054785295,
+    "mean_steps_per_episode": 44.0,
+    "mean_total_reward_per_episode": 11.78128954410553
+  },
+  "reward_model": "synthetic_v2_context_sequence",
+  "scenario_pattern": [
+    "social",
+    "fetch_near",
+    "disturbance",
+    "rest",
+    "positive_social",
+    "fetch_far",
+    "fetch_follow_up",
+    "food_offer",
+    "play_invitation",
+    "negative_feedback",
+    "ignored_request"
+  ],
+  "seed": 42
+}
