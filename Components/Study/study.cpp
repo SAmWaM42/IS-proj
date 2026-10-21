@@ -38,7 +38,7 @@ struct SurveyItem {
     int rating = 0;
 };
 
-const std::array<Scenario, 8> kScenarios{{
+const std::array<Scenario, 9> kScenarios{{
     {"You greet the companion after entering the yard.",
      EnvironmentObservation{0, 1, 0, 0, 0.55f}},
     {"You ask the companion to fetch a ball nearby.",
@@ -54,7 +54,9 @@ const std::array<Scenario, 8> kScenarios{{
     {"You invite the companion to play.",
      EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true}},
     {"You tell the companion to stop after an unwanted behaviour.",
-     EnvironmentObservation{0, 1, 2, 0, 0.45f}}
+     EnvironmentObservation{0, 1, 2, 0, 0.45f}},
+    {"A task remains pending, but you do not respond to the companion's first attempt.",
+     EnvironmentObservation{1, 1, 0, 1, 0.82f}}
 }};
 
 const std::array<SurveyItem, 4> kSurveyTemplate{{
