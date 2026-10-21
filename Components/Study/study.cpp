@@ -38,7 +38,7 @@ struct SurveyItem {
     int rating = 0;
 };
 
-const std::array<Scenario, 5> kScenarios{{
+const std::array<Scenario, 7> kScenarios{{
     {"You greet the companion after entering the yard.",
      EnvironmentObservation{0, 1, 0, 0, 0.55f}},
     {"You ask the companion to fetch a ball nearby.",
@@ -48,7 +48,11 @@ const std::array<Scenario, 5> kScenarios{{
     {"You sit quietly to rest; no task is pending.",
      EnvironmentObservation{2, 2, 0, 0, 0.25f}},
     {"You praise the companion after an interaction.",
-     EnvironmentObservation{0, 0, 1, 0, 0.75f}}
+     EnvironmentObservation{0, 0, 1, 0, 0.75f}},
+    {"You offer the companion a bowl of food.",
+     EnvironmentObservation{2, 0, 1, 0, 0.30f, true, false}},
+    {"You invite the companion to play.",
+     EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true}}
 }};
 
 const std::array<SurveyItem, 4> kSurveyTemplate{{
@@ -67,17 +71,6 @@ std::string makeSessionId() {
     return "S" + std::to_string(ticks) + "-" + std::to_string(dist(rng));
 }
 
-std::string actionLabel(const std::string& action) {
-    if (action == "FETCH") return "Moves to fetch the object";
-    if (action == "GREETING") return "Offers a friendly greeting";
-    if (action == "NUZZLE") return "Moves closer affectionately";
-    if (action == "ACT_CONFUSED") return "Pauses and reacts with uncertainty";
-    if (action == "SLEEP_LAY") return "Lies down to rest";
-    if (action == "BARK") return "Vocalises to get attention";
-    if (action == "INSIST") return "Repeats or insists on its behaviour";
-    if (action == "WANDER") return "Moves around the environment";
-    return "Responds in its own way";
-}
 
 float feedbackReward(int key) {
     if (key == 1) return 1.0f;
