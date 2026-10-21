@@ -33,7 +33,7 @@ inline bool isActionValidForObservation(
         return observation.goal_state == 2 && observation.task_status == 0 &&
                observation.signal_strength < 0.80f;
     if (action == "INSIST")
-        return observation.task_status == 1 && observation.user_status != 2;
+        return observation.task_status == 1 && observation.user_status == 0;
     if (action == "APPROACH_FOLLOW")
         return observation.target_proximity > 0 && observation.user_status != 2;
     if (action == "SNIFF")
