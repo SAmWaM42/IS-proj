@@ -1645,6 +1645,58 @@ void ProposedAgent::recordUserPreference(const std::string& action, bool likes) 
     memory_records.push_back(preference);
 }
 
+void ProposedAgent::recordUserStatement(const std::string& relation, const std::string& object) {
+    if (relation.empty() || object.empty()) return;
+    auto existing = std::find_if(memory_records.begin(), memory_records.end(),
+        [&](const record& item) {
+            return item.raw_fact.subject == "user" &&
+                   item.raw_fact.relation == relation &&
+                   item.raw_fact.object == object;
+        });
+    if (existing != memory_records.end()) {
+        existing->confidence = std::clamp(existing->confidence + 0.10f, 0.0f, 1.0f);
+        existing->observation_count += 1;
+        existing->last_updated = currentTimeStamp();
+        existing->recency = 1.0f;
+        existing->source = record::USER_STATEMENT;
+        return;
+    }
+    record statement;
+    statement.raw_fact.subject = "user";
+    statement.raw_fact.relation = relation;
+    statement.raw_fact.object = object;
+    statement.confidence = 0.70f;
+    statement.generalization_factor = 0.25f;
+    statement.current_context = record::USER_SPECIFIC;
+    statement.source = record::USER_STATEMENT;
+    statement.observation_count = 1;
+    statement.last_updated = currentTimeStamp();
+    statement.relevance = 0.75f;
+    statement.recency = 1.0f;
+    memory_records.push_back(statement);
+}
+
+
+bool testUserStatementsAreStoredAsSemanticMemory() {
+    EnvironmentConfig config;
+    ProposedAgent agent(config);
+    agent.recordUserStatement("dislikes", "sound");
+    const auto first = agent.getMemoryRecords();
+    if (first.size() != 1) return false;
+    if (first.front().raw_fact.subject != "user" ||
+        first.front().raw_fact.relation != "dislikes" ||
+        first.front().raw_fact.object != "sound") return false;
+    if (first.front().source != record::USER_STATEMENT ||
+        first.front().current_context != record::USER_SPECIFIC ||
+        first.front().observation_count != 1) return false;
+    const float firstConfidence = first.front().confidence;
+
+    agent.recordUserStatement("dislikes", "sound");
+    const auto& repeated = agent.getMemoryRecords();
+    return repeated.size() == 1 && repeated.front().observation_count == 2 &&
+           repeated.front().confidence > firstConfidence;
+}
+
 
 bool testProposedMemoryConfidenceTracksOutcome() {
     EnvironmentConfig config;
@@ -1774,6 +1826,7 @@ bool runBaselineValidation() {
     results.push_back({"Proposed agent avoids rejected action", "PASS", testProposedAgentAvoidsRejectedAction(), "memory"});
     results.push_back({"Memory retention after intervening interactions", "PASS", testMemoryRetentionAfterInterveningInteractions(), "memory"});
     results.push_back({"Semantic preference survives intervening interactions", "PASS", testSemanticPreferenceSurvivesInterveningInteractions(), "memory"});
+    results.push_back({"User statements are stored as semantic memory", "PASS", testUserStatementsAreStoredAsSemanticMemory(), "memory"});
     results.push_back({"Memory confidence follows outcome history", "PASS", testProposedMemoryConfidenceTracksOutcome(), "memory"});
     results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
     results.push_back({"Environment energy visible only to proposed agent", "PASS", testEnvironmentEnergyVisibleOnlyToProposedAgent(), "fairness"});
