@@ -2,6 +2,8 @@
 
 #include <string>
 
+bool runTrainingSelfTests();
+
 bool runTrainingExperiment(const std::string& mode,
                           int episodes,
                           int steps,
