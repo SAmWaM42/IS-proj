@@ -99,7 +99,14 @@ namespace
         if (action == "APPROACH_FOLLOW")
             return observation.user_status != 2 ? 0.20f : -0.20f;
         if (action == "SNIFF")
+        {
+            // Sniffing can be useful exploration, but should not receive the
+            // same positive reward while an explicit fetch task is pending.
+            // Otherwise it can outscore FETCH even when the target is nearby.
+            if (observation.goal_state == 1 && observation.task_status == 1)
+                return -0.05f;
             return observation.target_proximity <= 1 ? 0.30f : -0.05f;
+        }
 
         float reward = -0.10f;
         switch (observation.goal_state)
@@ -478,9 +485,9 @@ bool runTrainingExperiment(const std::string &mode,
     summary["environment_seed"] = environmentSeed;
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
-    summary["reward_model"] = "synthetic_v2_context_sequence";
+    summary["reward_model"] = "synthetic_v3_task_priority";
     summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request"};
-    summary["note"] = "Training uses repeated contextual scenarios for tabular coverage. Synthetic reward is not a measure of perceived believability.";
+    summary["note"] = "Training uses repeated contextual scenarios for tabular coverage. SNIFF receives no positive reward while an explicit fetch task is pending, so exploration does not outscore task fulfilment. Synthetic reward is not a measure of perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
     nlohmann::json proposedEpisodes = nlohmann::json::array();
