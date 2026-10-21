@@ -1097,8 +1097,15 @@ namespace {
 std::string contextualAction(const EnvironmentObservation& observation,
                              const AffectiveState* affect = nullptr,
                              const std::vector<record>* memories = nullptr) {
-    // Respond to concrete offered resources/invitations before generic context
-    // fallbacks, including when a loaded Q-table has no matching state.
+    // For unseen states, choose a fallback that balances available resources
+    // against the proposed agent's affective condition rather than always eating
+    // or playing whenever an affordance is present.
+    if (affect != nullptr &&
+        (affect->energy == AffectEnergy::LOW || affect->stress >= 0.80f))
+    {
+        if (observation.goal_state != 2 || observation.signal_strength < 0.80f)
+            return "SLEEP_LAY";
+    }
     if (observation.food_available) return "EAT";
     if (observation.play_available && observation.user_status != 2) return "PLAY";
     if (observation.goal_state == 0 && observation.user_status == 2) return "HIDE_AVOID";
