@@ -32,7 +32,7 @@ namespace
         std::uniform_int_distribution<int> nearDist(0, 1);
         std::uniform_int_distribution<int> socialDist(0, 1);
         EnvironmentObservation observation;
-        switch (stepIndex % 9)
+        switch (stepIndex % 10)
         {
         case 0: // User initiates a social interaction.
             observation = {0, 1, socialDist(rng), 0, 0.45f};
@@ -58,8 +58,11 @@ namespace
         case 7: // The user explicitly invites play.
             observation = {0, 1, 1, 0, 0.70f, false, true};
             break;
-        default: // The user rejects an unwanted behaviour.
+        case 8: // The user rejects an unwanted behaviour.
             observation = {0, 1, 2, 0, 0.45f};
+            break;
+        default: // A task is pending but the user has not responded.
+            observation = {1, 1, 0, 1, 0.82f};
             break;
         }
         return observation;
@@ -104,6 +107,8 @@ namespace
                 reward += observation.task_status == 0 ? 0.15f : -0.20f;
             else if (action == "WANDER")
                 reward += observation.target_proximity >= 2 ? 0.10f : -0.15f;
+            else if (action == "INSIST")
+                reward += observation.user_status == 0 ? 0.15f : -0.25f;
             else
                 reward -= 0.35f;
             break;
@@ -281,7 +286,7 @@ bool runTrainingExperiment(const std::string &mode,
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v2_context_sequence";
-    summary["scenario_pattern"] = {"social", "fetch_near", "disturbance", "rest", "positive_social", "fetch_far", "food_offer", "play_invitation", "negative_feedback"};
+    summary["scenario_pattern"] = {"social", "fetch_near", "disturbance", "rest", "positive_social", "fetch_far", "food_offer", "play_invitation", "negative_feedback", "ignored_request"};
     summary["note"] = "Training uses repeated contextual scenarios for tabular coverage. Synthetic reward is not a measure of perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
