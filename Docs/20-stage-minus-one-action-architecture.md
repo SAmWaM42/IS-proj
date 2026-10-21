@@ -9,7 +9,7 @@ The canonical list lives in `Components/State-Action/action-space.h` and is used
 
 | Action | Intended role | Validity rule |
 |---|---|---|
-| `FETCH` | Retrieve the requested nearby object | Task is active and target proximity is close/near (`<= 1`) |
+| `FETCH` | Attempt to retrieve the requested object | Task is active and target is not `UNAVAILABLE`; distance and energy affect effort and success probability in the environment |
 | `WANDER` | Explore or disengage safely | Always available as a fallback |
 | `BARK` | Vocalise at a salient disturbance | Signal strength `>= 0.80` |
 | `ACT_CONFUSED` | Pause/reorient when uncertain | Always available as a fallback |
@@ -17,7 +17,7 @@ The canonical list lives in `Components/State-Action/action-space.h` and is used
 | `NUZZLE` | Affectionate close contact | At zero proximity and user status is not negative |
 | `INSIST` | Repeat a behaviour/request | A task is active and the user has not responded (`user_status == 0`) |
 | `GREETING` | Initiate friendly contact | New user status, or social context without negative feedback |
-| `APPROACH_FOLLOW` | Approach or follow the user | User is not rejecting contact and is not already at zero proximity |
+| `APPROACH_FOLLOW` | Approach or follow the user/object | User is not rejecting contact and proximity is neither close nor unavailable |
 | `SNIFF` | Investigate a nearby object/area | Target proximity `<= 1` |
 | `WHINE` | Vocalise distress/appeal | Negative user status or salient disturbance |
 | `HIDE_AVOID` | Retreat from aversive context | Negative user status or signal strength `>= 0.90` |
@@ -30,7 +30,7 @@ The current observation contract uses `user_status == 2` for negative/rejecting 
 
 Both agents select only from the same valid-action list. The same list is used for the next-state bootstrap during Q-learning updates, so invalid actions cannot inflate the estimated future value. The proposed agent's memory-based preference and rejection rules are checked against the mask before an action is returned.
 
-The mask is intentionally a context-feasibility rule, not a personality rule. Affect and memory may change which valid action is preferred; they do not make an impossible action valid. If a context yields no ordinary valid action, `WANDER` is the safe fallback.
+The mask is intentionally a context-feasibility rule, not a personality rule. Affect and memory may change which valid action is preferred; they do not make an impossible action valid. Distance is not a hard gate when the target remains reachable: far FETCH attempts remain available, with effort and success probability handled by the environment. `UNAVAILABLE` remains a genuine hard constraint. If a context yields no ordinary valid action, `WANDER` is the safe fallback.
 
 ## 3. Action-to-animation mapping
 
@@ -65,7 +65,11 @@ Removed from the active project:
 
 The active `--sim`, `--train`, `--validate`, `--compare`, `--study`, and `--self-test` workflows remain. The `tokenizer_probe` target is retained because it is a focused test harness for the C++/Python NLP boundary.
 
-## 6. Verification still required
+## 6. Environment transition extension
+
+The training prototype now models action-dependent transitions for approach, fetch, rest, eating, and play. Approach reduces target proximity and drains energy; fetch effort increases with distance and low energy, while success is sampled with a probability that decreases with distance and exhaustion. Successful fetches clear the active task. Rest and eating restore energy. Both agents receive the same environment reward/effort semantics, but only the proposed agent receives environment energy as a policy-state input. The repeated far-fetch scenario gives the learner another decision after approaching or failing. This is still a deterministic scenario-family harness with stochastic fetch outcomes, not yet the full hidden-trait synthetic-user environment described in the later training redesign.
+
+## 7. Verification still required
 
 The changes have been committed to `Dev`, but a local build and `--self-test` run have not yet been performed in this editing session. Before Stage 0 begins, verify:
 
