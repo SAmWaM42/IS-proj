@@ -1394,6 +1394,8 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     next_state.task_status = nextObservation.task_status;
     next_state.signal_strength_bucket =
         nextObservation.signal_strength < 0.33f ? 0 : (nextObservation.signal_strength < 0.67f ? 1 : 2);
+    next_state.food_available = nextObservation.food_available;
+    next_state.play_available = nextObservation.play_available;
     if (learning_enabled) {
         q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal);
     }
