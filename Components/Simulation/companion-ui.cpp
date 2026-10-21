@@ -128,7 +128,7 @@ PersistentNlpClient& nlpClient() {
     static PersistentNlpClient client("Components/NLP/nlp_intent_service.py");
     return client;
 }
-std::string callNlp(const std::string&, const std::string& input) {
+std::string callNlp(const std::string& input) {
     return nlpClient().request(input);
 }
 const sf::Color kBackground(239, 243, 247);
@@ -458,7 +458,7 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
     std::string lowered = text;
     std::transform(lowered.begin(), lowered.end(), lowered.begin(),
                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-    const std::string output = callNlp(nlpScript, text);
+    const std::string output = callNlp(text);
     try {
         if (!output.empty()) {
             const auto parsed = json::parse(output);
