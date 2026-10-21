@@ -81,7 +81,7 @@ inline std::string validActionOrFallback(
 }
 
 inline std::string actionLabel(const std::string& action) {
-    if (action == "FETCH") return "Fetches the nearby object";
+    if (action == "FETCH") return "Attempts to retrieve the requested object";
     if (action == "WANDER") return "Explores the environment";
     if (action == "BARK") return "Vocalises";
     if (action == "ACT_CONFUSED") return "Pauses and reorients";
