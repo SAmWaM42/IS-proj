@@ -362,6 +362,7 @@ void CompanionUI::executeInteraction(const std::string& label,
     const auto affectBefore = proposed.getAffectiveState();
     const std::size_t memoryCountBefore = proposed.getMemoryRecords().size();
     const int interactionId = interactionCount + 1;
+    lastActionInteractionId = interactionId;
     latestObservation = observation;
     latestStimulus = label;
     latestBaselineAction = baseline.selectAction(observation);
@@ -523,7 +524,165 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
 }
 
 void CompanionUI::processTextInteraction(const std::string& text) {
+    std::string lower = text;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+        [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+    const bool explicitLike = lower.find("prefer") != std::string::npos ||
+                              lower.find(" like ") != std::string::npos ||
+                              lower.rfind("like ", 0) == 0 ||
+                              lower.find("love") != std::string::npos;
+    const bool explicitDislike = lower.find("dislike") != std::string::npos ||
+                                 lower.find("hate") != std::string::npos ||
+                                 lower.find("don't like") != std::string::npos ||
+                                 lower.find("do not like") != std::string::npos ||
+                                 lower.find("not like") != std::string::npos;
+
+    // Preference statements are records first, not commands. They may also
+    // refer to a recent action/event, but that relationship remains a candidate.
+    if (explicitLike || explicitDislike) {
+        std::string object;
+        if (lower.find("ball") != std::string::npos || lower.find("toy") != std::string::npos ||
+            lower.find("fetch") != std::string::npos) object = "ball";
+        else if (lower.find("sound") != std::string::npos || lower.find("noise") != std::string::npos ||
+                 lower.find("bark") != std::string::npos) object = "sound";
+        else if (lower.find("rest") != std::string::npos || lower.find("sleep") != std::string::npos) object = "rest";
+        else {
+            std::size_t relationStart = std::string::npos;
+            std::size_t relationLength = 0;
+            for (const std::string& marker : {std::string("like"), std::string("love"),
+                                              std::string("prefer"), std::string("hate"),
+                                              std::string("dislike")}) {
+                const std::size_t found = lower.find(marker);
+                if (found != std::string::npos && (relationStart == std::string::npos || found < relationStart)) {
+                    relationStart = found;
+                    relationLength = marker.size();
+                }
+            }
+            if (relationStart != std::string::npos) {
+                object = lower.substr(relationStart + relationLength);
+                while (!object.empty() && !std::isalnum(static_cast<unsigned char>(object.front()))) object.erase(object.begin());
+                while (!object.empty() && !std::isalnum(static_cast<unsigned char>(object.back()))) object.pop_back();
+                for (const std::string& article : {std::string("the "), std::string("a "), std::string("an ")}) {
+                    if (object.rfind(article, 0) == 0) { object.erase(0, article.size()); break; }
+                }
+                if (object.size() > 80) object.resize(80);
+            }
+        }
+
+        if (object.empty()) {
+            ++interactionCount;
+            appendLog("You: " + text + " [preference statement; object unresolved; no action selected]");
+            nlohmann::json row;
+            row["schema_version"] = 2;
+            row["run_id"] = runId;
+            row["interaction_id"] = interactionCount;
+            row["sequence_index"] = interactionCount - 1;
+            row["timestamp"] = utcTimestamp();
+            row["processing_status"] = "statement_object_unresolved";
+            row["condition_code"] = std::string(1, selectedAgentCode);
+            row["input_summary"] = text;
+            row["utterance_analysis"] = {{"kind", "preference_statement"}, {"memory_updated", false},
+                                         {"response_required", false}, {"response_action", "NONE"},
+                                         {"candidate_association", "unresolved"}};
+            std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+            if (log) log << row.dump() << '\n';
+            else appendLog("WARNING: interaction event log could not be written.");
+            saveSession();
+            return;
+        } else {
+            const std::string relation = explicitDislike ? "dislikes" : "likes";
+            proposed.recordUserStatement(relation, object);
+            const std::string previousContext = latestStimulus;
+            std::string associationType = "none";
+            std::string associationReason = "No recent matching action or event was found.";
+            float associationConfidence = 0.0f;
+            const bool hasPriorAction = interactionCount > 0 && lastActionInteractionId > 0 &&
+                interactionCount == lastActionInteractionId;
+            const bool mentionsSound = object == "sound";
+            const bool mentionsBall = object == "ball";
+            const bool mentionsRest = object == "rest";
+            const bool contextMatches = hasPriorAction && (
+                (mentionsSound && (previousContext.find("noise") != std::string::npos ||
+                                   previousContext.find("sound") != std::string::npos ||
+                                   latestBaselineAction == "BARK" || latestProposedAction == "BARK" ||
+                                   latestBaselineAction == "WHINE" || latestProposedAction == "WHINE")) ||
+                (mentionsBall && (previousContext.find("ball") != std::string::npos ||
+                                  previousContext.find("fetch") != std::string::npos ||
+                                  latestBaselineAction == "FETCH" || latestProposedAction == "FETCH")) ||
+                (mentionsRest && (previousContext.find("rest") != std::string::npos ||
+                                  previousContext.find("sleep") != std::string::npos ||
+                                  latestBaselineAction == "SLEEP_LAY" || latestProposedAction == "SLEEP_LAY")));
+            if (contextMatches) {
+                associationType = "candidate_recent_context";
+                associationConfidence = 0.65f;
+                associationReason = "The statement object matches the immediately preceding event or action; this is not proof of causation.";
+            }
+
+            ++interactionCount;
+            appendLog("You: " + text + " [preference statement]");
+            appendLog("Memory: stored user " + relation + " " + object);
+            appendLog(contextMatches ? "Context: candidate association with preceding interaction."
+                                     : "Context: no relevant preceding interaction; stored as a general preference record.");
+
+            nlohmann::json row;
+            row["schema_version"] = 2;
+            row["run_id"] = runId;
+            row["interaction_id"] = interactionCount;
+            row["sequence_index"] = interactionCount - 1;
+            row["timestamp"] = utcTimestamp();
+            row["processing_status"] = "recorded_no_action";
+            row["condition_code"] = std::string(1, selectedAgentCode);
+            row["input_summary"] = text;
+            row["utterance_analysis"] = {
+                {"kind", "preference_statement"}, {"relation", relation}, {"object", object},
+                {"memory_updated", true}, {"response_required", false}, {"response_action", "NONE"},
+                {"candidate_association", associationType}, {"association_confidence", associationConfidence},
+                {"association_reason", associationReason},
+                {"referenced_interaction_id", contextMatches ? lastActionInteractionId : 0},
+                {"preceding_context", hasPriorAction ? previousContext : ""},
+                {"preceding_baseline_action", hasPriorAction ? latestBaselineAction : ""},
+                {"preceding_proposed_action", hasPriorAction ? latestProposedAction : ""}
+            };
+            row["learning_update_enabled"] = false;
+            std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+            if (log) log << row.dump() << '\n';
+            else appendLog("WARNING: interaction event log could not be written.");
+            saveSession();
+            return;
+        }
+    }
+
     EnvironmentObservation observation;
+    float reward = 0.25f;
+    const std::string intent = interpretIntent(text, observation, reward);
+
+    // Unknown utterances are not automatically treated as commands. Keep them
+    // visible in the log without forcing a policy action or inventing a fact.
+    if (intent == "unknown") {
+        ++interactionCount;
+        appendLog("You: " + text + " [unclassified statement; no action selected]");
+        nlohmann::json row;
+        row["schema_version"] = 2;
+        row["run_id"] = runId;
+        row["interaction_id"] = interactionCount;
+        row["sequence_index"] = interactionCount - 1;
+        row["timestamp"] = utcTimestamp();
+        row["processing_status"] = "unclassified_no_action";
+        row["condition_code"] = std::string(1, selectedAgentCode);
+        row["input_summary"] = text;
+        row["utterance_analysis"] = {{"kind", "unclassified"}, {"memory_updated", false},
+                                     {"response_required", false}, {"response_action", "NONE"}};
+        row["learning_update_enabled"] = false;
+        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+        if (log) log << row.dump() << '\n';
+        else appendLog("WARNING: interaction event log could not be written.");
+        saveSession();
+        return;
+    }
+
+    processInteraction(text + " [" + intent + " / " + nlpMethod + "]", observation, reward);
+}
     float reward = 0.25f;
     const std::string intent = interpretIntent(text, observation, reward);
 
