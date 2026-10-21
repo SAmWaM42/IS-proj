@@ -184,7 +184,9 @@ struct ActionResult
 {
     int action_id = 0;
     float reward = 0.0f;
-    bool terminal = false;
+    // True terminal states suppress Q-learning bootstrap; time-limit truncation does not.
+    bool terminated = false;
+    bool truncated = false;
     std::string outcome_tag;
     // Environment-owned energy level after this transition (0..1). Negative means unspecified.
     // Baseline ignores this field; the proposed agent uses it as an affective-state input.
