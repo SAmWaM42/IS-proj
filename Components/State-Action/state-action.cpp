@@ -857,9 +857,8 @@ bool testSeededExplorationIsReproducible() {
     const state sample = makeState(1, distance::CLOSE, Level::MEDIUM, Level::LOW, Level::MEDIUM, Level::LOW, 1, 0.0f);
     QLearning first(0.25f, 0.8f, 1.0f, 12345u);
     QLearning second(0.25f, 0.8f, 1.0f, 12345u);
-    const std::vector<std::string> actions = {"FETCH", "WANDER", "BARK", "INSIST"};
-    first.setActions(actions);
-    second.setActions(actions);
+    first.setActions(companionActionSet());
+    second.setActions(companionActionSet());
     for (int i = 0; i < 100; ++i) {
         if (first.chooseAction(sample) != second.chooseAction(sample)) {
             return false;
