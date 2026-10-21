@@ -234,10 +234,26 @@ namespace
         const EnvironmentStep approached = applyEnvironmentAction("APPROACH_FOLLOW", farRequest, 0.8f, rng);
         const EnvironmentStep rested = applyEnvironmentAction(
             "SLEEP_LAY", EnvironmentObservation{2, 1, 0, 0, 0.18f}, 0.25f, rng);
+        const EnvironmentStep nearFetch = applyEnvironmentAction(
+            "FETCH", EnvironmentObservation{1, 0, 1, 1, 0.82f}, 0.8f, rng);
+        const EnvironmentStep farFetch = applyEnvironmentAction(
+            "FETCH", farRequest, 0.8f, rng);
+        bool sawFarSuccess = false;
+        bool sawFarFailure = false;
+        for (unsigned int seed = 1; seed <= 200; ++seed) {
+            std::mt19937 trialRng(seed);
+            const EnvironmentStep trial = applyEnvironmentAction("FETCH", farRequest, 0.8f, trialRng);
+            sawFarSuccess = sawFarSuccess || trial.completed;
+            sawFarFailure = sawFarFailure || !trial.completed;
+            if (trial.completed && trial.next_observation.task_status != 0) return false;
+            if (!trial.completed && trial.next_observation.task_status != 1) return false;
+        }
         return approached.next_observation.target_proximity == 1 &&
                approached.energy_after < 0.8f &&
                approached.next_observation.task_status == 1 &&
-               rested.energy_after > 0.25f;
+               rested.energy_after > 0.25f &&
+               farFetch.energy_after < nearFetch.energy_after &&
+               sawFarSuccess && sawFarFailure;
     }
 
     template <typename Agent>
