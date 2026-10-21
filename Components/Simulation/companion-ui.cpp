@@ -139,15 +139,42 @@ const sf::Color kBlue(58, 112, 170);
 const sf::Color kGreen(71, 145, 106);
 
 std::string describeAction(const std::string& action) {
-    if (action == "FETCH") return "Fetches the nearby object";
-    if (action == "GREETING") return "Greets you warmly";
-    if (action == "NUZZLE") return "Moves closer affectionately";
-    if (action == "BARK") return "Barks at the disturbance";
-    if (action == "ACT_CONFUSED") return "Pauses, appearing uncertain";
-    if (action == "SLEEP_LAY") return "Lies down to rest";
-    if (action == "WANDER") return "Explores the yard";
-    if (action == "INSIST") return "Repeats its previous behaviour";
-    return "Waits for an interaction";
+    return actionLabel(action);
+}
+
+enum class AnimationGroup { Idle, Walk, Sleep, Bark, Sit, Lay };
+
+AnimationGroup animationGroupForAction(const std::string& action) {
+    if (action == "FETCH" || action == "WANDER" || action == "APPROACH_FOLLOW" ||
+        action == "SNIFF" || action == "PLAY")
+        return AnimationGroup::Walk;
+    if (action == "SLEEP_LAY") return AnimationGroup::Sleep;
+    if (action == "BARK" || action == "ACT_CONFUSED" || action == "WHINE")
+        return AnimationGroup::Bark;
+    if (action == "NUZZLE" || action == "GREETING" || action == "EAT")
+        return AnimationGroup::Sit;
+    if (action == "INSIST" || action == "HIDE_AVOID")
+        return AnimationGroup::Lay;
+    return AnimationGroup::Idle;
+}
+
+const std::vector<std::unique_ptr<sf::Texture>>& framesForAction(
+    const std::string& action,
+    const std::vector<std::unique_ptr<sf::Texture>>& idle,
+    const std::vector<std::unique_ptr<sf::Texture>>& walk,
+    const std::vector<std::unique_ptr<sf::Texture>>& sleep,
+    const std::vector<std::unique_ptr<sf::Texture>>& bark,
+    const std::vector<std::unique_ptr<sf::Texture>>& sit,
+    const std::vector<std::unique_ptr<sf::Texture>>& lay) {
+    switch (animationGroupForAction(action)) {
+        case AnimationGroup::Walk: return walk;
+        case AnimationGroup::Sleep: return sleep;
+        case AnimationGroup::Bark: return bark;
+        case AnimationGroup::Sit: return sit;
+        case AnimationGroup::Lay: return lay;
+        case AnimationGroup::Idle: return idle;
+    }
+    return idle;
 }
 std::string levelText(float value) {
     if (value < 0.34f) return "Low";
@@ -260,12 +287,8 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
         animationClock += elapsedSeconds;
         if (animationClock >= 0.16f) {
             animationClock = 0.0f;
-            const std::vector<std::unique_ptr<sf::Texture>>* frames = &idleFrames;
-            if (visibleAction == "FETCH" || visibleAction == "WANDER") frames = &walkFrames;
-            else if (visibleAction == "SLEEP_LAY") frames = &sleepFrames;
-            else if (visibleAction == "BARK" || visibleAction == "ACT_CONFUSED") frames = &barkFrames;
-            else if (visibleAction == "NUZZLE" || visibleAction == "GREETING") frames = &sitFrames;
-            else if (visibleAction == "INSIST") frames = &layFrames;
+            const auto* frames = &framesForAction(
+                visibleAction, idleFrames, walkFrames, sleepFrames, barkFrames, sitFrames, layFrames);
             const std::size_t count = std::max<std::size_t>(1, frames->size());
             animationFrame = (animationFrame + 1) % static_cast<int>(count);
         }
@@ -288,12 +311,8 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
 
 void CompanionUI::drawCompanion(float x, float y) {
     const std::string& visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
-    const std::vector<std::unique_ptr<sf::Texture>>* frames = &idleFrames;
-    if (visibleAction == "FETCH" || visibleAction == "WANDER") frames = &walkFrames;
-    else if (visibleAction == "SLEEP_LAY") frames = &sleepFrames;
-    else if (visibleAction == "BARK" || visibleAction == "ACT_CONFUSED") frames = &barkFrames;
-    else if (visibleAction == "NUZZLE" || visibleAction == "GREETING") frames = &sitFrames;
-    else if (visibleAction == "INSIST") frames = &layFrames;
+    const auto* frames = &framesForAction(
+        visibleAction, idleFrames, walkFrames, sleepFrames, barkFrames, sitFrames, layFrames);
     if (!frames->empty()) {
         const std::size_t index = animationActive ? static_cast<std::size_t>(animationFrame) % frames->size() : 0u;
         sf::Sprite dog(*(*frames)[index]);
