@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-20T08:30:35Z",
+  "generated_at": "2026-10-20T09:22:36Z",
   "project": "IS-2",
   "status": "PASS",
   "summary": {
     "failed": 0,
-    "passed": 16,
-    "total": 16
+    "passed": 22,
+    "total": 22
   },
   "tests": [
     {
@@ -41,6 +41,42 @@
     {
       "category": "memory",
       "name": "Proposed agent avoids rejected action",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "memory",
+      "name": "Memory retention after intervening interactions",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "memory",
+      "name": "Semantic preference survives intervening interactions",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "memory",
+      "name": "Memory confidence follows outcome history",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "persistence",
+      "name": "Proposed memory and affect persist across reset and disk",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "affect",
+      "name": "Negative feedback updates all affect dimensions",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "training",
+      "name": "Outcome uses explicit next observation",
       "passed": true,
       "status": "PASS"
     },

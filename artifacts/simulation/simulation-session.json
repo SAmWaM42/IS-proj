@@ -1,20 +1,22 @@
 {
-  "baseline_action": "GREETING",
-  "interaction_count": 31,
+  "baseline_action": "FETCH",
+  "condition_code": "A",
+  "interaction_count": 11,
   "interactions": [
-    "You: how are you [greeting / spacy]",
+    "You: i like ball [request / spacy]",
+    "Baseline: Pauses, appearing uncertain",
+    "Proposed: Explores the yard",
+    "Queued interaction (1 waiting): i hate sound [negative_feedback / spacy]",
+    "You: i hate sound [negative_feedback / spacy]",
     "Baseline: Greets you warmly",
     "Proposed: Greets you warmly",
-    "You: is this just  guessing [unknown / spacy]",
-    "Baseline: Greets you warmly",
-    "Proposed: Greets you warmly",
+    "Loaded blind condition A",
+    "Queued interaction (1 waiting): Ask the companion to fetch the ball",
     "You: Ask the companion to fetch the ball",
     "Baseline: Fetches the nearby object",
-    "Proposed: Fetches the nearby object",
-    "You: wait what [unknown / spacy]",
-    "Baseline: Greets you warmly",
-    "Proposed: Greets you warmly"
+    "Proposed: Fetches the nearby object"
   ],
-  "latest_stimulus": "wait what [unknown / spacy]",
-  "proposed_action": "GREETING"
+  "latest_stimulus": "Ask the companion to fetch the ball",
+  "proposed_action": "FETCH",
+  "run_id": "run-1792488250610"
 }

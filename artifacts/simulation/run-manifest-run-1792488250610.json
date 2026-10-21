@@ -1,0 +1,12 @@
+{
+  "condition_key": {
+    "A": "baseline",
+    "B": "proposed"
+  },
+  "mode": "interactive_simulation",
+  "policy_updates_enabled": false,
+  "run_id": "run-1792488250610",
+  "schema_version": 1,
+  "selected_condition": "A",
+  "started_at": "2026-10-20T09:25:42Z"
+}
