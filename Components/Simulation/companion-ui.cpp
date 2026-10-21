@@ -683,34 +683,6 @@ void CompanionUI::processTextInteraction(const std::string& text) {
 
     processInteraction(text + " [" + intent + " / " + nlpMethod + "]", observation, reward);
 }
-    float reward = 0.25f;
-    const std::string intent = interpretIntent(text, observation, reward);
-
-    std::string lower = text;
-    std::transform(lower.begin(), lower.end(), lower.begin(),
-        [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-    const bool explicitLike = lower.find("prefer") != std::string::npos ||
-                              lower.find("like") != std::string::npos ||
-                              lower.find("love") != std::string::npos;
-    const bool explicitDislike = lower.find("dislike") != std::string::npos ||
-                                 lower.find("hate") != std::string::npos ||
-                                 lower.find("don't like") != std::string::npos ||
-                                 lower.find("do not like") != std::string::npos ||
-                                 lower.find("not like") != std::string::npos;
-    std::string preference;
-    if (explicitLike || explicitDislike) {
-        if (lower.find("fetch") != std::string::npos || lower.find("ball") != std::string::npos)
-            preference = "FETCH";
-        else if (lower.find("bark") != std::string::npos || lower.find("noise") != std::string::npos)
-            preference = "BARK";
-        else if (lower.find("rest") != std::string::npos || lower.find("sleep") != std::string::npos)
-            preference = "SLEEP_LAY";
-        else if (lower.find("greet") != std::string::npos)
-            preference = "GREETING";
-    }
-    processInteraction(text + " [" + intent + " / " + nlpMethod + "]",
-                       observation, reward, preference, !explicitDislike);
-}
 
 void CompanionUI::handleClick(sf::Vector2f point) {
     const float x = point.x, y = point.y;
