@@ -421,6 +421,20 @@ namespace
                isActionValidForObservation("SLEEP_LAY", generated);
     }
 
+    bool testStableActionIds()
+    {
+        const auto& actions = companionActionSet();
+        std::set<int> ids;
+        for (const auto& action : actions) {
+            const int id = companionActionId(action);
+            if (id < 0 || !ids.insert(id).second) return false;
+        }
+        return ids.size() == actions.size() &&
+               companionActionId("FETCH") == 0 &&
+               companionActionId("PLAY") == 13 &&
+               companionActionId("UNKNOWN_ACTION") == -1;
+    }
+
     bool testSuccessfulFetchAdvancesContext()
     {
         const EnvironmentObservation activeRequest{1, 1, 1, 1, 0.82f};
@@ -871,9 +885,11 @@ bool runTrainingSelfTests()
     const bool retryPassed = testPersistentFetchRetryAndCompletionCredit();
     const bool taskPriorityPassed = testTaskPriorityReward();
     const bool completionContextPassed = testSuccessfulFetchAdvancesContext();
+    const bool stableActionIdsPassed = testStableActionIds();
+    std::cout << "Stable action identifiers: " << (stableActionIdsPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Action-dependent environment transitions: " << (transitionsPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed;
+    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed && stableActionIdsPassed;
 }
