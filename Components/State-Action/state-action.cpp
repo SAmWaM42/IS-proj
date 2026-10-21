@@ -1158,8 +1158,8 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
     const state candidate = makeState(
         session_context.current_intent,
         proximityFromValue(observation.target_proximity),
-        levelFromValue(session_context.energy_level),
-        levelFromValue(session_context.stress_level),
+        Level::MEDIUM, // Baseline does not observe the environment's hidden energy variable.
+        Level::MEDIUM,
         Level::MEDIUM,
         Level::LOW,
         observation.user_status,
@@ -1189,8 +1189,8 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
     state next_state = makeState(
         nextObservation.goal_state,
         proximityFromValue(nextObservation.target_proximity),
-        levelFromValue(std::max(0, session_context.energy_level + (outcome.reward > 0.0f ? 1 : 0))),
-        levelFromValue(std::max(0, session_context.stress_level + (outcome.reward < 0.0f ? 1 : 0))),
+        Level::MEDIUM, // Do not leak hidden environment energy into the baseline state.
+        Level::MEDIUM,
         Level::MEDIUM,
         Level::LOW,
         nextObservation.user_status,
@@ -1250,6 +1250,7 @@ ProposedAgent::ProposedAgent(const EnvironmentConfig& configValue)
 void ProposedAgent::reset() {
     session_context = SessionContext{};
     session_context.current_action = "IDLE";
+    session_context.energy_level = 2;
     session_context.last_timestamp = currentTimeStamp();
     // Memory and affect persist across UI sessions by design. Reset only
     // transient session/history state; the UI's explicit Clear Memory action
@@ -1343,7 +1344,17 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     session_context.user_status = observation.user_status;
     session_context.last_reward = outcome.reward;
     session_context.last_timestamp = currentTimeStamp();
+    if (outcome.energy_after >= 0.0f) {
+        const float boundedEnergy = std::clamp(outcome.energy_after, 0.0f, 1.0f);
+        session_context.energy_level = std::clamp(
+            static_cast<int>(std::lround(boundedEnergy * 2.0f)), 0, 2);
+    }
     affective_state.updateFromFeedback(outcome.reward, outcome.reward > 0.0f, outcome.reward < 0.0f);
+    if (outcome.energy_after >= 0.0f) {
+        if (outcome.energy_after < 0.34f) affective_state.energy = AffectEnergy::LOW;
+        else if (outcome.energy_after < 0.67f) affective_state.energy = AffectEnergy::MODERATE;
+        else affective_state.energy = AffectEnergy::HIGH;
+    }
 
     // Confidence estimates observed success, not input signal strength.
     // Repeated outcomes for the same action/context update one record instead
