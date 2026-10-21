@@ -117,7 +117,7 @@ namespace
             {"FETCH",           { 1.00f, -0.40f, -0.10f, -0.40f, -0.90f, -0.80f, -0.70f, -0.40f, -0.20f, -0.20f}},
             {"APPROACH_FOLLOW", { 0.65f, -0.20f,  0.50f,  0.55f, -0.30f, -0.20f, -0.80f, -0.15f, -0.10f,  0.10f}},
             {"EAT",             {-0.15f,  1.00f, -0.20f, -0.10f, -0.70f,  0.20f, -0.30f,  0.55f,  0.05f,  0.00f}},
-            {"SLEEP_LAY",       {-0.25f, -0.20f, -0.35f, -0.25f, -0.90f,  1.00f,  0.25f,  0.60f,  2.00f, -0.15f}},
+            {"SLEEP_LAY",       {-0.25f, -0.20f, -0.35f, -0.25f, -0.90f,  1.00f,  0.25f,  0.60f,  3.00f, -0.15f}},
             {"PLAY",            { 0.05f, -0.25f,  1.00f,  0.60f, -0.65f, -0.50f, -0.40f, -0.20f, -0.45f,  0.40f}},
             {"SNIFF",           {-0.85f, -0.55f, -0.25f, -0.35f, -0.80f,  0.15f, -0.55f, -0.10f, -0.10f,  0.35f}},
             {"INSIST",          { 0.35f, -0.40f, -0.40f, -0.30f, -0.60f, -0.70f, -1.00f, -0.10f, -0.30f,  0.00f}},
@@ -155,7 +155,7 @@ namespace
             addCue(0.70f, profile.play);
         if (observation.goal_state == 0 && observation.user_status != 2)
             addCue(0.55f, profile.social);
-        if (observation.signal_strength >= 0.80f)
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
             addCue(0.95f, profile.disturbance);
         if (observation.goal_state == 2 && observation.task_status == 0 &&
             observation.signal_strength < 0.80f)
@@ -290,7 +290,8 @@ namespace
             energy = std::max(0.0f, energy - effort * 1.5f);
 
         const float fit = actionContextFit(action, observation, energyBefore, stressBefore);
-        if (observation.signal_strength >= 0.80f) stress += 0.16f;
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+            stress += 0.16f;
         if (observation.user_status == 2) stress += 0.10f;
         if (action == "SLEEP_LAY") stress -= 0.28f;
         if (action == "PLAY" && observation.play_available && stress < 0.75f) stress -= 0.08f;
@@ -411,6 +412,7 @@ namespace
         return fetchReward > sniffWhenCompetingNeeds &&
                eatWhenHungry > sniffWhenCompetingNeeds &&
                sleepWhenOverwhelmed > sniffWhenCompetingNeeds &&
+               sleepWhenOverwhelmed > eatWhenHungry &&
                sniffWhenIdle > sniffWhenCompetingNeeds &&
                generated.goal_state == 1 && generated.task_status == 1 &&
                generated.food_available &&
