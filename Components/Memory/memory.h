@@ -186,6 +186,9 @@ struct ActionResult
     float reward = 0.0f;
     bool terminal = false;
     std::string outcome_tag;
+    // Environment-owned energy level after this transition (0..1). Negative means unspecified.
+    // Baseline ignores this field; the proposed agent uses it as an affective-state input.
+    float energy_after = -1.0f;
 };
 
 float summarizeMemorySignal(const std::vector<record> &records);
