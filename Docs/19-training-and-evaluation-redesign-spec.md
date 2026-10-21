@@ -180,6 +180,12 @@ For paired comparisons, clone the same initial environment and user profile for 
 
 ## 4. Staged implementation plan
 
+### Stage −1 — Shared action architecture and scope cleanup
+
+This prerequisite stage is tracked in [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md). Define one canonical action vocabulary shared by both agents, make validity depend only on observable environment affordances, apply the same mask during selection and Q-value bootstrapping, and provide the same action-to-animation layer for both conditions. Include food, play, and negative-feedback contexts so the additional actions can actually be exercised. Remove disconnected duplicate simulation and unused abstractions only when no active workflow depends on them.
+
+**Exit gate:** Both agents expose the same 14 actions; impossible actions are masked; food/play affordances are represented in the observation and policy state; action selection and next-state bootstrap respect the mask; the shared animation mapping is used by the UI; and the project builds with the active workflows intact.
+
 ### Stage 0 — Correctness and instrumentation
 1. Replace `action_id = step` with a stable action ID.
 2. Introduce explicit terminated/truncated fields and correct Q-update semantics.
@@ -266,4 +272,4 @@ Every summary should include schema version, code revision, seed list, state/act
 
 ## 7. Recommended immediate next task
 
-Implement **Stage 0 only** first. It is small, testable and prevents subsequent work from being built on inconsistent reward and transition semantics. Do not simultaneously add a complicated user simulator, more state dimensions and new reward coefficients; that would make regressions difficult to diagnose. After Stage 0 passes, proceed sequentially through Stages 1–4.
+Complete the Stage −1 verification gate first, then implement **Stage 0 only**. Stage −1 standardises the action contract; Stage 0 then repairs reward/data semantics and instrumentation before the project adds a complicated user simulator or more reward coefficients. After Stage 0 passes, proceed sequentially through Stages 1–4.
