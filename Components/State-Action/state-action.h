@@ -101,8 +101,9 @@ public:
     std::string chooseAction(const state& stateRef, const std::string& contextualFallback,
                              const std::vector<std::string>& validActions) const;
     void update(const state& current_state, const std::string& action, float reward,
-                const state& next_state, bool terminal = false,
-                const std::vector<std::string>& validNextActions = {});
+                const state& next_state, bool terminated = false,
+                const std::vector<std::string>& validNextActions = {},
+                bool truncated = false);
 
     void setEpsilon(float epsilon);
 

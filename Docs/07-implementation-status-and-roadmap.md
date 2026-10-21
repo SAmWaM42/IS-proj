@@ -10,6 +10,23 @@ The authoritative project baseline remains [Docs/project-context.md](Docs/projec
 
 ## Current in-progress work
 
+### Phase 3 / Stage 0 — Transition end semantics and experiment trace identity
+
+**Status:** Implemented on `feat/phase-3-transition-semantics`; local build and self-test verification pending.
+
+Implemented in this increment:
+- separated true termination from time-limit truncation in `ActionResult`
+- made Q-learning bootstrap from the final observation after truncation, while true terminal states suppress bootstrap
+- marked the current runner's max-step cutoff as truncation rather than a true terminal state
+- introduced explicit stable action IDs independent of action-vector ordering
+- added `schema_version`, `step_index`, `action_id`, `terminated`, and `truncated` to per-step training logs
+- added run-summary metadata for state/action schema labels and the current learning/exploration settings
+- added regression checks for truncated-transition bootstrapping and action-ID uniqueness
+
+Tracking document: [Docs/21-phase-3-transition-semantics.md](21-phase-3-transition-semantics.md)
+
+**Remaining Stage 0 work:** typed scenario builders and observation-invariant checks; audit reward/completion consistency for far fetch and contradictory fields; an independent deterministic reward oracle; state/action visit counts; and version validation for persisted policy checkpoints. Do not treat Stage 0 as complete until those items are addressed and the branch passes local build/self-tests.
+
 ### Stage −1 — Shared action architecture and complexity reduction
 
 **Status:** Source edits committed; compile and test verification pending.

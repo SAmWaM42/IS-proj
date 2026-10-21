@@ -421,6 +421,20 @@ namespace
                isActionValidForObservation("SLEEP_LAY", generated);
     }
 
+    bool testStableActionIds()
+    {
+        const auto& actions = companionActionSet();
+        std::set<int> ids;
+        for (const auto& action : actions) {
+            const int id = companionActionId(action);
+            if (id < 0 || !ids.insert(id).second) return false;
+        }
+        return ids.size() == actions.size() &&
+               companionActionId("FETCH") == 0 &&
+               companionActionId("PLAY") == 13 &&
+               companionActionId("UNKNOWN_ACTION") == -1;
+    }
+
     bool testSuccessfulFetchAdvancesContext()
     {
         const EnvironmentObservation activeRequest{1, 1, 1, 1, 0.82f};
@@ -554,22 +568,25 @@ namespace
             environmentEnergy = transition.energy_after;
             environmentStress = transition.stress_after;
             userSatisfaction = transition.user_satisfaction_after;
-            const bool terminal = step + 1 == observations.size();
+            // This runner currently ends episodes only because the configured step limit
+            // was reached; that is truncation, not a terminal world state.
+            const bool terminated = false;
+            const bool truncated = step + 1 == observations.size();
 
             EnvironmentObservation nextObservation = transition.next_observation;
-            if (!terminal) {
+            if (!terminated && !truncated) {
                 nextObservation = mergeTaskTransition(
                     observation, transition.next_observation, observations[step + 1]);
             }
 
+            const int actionId = companionActionId(action);
             ActionOutcome outcome;
-            outcome.action_id = static_cast<int>(std::distance(
-                companionActionSet().begin(),
-                std::find(companionActionSet().begin(), companionActionSet().end(), action)));
+            outcome.action_id = actionId;
             outcome.reward = transition.reward;
-            outcome.terminal = terminal;
+            outcome.terminated = terminated;
+            outcome.truncated = truncated;
             outcome.outcome_tag = transition.completed ? "goal_completed" :
-                                  (terminal ? "step_limit" : "interaction");
+                                  (truncated ? "time_limit_truncated" : "interaction");
             outcome.energy_after = transition.energy_after;
 
             agent.applyOutcome(observation, action, outcome, nextObservation);
@@ -593,9 +610,12 @@ namespace
             }
 
             nlohmann::json row;
+            row["schema_version"] = 2;
             row["agent"] = agentName;
             row["episode"] = episodeIndex;
-            row["step"] = step;
+            row["step_index"] = step;
+            row["step"] = step; // Backwards-compatible alias; never use as action_id.
+            row["action_id"] = actionId;
             row["goal_state"] = observation.goal_state;
             row["target_proximity"] = observation.target_proximity;
             row["user_status"] = observation.user_status;
@@ -611,13 +631,14 @@ namespace
             row["encoded_state"] = stateKeyBeforeAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
             row["reward"] = transition.reward;
-            row["terminal"] = terminal;
+            row["terminated"] = terminated;
+            row["truncated"] = truncated;
             row["completed"] = transition.completed;
             row["fetch_succeeded"] = transition.completed;
             stepLog << row.dump() << '\n';
 
             currentObservation = nextObservation;
-            if (terminal) break;
+            if (terminated || truncated) break;
         }
         return metrics;
     }
@@ -698,6 +719,21 @@ bool runTrainingExperiment(const std::string &mode,
     const unsigned int environmentSeed = mode == "train" ? seed : seed + 1000003u;
     std::mt19937 environmentRng(environmentSeed);
     nlohmann::json summary;
+    summary["schema_version"] = 2;
+    summary["state_encoding_version"] = "mixed_radix_memory_affect_affordance_v2";
+    summary["action_space_version"] = 1;
+    summary["q_table_format_version"] = 1;
+    summary["hyperparameters"] = {
+        {"learning_rate", 0.25},
+        {"discount_factor", 0.8},
+        {"exploration_start", 0.30},
+        {"exploration_floor", 0.05},
+        {"exploration_schedule", "linear per episode"}
+    };
+    summary["transition_semantics"] = {
+        {"terminated", "true terminal states suppress bootstrapping"},
+        {"truncated", "step-limit cutoffs bootstrap from the final observation"}
+    };
     summary["mode"] = mode;
     summary["seed"] = seed;
     summary["environment_seed"] = environmentSeed;
@@ -849,9 +885,11 @@ bool runTrainingSelfTests()
     const bool retryPassed = testPersistentFetchRetryAndCompletionCredit();
     const bool taskPriorityPassed = testTaskPriorityReward();
     const bool completionContextPassed = testSuccessfulFetchAdvancesContext();
+    const bool stableActionIdsPassed = testStableActionIds();
+    std::cout << "Stable action identifiers: " << (stableActionIdsPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Action-dependent environment transitions: " << (transitionsPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed;
+    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed && stableActionIdsPassed;
 }
