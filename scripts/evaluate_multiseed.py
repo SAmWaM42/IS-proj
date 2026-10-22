@@ -91,8 +91,9 @@ def main():
         "held_out_evaluation_episodes_per_seed": args.eval_episodes,
         "steps_per_episode": args.steps,
         "evaluation_description": (
-            "Policies are trained independently per seed, then evaluated without "
-            "learning or exploration on held-out joint observation combinations."
+            "Policies are trained independently per seed, then evaluated without Q-table updates "
+            "or exploration on held-out joint observation combinations; proposed-agent memory "
+            "and affect still adapt online."
         ),
         "results": {},
     }
@@ -121,8 +122,9 @@ def main():
 
     validation_paragraph = (
         "Validation uses paired baseline/proposed runs with the same held-out scenario "
-        "combinations and the same latent simulated-user profile within each episode. "
-        "Mean reward per step summarises the synthetic interaction objective while "
+        "combinations and a fixed latent simulated-user profile within each run, shared by "
+        "both agents. Evaluation freezes Q-table updates/exploration while allowing proposed-agent "
+        "memory and affect to adapt online. Mean reward per step summarises the synthetic interaction objective while "
         "completion rate checks task outcomes; learning curves show whether training "
         "performance changes over episodes. Policy agreement is measured against the "
         "exact one-step Q* oracle for a separate diagnostic MDP whose next state is "
