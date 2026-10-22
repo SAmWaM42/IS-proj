@@ -64,7 +64,6 @@ add_executable(paired_agent_scenarios_test
    Components/State-Action/state-action.cpp
    Components/Memory/memory.cpp
    Components/Training/training.cpp
-   Components/Study/study.cpp
    Components/Simulation/backyard-environment.cpp
 )
 target_include_directories(paired_agent_scenarios_test PRIVATE
