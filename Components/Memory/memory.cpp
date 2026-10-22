@@ -1,6 +1,7 @@
 #include "memory.h"
 
 #include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -72,11 +73,17 @@ std::vector<record> rankRelevantRecords(const std::vector<record>& entries, cons
         float score = calculateMemoryRecordWeight(entry);
 
         if (!query.empty()) {
-            const std::string combined =
-                entry.raw_fact.subject + " " + entry.raw_fact.relation + " " + entry.raw_fact.object + " " + query;
-            const std::string lower = combined;
-            const std::string queryLower = query;
-            if (lower.find(queryLower) != std::string::npos) {
+            // Match against the record itself, not a string that includes the
+            // query. Appending query here made every record appear relevant.
+            const auto lowercase = [](std::string value) {
+                std::transform(value.begin(), value.end(), value.begin(),
+                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                return value;
+            };
+            const std::string combined = lowercase(
+                entry.raw_fact.subject + " " + entry.raw_fact.relation + " " + entry.raw_fact.object);
+            const std::string queryLower = lowercase(query);
+            if (combined.find(queryLower) != std::string::npos) {
                 score += 0.15f;
             }
         }

@@ -15,6 +15,8 @@ add_executable(IS-2
    Components/Simulation/backyard-environment.cpp
 )
 
+target_compile_definitions(IS-2 PRIVATE IS2_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+
 target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}
    ${CMAKE_SOURCE_DIR}/Inc
@@ -37,6 +39,10 @@ target_compile_options(IS-2 PRIVATE
 )
 
 enable_testing()
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(NAME nlp_service_smoke_test
+   COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/nlp_service_smoke_test.py
+)
 
 add_executable(backyard_environment_test
    tests/backyard_environment_test.cpp

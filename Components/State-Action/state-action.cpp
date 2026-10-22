@@ -544,6 +544,33 @@ bool testMemoryRetentionAfterInterveningInteractions() {
            !agent.getMemoryRecords().empty();
 }
 
+bool testCurrentRestContextOverridesStaleRejection() {
+    EnvironmentConfig config;
+    config.seed = 23;
+    ProposedAgent agent(config);
+    agent.setExplorationRate(0.0f);
+    agent.setLearningEnabled(false);
+
+    const EnvironmentObservation rest{2, 0, 0, 0, 0.20f};
+    // Repeated negative feedback creates a stored rejection and raises stress
+    // enough for the contextual fallback to recommend rest.
+    for (int i = 0; i < 8; ++i) {
+        const std::string action = agent.selectAction(rest);
+        ActionOutcome negative;
+        negative.reward = -1.0f;
+        negative.terminal = true;
+        negative.outcome_tag = "negative";
+        agent.applyOutcome(rest, action, negative);
+    }
+
+    const std::string nextAction = agent.selectAction(rest);
+    const auto& trace = agent.getLastDecisionTrace();
+    return trace.contextual_fallback == "SLEEP_LAY" &&
+           nextAction == "SLEEP_LAY" &&
+           trace.final_action == "SLEEP_LAY" &&
+           !trace.rejection_override_applied;
+}
+
 bool testProposedAgentAvoidsRejectedAction() {
     EnvironmentConfig config;
     config.seed = 13;
@@ -937,6 +964,10 @@ void QLearning::update(const state& current_state, const std::string& action, fl
 
 void QLearning::setEpsilon(float epsilonValue) {
     epsilon = epsilonValue;
+}
+
+double QLearning::getQValue(const state& stateRef, const std::string& action) const {
+    return q_table.getQValue(stateRef.encode(), action);
 }
 
 void QLearning::loadQTable(const std::string& path) {
@@ -1508,13 +1539,25 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
     const std::string fallback = contextualAction(observation, &affective_state, &memory_records);
-    std::string selected = q_policy.chooseAction(
-        current_state, fallback, validActionsForObservation(observation));
+    const auto validActions = validActionsForObservation(observation);
+    std::string selected = q_policy.chooseAction(current_state, fallback, validActions);
+    last_decision_trace = ActionDecisionTrace{};
+    last_decision_trace.encoded_state = current_state.encode();
+    last_decision_trace.contextual_fallback = fallback;
+    last_decision_trace.policy_action = selected;
+    last_decision_trace.memory_record_count = memory_records.size();
+    last_decision_trace.affect = affective_state;
+    for (const auto& action : validActions) {
+        last_decision_trace.valid_action_q_values.emplace_back(action, q_policy.getQValue(current_state, action));
+    }
     // General semantic preferences influence only matching contexts. More
     // specific action preferences below take precedence when both apply.
     const std::string generalPreferenceAction =
         generalPreferenceActionOverride(observation, &memory_records, &affective_state);
-    if (!generalPreferenceAction.empty()) selected = generalPreferenceAction;
+    if (!generalPreferenceAction.empty()) {
+        selected = generalPreferenceAction;
+        last_decision_trace.general_preference_override = generalPreferenceAction;
+    }
 
     // Explicit, sufficiently confident preferences take precedence over a
     // learned action when the current scenario directly matches the preference.
@@ -1540,11 +1583,22 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
             if (it->raw_fact.relation == "prefers_action" || it->raw_fact.relation == "dislikes_action") break;
         }
     }
-    if (wasActionRejected(selected, memory_records)) {
+    // A contextual sleep/rest action represents the environment's current
+    // need, so stale negative feedback about SLEEP_LAY must not override it.
+    // Rejection memory still applies to other actions and contexts.
+    const bool honorCurrentRestContext =
+        selected == "SLEEP_LAY" &&
+        selected == fallback &&
+        observation.goal_state == 2 &&
+        observation.task_status == 0 &&
+        observation.signal_strength < 0.80f;
+    if (!honorCurrentRestContext && wasActionRejected(selected, memory_records)) {
         selected = alternativeAfterRejection(selected, observation);
+        last_decision_trace.rejection_override_applied = true;
     }
     selected = validActionOrFallback(selected, fallback, observation);
     session_context.current_action = selected;
+    last_decision_trace.final_action = selected;
     return session_context.current_action;
 }
 
@@ -1715,6 +1769,10 @@ const std::vector<record>& ProposedAgent::getMemoryRecords() const {
 
 const AffectiveState& ProposedAgent::getAffectiveState() const {
     return affective_state;
+}
+
+const ActionDecisionTrace& ProposedAgent::getLastDecisionTrace() const {
+    return last_decision_trace;
 }
 
 void ProposedAgent::clearMemory() {
@@ -1958,6 +2016,49 @@ bool testNegativeFeedbackUpdatesAffectDimensions() {
            affect.energy == AffectEnergy::LOW;
 }
 
+bool testProposedDecisionTraceExplainsSelection() {
+    EnvironmentConfig config;
+    config.seed = 19;
+    ProposedAgent agent(config);
+    agent.setExplorationRate(0.0f);
+    agent.setLearningEnabled(false);
+    const EnvironmentObservation observation{1, 1, 1, 1, 0.90f};
+    const std::string selected = agent.selectAction(observation);
+    const auto& trace = agent.getLastDecisionTrace();
+    if (trace.final_action != selected ||
+        trace.contextual_fallback.empty() ||
+        trace.policy_action.empty() ||
+        trace.valid_action_q_values.empty()) return false;
+    for (const auto& item : trace.valid_action_q_values) {
+        if (!isActionValidForObservation(item.first, observation)) return false;
+    }
+    return true;
+}
+
+bool testMemoryQueryRankingMatchesOnlyRelevantRecords() {
+    record matching;
+    matching.raw_fact.subject = "user";
+    matching.raw_fact.relation = "likes";
+    matching.raw_fact.object = "fetch";
+    matching.confidence = 0.5f;
+    matching.relevance = 0.5f;
+    matching.recency = 0.5f;
+
+    record unrelated;
+    unrelated.raw_fact.subject = "user";
+    unrelated.raw_fact.relation = "dislikes";
+    unrelated.raw_fact.object = "barking";
+    unrelated.confidence = 0.5f;
+    unrelated.relevance = 0.5f;
+    unrelated.recency = 0.5f;
+
+    const auto ranked = rankRelevantRecords({unrelated, matching}, "FETCH");
+    if (ranked.size() != 2) return false;
+    // Matching record receives a relevance bonus and should rank first even
+    // when it starts second in the input list.
+    return ranked.front().raw_fact.object == "fetch";
+}
+
 bool runBaselineValidation() {
     std::vector<TestResultRecord> results;
     results.push_back({"Basic Q update", "PASS", testBasicQUpdate(), "baseline"});
@@ -1967,6 +2068,7 @@ bool runBaselineValidation() {
     results.push_back({"Task and signal state encoding", "PASS", testTaskAndSignalAreEncoded(), "state"});
     results.push_back({"State encoding has no memory radix collisions", "PASS", testStateEncodingHasNoMemoryRadixCollisions(), "state"});
     results.push_back({"Proposed agent adapts after negative feedback", "PASS", testProposedAgentAdaptsAfterNegativeFeedback(), "affect"});
+    results.push_back({"Current rest context overrides stale rejection", "PASS", testCurrentRestContextOverridesStaleRejection(), "memory"});
     results.push_back({"Proposed agent avoids rejected action", "PASS", testProposedAgentAvoidsRejectedAction(), "memory"});
     results.push_back({"Memory retention after intervening interactions", "PASS", testMemoryRetentionAfterInterveningInteractions(), "memory"});
     results.push_back({"Semantic preference survives intervening interactions", "PASS", testSemanticPreferenceSurvivesInterveningInteractions(), "memory"});
@@ -1986,6 +2088,8 @@ bool runBaselineValidation() {
     results.push_back({"Memory/affect encoding", "PASS", testMemoryAffectStateEncoding(), "state"});
     results.push_back({"Context summary state changes", "PASS", testContextSummaryChangesState(), "state"});
     results.push_back({"Live memory summary state changes", "PASS", testLiveMemorySummariesChangeState(), "memory"});
+    results.push_back({"Memory query ranking matches relevant records case-insensitively", "PASS", testMemoryQueryRankingMatchesOnlyRelevantRecords(), "memory"});
+    results.push_back({"Proposed action decision trace captures valid actions and final choice", "PASS", testProposedDecisionTraceExplainsSelection(), "policy"});
     results.push_back({"Persistence round trip and aggregation", "PASS", testPersistenceRoundTripAndAggregation(), "persistence"});
     results.push_back({"Runtime lifecycle and environment contract", "PASS", testRuntimeLifecycleAndEnvironmentContract(), "runtime"});
 

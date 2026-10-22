@@ -45,12 +45,13 @@ int main(int argc, char** argv) {
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
-        if (arg == "--sim" || arg == "sim") {
+        if (arg == "--sim" || arg == "sim" || arg == "--sim-researcher") {
             try {
-                CompanionUI simulation(policyDirectory, "artifacts/simulation");
+                const bool researcherMode = arg == "--sim-researcher";
+                CompanionUI simulation(policyDirectory, "artifacts/simulation", researcherMode);
                 simulation.run();
             } catch (const std::exception& error) {
-                std::cerr << "Unable to start companion UI: " << error.what() << '\n';
+                std::cerr << "Unable to start companion UI: " << error.what() << '\\n';
                 return 1;
             }
             return 0;

@@ -5,6 +5,7 @@
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "Components/Memory/memory.h"
@@ -105,6 +106,7 @@ public:
                 const std::vector<std::string>& validNextActions = {});
 
     void setEpsilon(float epsilon);
+    double getQValue(const state& stateRef, const std::string& action) const;
 
     void loadQTable(const std::string& path);
     void saveQTable(const std::string& path);
@@ -142,6 +144,18 @@ private:
     bool learning_enabled = true;
 };
 
+struct ActionDecisionTrace {
+    std::size_t encoded_state = 0;
+    std::string contextual_fallback;
+    std::string policy_action;
+    std::string general_preference_override;
+    std::string final_action;
+    bool rejection_override_applied = false;
+    std::vector<std::pair<std::string, double>> valid_action_q_values;
+    std::size_t memory_record_count = 0;
+    AffectiveState affect;
+};
+
 class ProposedAgent {
 public:
     explicit ProposedAgent(const EnvironmentConfig& config = EnvironmentConfig{});
@@ -167,6 +181,7 @@ public:
     const std::vector<InteractionEvent>& getInteractionHistory() const;
     const std::vector<record>& getMemoryRecords() const;
     const AffectiveState& getAffectiveState() const;
+    const ActionDecisionTrace& getLastDecisionTrace() const;
     void clearMemory();
     void recordUserPreference(const std::string& action, bool likes);
     void recordUserStatement(const std::string& relation, const std::string& object);
@@ -180,6 +195,7 @@ private:
     std::vector<InteractionEvent> interaction_history;
     RuntimeContext runtime_context;
     state current_state;
+    ActionDecisionTrace last_decision_trace;
     bool learning_enabled = true;
 };
 

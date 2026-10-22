@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <deque>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -13,18 +14,19 @@
 class CompanionUI {
 public:
     explicit CompanionUI(const std::string& policyDirectory = "artifacts/training",
-                         const std::string& outputDirectory = "artifacts/simulation");
+                         const std::string& outputDirectory = "artifacts/simulation",
+                         bool researcherMode = false);
     void run();
 
 private:
     enum class Screen { AgentSelection, Simulation, AgentState, Comparison };
+    bool researcherMode = false;
     bool agentAIsProposed = false;
     char selectedAgentCode = 'A';
     bool selectedAgentIsProposed = false;
 
     sf::RenderWindow window;
     sf::Font font;
-    sf::Texture dogTexture;
     sf::Texture environmentTexture;
     std::vector<std::unique_ptr<sf::Texture>> idleFrames;
     std::vector<std::unique_ptr<sf::Texture>> walkFrames;
@@ -32,7 +34,6 @@ private:
     std::vector<std::unique_ptr<sf::Texture>> layFrames;
     std::vector<std::unique_ptr<sf::Texture>> sleepFrames;
     std::vector<std::unique_ptr<sf::Texture>> barkFrames;
-    bool dogTextureLoaded = false;
     bool environmentTextureLoaded = false;
     sf::Clock frameClock;
     std::string policyDirectory;
@@ -41,7 +42,6 @@ private:
     Screen screen = Screen::AgentSelection;
     BaselineAgent baseline;
     ProposedAgent proposed;
-    BackyardEnvironment environment;
     EnvironmentObservation latestObservation;
     std::string latestBaselineAction = "IDLE";
     std::string latestProposedAction = "IDLE";
@@ -53,34 +53,76 @@ private:
     std::vector<float> proposedRewards;
     int interactionCount = 0;
     int lastActionInteractionId = 0;
-    float agentX = 500.0f;
-    float agentY = 320.0f;
-    float userX = 220.0f;
-    float userY = 350.0f;
-    bool sceneVisible = true;
     bool controlsVisible = true;
-    bool dogMoving = false;
+    struct BehaviourStep {
+        std::string pose = "idle";
+        float targetX = -1.0f, speed = 0.0f, duration = 0.0f;
+        std::string cue;
+        float hop = 0.0f, hopRate = 0.0f, tiltBias = 0.0f, tilt = 0.0f;
+        float tiltRate = 1.2f, shiver = 0.0f, crouch = 0.0f, frameInterval = 0.16f;
+        int faceDir = 0;
+        bool pickUpBall = false, dropBall = false, consumeFood = false;
+        sf::Color tint = sf::Color::White;
+    };
+    struct SceneLayout {
+        float x = 0, y = 0, w = 0, h = 0;
+        float groundY = 0, userX = 0, bedX = 0, bowlX = 0, ballHomeX = 0;
+        float treeX = 0, houseX = 0, minX = 0, maxX = 0;
+    };
+    struct SceneObject { std::string label; sf::FloatRect bounds; };
+    std::mt19937 sceneRng{std::random_device{}()};
+    float agentX = 520.0f;
+    bool facingRight = false;
+    std::vector<BehaviourStep> behaviourPlan;
+    std::size_t stepIndex = 0;
+    float stepTime = 0.0f;
+    bool behaviourActive = false;
+    std::string restingPose = "idle";
     int animationFrame = 0;
-    bool animationActive = false;
-    float animationClock = 0.0f;
-    float actionDisplayTimer = 0.0f;
-    struct QueuedInteraction { std::string label; EnvironmentObservation observation; float reward; std::string preference; bool preferencePositive = true; };
+    float frameTimer = 0.0f;
+    float sceneTime = 0.0f;
+    float ballX = 600.0f, ballLandX = 600.0f, ballStartX = 0.0f, ballHeight = 0.0f, ballFlightTime = 0.0f;
+    bool ballCarried = false, ballFlying = false;
+    float throwTimer = 0.0f;
+    bool foodPresent = false;
+    struct QueuedInteraction {
+        std::string label;
+        EnvironmentObservation observation;
+        float reward;
+        std::string preference;
+        bool preferencePositive = true;
+        std::string sceneEvent;
+    };
     std::deque<QueuedInteraction> interactionBuffer;
     void enqueueInteraction(const std::string& label, const EnvironmentObservation& observation, float reward);
 
     std::string nlpMethod = "not used";
     std::string assetsDirectory = "assets";
     std::string interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward);
+    SceneLayout sceneLayout() const;
+    std::vector<SceneObject> sceneObjects() const;
+    const std::vector<std::unique_ptr<sf::Texture>>& framesForPose(const std::string& pose) const;
+    void resetScene();
+    void startNewParticipant();
+    void openStudyForm();
+    void applySceneEvent(const std::string& sceneEvent);
+    void startBehaviour(const std::string& action, const std::string& sceneEvent);
+    void beginStep();
+    void finishStep();
     void updateAnimation(float elapsedSeconds);
-    void drawCompanion(float x, float y);
+    void drawCompanion(float x, float groundY);
+    void drawPlayer(float x, float groundY);
+    void drawBubble(const std::string& value, float x, float bottomY);
     void drawBackdrop(float x, float y, float width, float height);
+    void drawSceneObjects();
+    void drawHover();
 
     void processInteraction(const std::string& label, const EnvironmentObservation& observation,
                             float feedbackReward, const std::string& preference = "",
-                            bool preferencePositive = true);
+                            bool preferencePositive = true, const std::string& sceneEvent = "");
     void executeInteraction(const std::string& label, const EnvironmentObservation& observation,
                             float feedbackReward, const std::string& preference = "",
-                            bool preferencePositive = true);
+                            bool preferencePositive = true, const std::string& sceneEvent = "");
     void processTextInteraction(const std::string& text);
     void handleClick(sf::Vector2f point);
     void draw();
