@@ -1110,7 +1110,8 @@ bool runTrainingExperiment(const std::string &mode,
     summary["proposed"]["one_step_oracle_agreement_rate"] = proposedOracleChecks > 0
         ? static_cast<double>(proposedOracleAgreements) / proposedOracleChecks : 0.0;
     summary["proposed"]["diagnostic_one_step_oracle_agreement_rate"] = summary["proposed"]["one_step_oracle_agreement_rate"];
-    summary["diagnostic_one_step_oracle_scope"] = "Exact Q* for a separate one-step diagnostic MDP with terminal next state. Agreement is only a local action-ranking diagnostic, not optimality for the multi-step training environment.";\n    summary["one_step_oracle_scope"] = summary["diagnostic_one_step_oracle_scope"];
+    summary["diagnostic_one_step_oracle_scope"] = "Exact Q* for a separate one-step diagnostic MDP with terminal next state. Agreement is only a local action-ranking diagnostic, not optimality for the multi-step training environment.";
+    summary["one_step_oracle_scope"] = summary["diagnostic_one_step_oracle_scope"];
     summary["baseline"]["mean_steps_per_episode"] = baselineStepSum / episodes;
     summary["baseline"]["mean_reward"] = baselineRewardSum / episodes; // Backwards-compatible alias.
     summary["baseline"]["completion_rate"] = static_cast<double>(baselineCompletions) / episodes;
