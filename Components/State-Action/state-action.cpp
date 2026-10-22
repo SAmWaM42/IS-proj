@@ -1998,6 +1998,25 @@ bool testNegativeFeedbackUpdatesAffectDimensions() {
            affect.energy == AffectEnergy::LOW;
 }
 
+bool testMemoryRankingUsesQueryTerms() {
+    record soundPreference;
+    soundPreference.raw_fact = {"user", "dislikes", "sound"};
+    soundPreference.confidence = 0.8f;
+    soundPreference.relevance = 0.8f;
+    soundPreference.recency = 0.8f;
+    soundPreference.generalization_factor = 0.5f;
+
+    record ballPreference;
+    ballPreference.raw_fact = {"user", "likes", "ball"};
+    ballPreference.confidence = 0.8f;
+    ballPreference.relevance = 0.8f;
+    ballPreference.recency = 0.8f;
+    ballPreference.generalization_factor = 0.5f;
+
+    const auto ranked = rankRelevantRecords({ballPreference, soundPreference}, "loud sound");
+    return ranked.size() == 2 && ranked.front().raw_fact.object == "sound";
+}
+
 bool runBaselineValidation() {
     std::vector<TestResultRecord> results;
     results.push_back({"Basic Q update", "PASS", testBasicQUpdate(), "baseline"});
@@ -2012,6 +2031,7 @@ bool runBaselineValidation() {
     results.push_back({"Semantic preference survives intervening interactions", "PASS", testSemanticPreferenceSurvivesInterveningInteractions(), "memory"});
     results.push_back({"User statements are stored as semantic memory", "PASS", testUserStatementsAreStoredAsSemanticMemory(), "memory"});
     results.push_back({"General semantic preferences influence contextual actions", "PASS", testGeneralSemanticPreferencesInfluenceContextualActions(), "memory"});
+    results.push_back({"Memory retrieval ranking uses query terms", "PASS", testMemoryRankingUsesQueryTerms(), "memory"});
     results.push_back({"Memory confidence follows outcome history", "PASS", testProposedMemoryConfidenceTracksOutcome(), "memory"});
     results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
     results.push_back({"Environment energy visible only to proposed agent", "PASS", testEnvironmentEnergyVisibleOnlyToProposedAgent(), "fairness"});

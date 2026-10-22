@@ -41,6 +41,16 @@ private:
     BaselineAgent baseline;
     ProposedAgent proposed;
     EnvironmentObservation latestObservation;
+    // Each policy acts in a paired clone of the same initial world. Outcomes
+    // update that clone so task completion, proximity, energy and stress persist.
+    EnvironmentObservation baselineWorldObservation{0, 1, 0, 0, 0.35f};
+    EnvironmentObservation proposedWorldObservation{0, 1, 0, 0, 0.35f};
+    float baselineEnergy = 0.8f;
+    float proposedEnergy = 0.8f;
+    float baselineStress = 0.2f;
+    float proposedStress = 0.2f;
+    float baselineSatisfaction = 0.5f;
+    float proposedSatisfaction = 0.5f;
     std::string latestBaselineAction = "IDLE";
     std::string latestProposedAction = "IDLE";
     std::string latestStimulus = "Welcome. Choose an interaction to begin.";
@@ -51,7 +61,8 @@ private:
     std::vector<float> proposedRewards;
     int interactionCount = 0;
     int lastActionInteractionId = 0;
-    float agentX = 500.0f;
+    float baselineAgentX = 430.0f;
+    float proposedAgentX = 850.0f;
     float agentY = 320.0f;
     float userX = 220.0f;
     float userY = 350.0f;
@@ -70,7 +81,7 @@ private:
     std::string assetsDirectory = "assets";
     std::string interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward);
     void updateAnimation(float elapsedSeconds);
-    void drawCompanion(float x, float y);
+    void drawCompanion(float x, float y, const std::string& action);
     void drawBackdrop(float x, float y, float width, float height);
 
     void processInteraction(const std::string& label, const EnvironmentObservation& observation,

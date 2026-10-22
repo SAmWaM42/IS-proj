@@ -1,0 +1,2510 @@
+{
+  "action_space_version": 1,
+  "baseline": {
+    "completion_rate": 0.8,
+    "episodes": [
+      {
+        "action_counts": {
+          "EAT": 19,
+          "FETCH": 5,
+          "HIDE_AVOID": 10,
+          "NUZZLE": 1,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 0,
+        "mean_reward_per_step": 0.26669836044311523,
+        "one_step_oracle_agreement_rate": 0.175,
+        "one_step_oracle_agreements": 7,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 35,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 5,
+          "fetch_with_food": 9,
+          "food_offer": 11,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 9,
+          "food_offer": 11,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.875,
+        "total_reward": 10.66793441772461,
+        "unique_states_visited": 7
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 1,
+          "HIDE_AVOID": 10,
+          "WANDER": 9
+        },
+        "completed": true,
+        "episode": 1,
+        "mean_reward_per_step": 0.13897846937179564,
+        "one_step_oracle_agreement_rate": 0.05,
+        "one_step_oracle_agreements": 2,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 31,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 1,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.775,
+        "total_reward": 5.559138774871826,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 3,
+          "HIDE_AVOID": 10,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 2,
+        "mean_reward_per_step": 0.20377013683319092,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 33,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 3,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.825,
+        "total_reward": 8.150805473327637,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 19,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "NUZZLE": 1,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 3,
+        "mean_reward_per_step": 0.17354291677474976,
+        "one_step_oracle_agreement_rate": 0.075,
+        "one_step_oracle_agreements": 3,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 9,
+          "food_offer": 11,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 9,
+          "food_offer": 11,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 6.94171667098999,
+        "unique_states_visited": 7
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 5,
+          "HIDE_AVOID": 10,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 4,
+        "mean_reward_per_step": 0.27184834480285647,
+        "one_step_oracle_agreement_rate": 0.1,
+        "one_step_oracle_agreements": 4,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 35,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 5,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.875,
+        "total_reward": 10.873933792114258,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 1,
+          "HIDE_AVOID": 10,
+          "WANDER": 9
+        },
+        "completed": false,
+        "episode": 5,
+        "mean_reward_per_step": 0.1254597544670105,
+        "one_step_oracle_agreement_rate": 0.075,
+        "one_step_oracle_agreements": 3,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 31,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 1,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.775,
+        "total_reward": 5.01839017868042,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 6,
+        "mean_reward_per_step": 0.19142709970474242,
+        "one_step_oracle_agreement_rate": 0.1,
+        "one_step_oracle_agreements": 4,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 7.657083988189697,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 4,
+          "HIDE_AVOID": 10,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 7,
+        "mean_reward_per_step": 0.2343768835067749,
+        "one_step_oracle_agreement_rate": 0.1,
+        "one_step_oracle_agreements": 4,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 34,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 4,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.85,
+        "total_reward": 9.375075340270996,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 8,
+        "mean_reward_per_step": 0.15418651103973388,
+        "one_step_oracle_agreement_rate": 0.05,
+        "one_step_oracle_agreements": 2,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 6.1674604415893555,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 1,
+          "HIDE_AVOID": 10,
+          "WANDER": 9
+        },
+        "completed": false,
+        "episode": 9,
+        "mean_reward_per_step": 0.13655469417572022,
+        "one_step_oracle_agreement_rate": 0.1,
+        "one_step_oracle_agreements": 4,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 31,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 1,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.775,
+        "total_reward": 5.462187767028809,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 4,
+          "HIDE_AVOID": 10,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 10,
+        "mean_reward_per_step": 0.2533414840698242,
+        "one_step_oracle_agreement_rate": 0.1,
+        "one_step_oracle_agreements": 4,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 34,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 4,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.85,
+        "total_reward": 10.133659362792969,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 3,
+          "HIDE_AVOID": 10,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 11,
+        "mean_reward_per_step": 0.21363120079040526,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 33,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 3,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.825,
+        "total_reward": 8.545248031616211,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 5,
+          "HIDE_AVOID": 10,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 12,
+        "mean_reward_per_step": 0.286141037940979,
+        "one_step_oracle_agreement_rate": 0.15,
+        "one_step_oracle_agreements": 6,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 35,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 5,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.875,
+        "total_reward": 11.44564151763916,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 3,
+          "HIDE_AVOID": 10,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 13,
+        "mean_reward_per_step": 0.2132030963897705,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 33,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 3,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.825,
+        "total_reward": 8.52812385559082,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 3,
+          "HIDE_AVOID": 10,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 14,
+        "mean_reward_per_step": 0.21331729888916015,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 33,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 3,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.825,
+        "total_reward": 8.532691955566406,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 4,
+          "HIDE_AVOID": 10,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 15,
+        "mean_reward_per_step": 0.23382964134216308,
+        "one_step_oracle_agreement_rate": 0.15,
+        "one_step_oracle_agreements": 6,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 34,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 4,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.85,
+        "total_reward": 9.353185653686523,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 4,
+          "HIDE_AVOID": 10,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 16,
+        "mean_reward_per_step": 0.24396274089813233,
+        "one_step_oracle_agreement_rate": 0.075,
+        "one_step_oracle_agreements": 3,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 34,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 4,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.85,
+        "total_reward": 9.758509635925293,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 19,
+          "FETCH": 5,
+          "HIDE_AVOID": 10,
+          "NUZZLE": 1,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 17,
+        "mean_reward_per_step": 0.28757691383361816,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 35,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 5,
+          "fetch_with_food": 9,
+          "food_offer": 11,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 9,
+          "food_offer": 11,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.875,
+        "total_reward": 11.503076553344727,
+        "unique_states_visited": 7
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 18,
+        "mean_reward_per_step": 0.18651939630508424,
+        "one_step_oracle_agreement_rate": 0.075,
+        "one_step_oracle_agreements": 3,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 7.460775852203369,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "WANDER": 8
+        },
+        "completed": false,
+        "episode": 19,
+        "mean_reward_per_step": 0.17696357965469361,
+        "one_step_oracle_agreement_rate": 0.075,
+        "one_step_oracle_agreements": 3,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 7.078543186187744,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "WANDER": 8
+        },
+        "completed": false,
+        "episode": 20,
+        "mean_reward_per_step": 0.1800593376159668,
+        "one_step_oracle_agreement_rate": 0.1,
+        "one_step_oracle_agreements": 4,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 7.202373504638672,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 3,
+          "HIDE_AVOID": 10,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 21,
+        "mean_reward_per_step": 0.22952375411987305,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 33,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 3,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.825,
+        "total_reward": 9.180950164794922,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 4,
+          "HIDE_AVOID": 10,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 22,
+        "mean_reward_per_step": 0.23406989574432374,
+        "one_step_oracle_agreement_rate": 0.1,
+        "one_step_oracle_agreements": 4,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 34,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 4,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.85,
+        "total_reward": 9.36279582977295,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 23,
+        "mean_reward_per_step": 0.18889541625976564,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 7.555816650390625,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "GREETING": 1,
+          "HIDE_AVOID": 10,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 24,
+        "mean_reward_per_step": 0.19148741960525512,
+        "one_step_oracle_agreement_rate": 0.05,
+        "one_step_oracle_agreements": 2,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 33,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10,
+          "social_contact": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 9,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10,
+          "social_contact": 1
+        },
+        "stimulus_response_alignment_rate": 0.825,
+        "total_reward": 7.659496784210205,
+        "unique_states_visited": 7
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 1,
+          "HIDE_AVOID": 10,
+          "WANDER": 9
+        },
+        "completed": false,
+        "episode": 25,
+        "mean_reward_per_step": 0.11568176746368408,
+        "one_step_oracle_agreement_rate": 0.05,
+        "one_step_oracle_agreements": 2,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 31,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 1,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.775,
+        "total_reward": 4.627270698547363,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 26,
+        "mean_reward_per_step": 0.17762078046798707,
+        "one_step_oracle_agreement_rate": 0.05,
+        "one_step_oracle_agreements": 2,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 7.104831218719482,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 3,
+          "HIDE_AVOID": 10,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 27,
+        "mean_reward_per_step": 0.19766782522201537,
+        "one_step_oracle_agreement_rate": 0.1,
+        "one_step_oracle_agreements": 4,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 33,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 3,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.825,
+        "total_reward": 7.906713008880615,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 19,
+          "FETCH": 3,
+          "HIDE_AVOID": 10,
+          "NUZZLE": 1,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 28,
+        "mean_reward_per_step": 0.1980726718902588,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 33,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 3,
+          "fetch_with_food": 9,
+          "food_offer": 11,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 9,
+          "food_offer": 11,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.825,
+        "total_reward": 7.922906875610352,
+        "unique_states_visited": 7
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 4,
+          "HIDE_AVOID": 10,
+          "WANDER": 6
+        },
+        "completed": false,
+        "episode": 29,
+        "mean_reward_per_step": 0.23237392902374268,
+        "one_step_oracle_agreement_rate": 0.1,
+        "one_step_oracle_agreements": 4,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 34,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 4,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.85,
+        "total_reward": 9.294957160949707,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 3,
+          "HIDE_AVOID": 10,
+          "WANDER": 7
+        },
+        "completed": false,
+        "episode": 30,
+        "mean_reward_per_step": 0.23826065063476562,
+        "one_step_oracle_agreement_rate": 0.075,
+        "one_step_oracle_agreements": 3,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 33,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 3,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.825,
+        "total_reward": 9.530426025390625,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 19,
+          "FETCH": 1,
+          "HIDE_AVOID": 10,
+          "NUZZLE": 1,
+          "WANDER": 9
+        },
+        "completed": true,
+        "episode": 31,
+        "mean_reward_per_step": 0.1308579444885254,
+        "one_step_oracle_agreement_rate": 0.075,
+        "one_step_oracle_agreements": 3,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 31,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 1,
+          "fetch_with_food": 9,
+          "food_offer": 11,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 9,
+          "food_offer": 11,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.775,
+        "total_reward": 5.234317779541016,
+        "unique_states_visited": 7
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 4,
+          "HIDE_AVOID": 10,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 32,
+        "mean_reward_per_step": 0.2273547410964966,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 34,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 4,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.85,
+        "total_reward": 9.094189643859863,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 33,
+        "mean_reward_per_step": 0.17366328239440917,
+        "one_step_oracle_agreement_rate": 0.05,
+        "one_step_oracle_agreements": 2,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 6.946531295776367,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 3,
+          "HIDE_AVOID": 10,
+          "WANDER": 7
+        },
+        "completed": true,
+        "episode": 34,
+        "mean_reward_per_step": 0.19523084163665771,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 33,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 3,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.825,
+        "total_reward": 7.809233665466309,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 5,
+          "HIDE_AVOID": 10,
+          "WANDER": 5
+        },
+        "completed": true,
+        "episode": 35,
+        "mean_reward_per_step": 0.27189953327178956,
+        "one_step_oracle_agreement_rate": 0.075,
+        "one_step_oracle_agreements": 3,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 35,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 5,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.875,
+        "total_reward": 10.875981330871582,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 36,
+        "mean_reward_per_step": 0.12657666206359863,
+        "one_step_oracle_agreement_rate": 0.125,
+        "one_step_oracle_agreements": 5,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 5.063066482543945,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 2,
+          "HIDE_AVOID": 10,
+          "WANDER": 8
+        },
+        "completed": true,
+        "episode": 37,
+        "mean_reward_per_step": 0.14532448053359986,
+        "one_step_oracle_agreement_rate": 0.1,
+        "one_step_oracle_agreements": 4,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 32,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 2,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 5.812979221343994,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 1,
+          "HIDE_AVOID": 10,
+          "WANDER": 9
+        },
+        "completed": false,
+        "episode": 38,
+        "mean_reward_per_step": 0.12101504802703858,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 31,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 1,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.775,
+        "total_reward": 4.840601921081543,
+        "unique_states_visited": 6
+      },
+      {
+        "action_counts": {
+          "EAT": 20,
+          "FETCH": 4,
+          "HIDE_AVOID": 10,
+          "WANDER": 6
+        },
+        "completed": true,
+        "episode": 39,
+        "mean_reward_per_step": 0.21897647380828858,
+        "one_step_oracle_agreement_rate": 0.05,
+        "one_step_oracle_agreements": 2,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 34,
+        "stimulus_aligned_by_type": {
+          "fetch_far": 4,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.85,
+        "total_reward": 8.759058952331543,
+        "unique_states_visited": 6
+      }
+    ],
+    "mean_reward": 7.999942016601563,
+    "mean_reward_per_step": 0.19999855041503906,
+    "mean_steps_per_episode": 40.0,
+    "mean_total_reward_per_episode": 7.999942016601563,
+    "one_step_oracle_agreement_rate": 0.095625,
+    "stimulus_aligned_actions": 1315,
+    "stimulus_checks": 1600,
+    "stimulus_response_alignment_rate": 0.821875,
+    "stimulus_response_audit_by_type": {
+      "fetch_far": {
+        "aligned": 114,
+        "alignment_rate": 0.2857142857142857,
+        "checks": 399
+      },
+      "fetch_with_food": {
+        "aligned": 395,
+        "alignment_rate": 1.0,
+        "checks": 395
+      },
+      "food_offer": {
+        "aligned": 405,
+        "alignment_rate": 1.0,
+        "checks": 405
+      },
+      "negative_feedback": {
+        "aligned": 400,
+        "alignment_rate": 1.0,
+        "checks": 400
+      },
+      "social_contact": {
+        "aligned": 1,
+        "alignment_rate": 1.0,
+        "checks": 1
+      }
+    }
+  },
+  "environment_seed": 1100053,
+  "episodes": 40,
+  "hyperparameters": {
+    "discount_factor": 0.8,
+    "exploration_floor": 0.05,
+    "exploration_schedule": "linear per episode",
+    "exploration_start": 0.3,
+    "learning_rate": 0.25
+  },
+  "max_steps_per_episode": 40,
+  "mode": "validate",
+  "note": "Training shuffles a scenario catalogue per episode and uses a hidden stochastic user profile with positive, neutral, negative, and ignored responses. Rewards combine graded context fit, drive relief, successful task completion, effort, satisfaction-weighted disappointment, and stochastic feedback; non-compliance alone is not treated as automatically wrong. The held-out generator uses joint observation combinations absent from training. Stimulus alignment and one-step oracle agreement are synthetic engineering diagnostics, not perceived believability.",
+  "one_step_oracle_scope": "Exact Q* for a separate one-step diagnostic MDP with terminal next state; agreement is not claimed to be optimality for the multi-step training environment.",
+  "proposed": {
+    "completion_rate": 0.0,
+    "episodes": [
+      {
+        "action_counts": {
+          "EAT": 11,
+          "HIDE_AVOID": 1,
+          "WANDER": 28
+        },
+        "completed": false,
+        "episode": 0,
+        "mean_reward_per_step": -0.17263977527618407,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 12,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.3,
+        "total_reward": -6.905591011047363,
+        "unique_states_visited": 25
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 1,
+        "mean_reward_per_step": -0.20407772064208984,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.163108825683594,
+        "unique_states_visited": 12
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 2,
+        "mean_reward_per_step": -0.20708756446838378,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.283502578735352,
+        "unique_states_visited": 10
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 3,
+        "mean_reward_per_step": -0.2144333839416504,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.577335357666016,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "HIDE_AVOID": 1,
+          "WANDER": 29
+        },
+        "completed": false,
+        "episode": 4,
+        "mean_reward_per_step": -0.18128654956817628,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 11,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.275,
+        "total_reward": -7.251461982727051,
+        "unique_states_visited": 10
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 5,
+        "mean_reward_per_step": -0.22307994365692138,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.923197746276855,
+        "unique_states_visited": 11
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 6,
+        "mean_reward_per_step": -0.19330015182495117,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -7.732006072998047,
+        "unique_states_visited": 11
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 7,
+        "mean_reward_per_step": -0.22139270305633546,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.855708122253418,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "HIDE_AVOID": 1,
+          "WANDER": 28
+        },
+        "completed": false,
+        "episode": 8,
+        "mean_reward_per_step": -0.19218508005142212,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 12,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.3,
+        "total_reward": -7.687403202056885,
+        "unique_states_visited": 16
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "HIDE_AVOID": 1,
+          "WANDER": 28
+        },
+        "completed": false,
+        "episode": 9,
+        "mean_reward_per_step": -0.17200915813446044,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 12,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.3,
+        "total_reward": -6.880366325378418,
+        "unique_states_visited": 16
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "HIDE_AVOID": 1,
+          "WANDER": 28
+        },
+        "completed": false,
+        "episode": 10,
+        "mean_reward_per_step": -0.15528820753097533,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 12,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.3,
+        "total_reward": -6.211528301239014,
+        "unique_states_visited": 16
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "WANDER": 29
+        },
+        "completed": false,
+        "episode": 11,
+        "mean_reward_per_step": -0.18939645290374757,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 11,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.275,
+        "total_reward": -7.575858116149902,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "WANDER": 29
+        },
+        "completed": false,
+        "episode": 12,
+        "mean_reward_per_step": -0.18238774538040162,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 11,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.275,
+        "total_reward": -7.2955098152160645,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 13,
+        "mean_reward_per_step": -0.20130646228790283,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.052258491516113,
+        "unique_states_visited": 11
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 14,
+        "mean_reward_per_step": -0.19833337068557738,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -7.933334827423096,
+        "unique_states_visited": 8
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 15,
+        "mean_reward_per_step": -0.21148324012756348,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.459329605102539,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "HIDE_AVOID": 1,
+          "WANDER": 28
+        },
+        "completed": false,
+        "episode": 16,
+        "mean_reward_per_step": -0.16929632425308228,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 12,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.3,
+        "total_reward": -6.771852970123291,
+        "unique_states_visited": 15
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "WANDER": 29
+        },
+        "completed": false,
+        "episode": 17,
+        "mean_reward_per_step": -0.18603591918945311,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 11,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.275,
+        "total_reward": -7.441436767578125,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 18,
+        "mean_reward_per_step": -0.1944907307624817,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -7.779629230499268,
+        "unique_states_visited": 11
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 19,
+        "mean_reward_per_step": -0.19055005311965942,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -7.622002124786377,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 20,
+        "mean_reward_per_step": -0.1872064232826233,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -7.488256931304932,
+        "unique_states_visited": 11
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 21,
+        "mean_reward_per_step": -0.19868844747543335,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -7.947537899017334,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 22,
+        "mean_reward_per_step": -0.21572065353393555,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.628826141357422,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 23,
+        "mean_reward_per_step": -0.1931499123573303,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -7.725996494293213,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 24,
+        "mean_reward_per_step": -0.2330462694168091,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -9.321850776672363,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "HIDE_AVOID": 1,
+          "WANDER": 29
+        },
+        "completed": false,
+        "episode": 25,
+        "mean_reward_per_step": -0.21636886596679689,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 11,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.275,
+        "total_reward": -8.654754638671875,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 26,
+        "mean_reward_per_step": -0.19838565587997437,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -7.935426235198975,
+        "unique_states_visited": 11
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "HIDE_AVOID": 2,
+          "WANDER": 27
+        },
+        "completed": false,
+        "episode": 27,
+        "mean_reward_per_step": -0.17183892726898192,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 13,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10,
+          "negative_feedback": 2
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.325,
+        "total_reward": -6.873557090759277,
+        "unique_states_visited": 16
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 28,
+        "mean_reward_per_step": -0.22127103805541992,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.850841522216797,
+        "unique_states_visited": 10
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "HIDE_AVOID": 1,
+          "WANDER": 28
+        },
+        "completed": false,
+        "episode": 29,
+        "mean_reward_per_step": -0.17848907709121703,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 12,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.3,
+        "total_reward": -7.139563083648682,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "HIDE_AVOID": 1,
+          "WANDER": 28
+        },
+        "completed": false,
+        "episode": 30,
+        "mean_reward_per_step": -0.13849364519119262,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 12,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.3,
+        "total_reward": -5.539745807647705,
+        "unique_states_visited": 16
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 31,
+        "mean_reward_per_step": -0.21656341552734376,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.66253662109375,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "WANDER": 29
+        },
+        "completed": false,
+        "episode": 32,
+        "mean_reward_per_step": -0.1909348726272583,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 11,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.275,
+        "total_reward": -7.637394905090332,
+        "unique_states_visited": 14
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 33,
+        "mean_reward_per_step": -0.20696167945861815,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.278467178344727,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 34,
+        "mean_reward_per_step": -0.22163014411926268,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.865205764770508,
+        "unique_states_visited": 11
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "WANDER": 29
+        },
+        "completed": false,
+        "episode": 35,
+        "mean_reward_per_step": -0.18815985918045045,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 11,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.275,
+        "total_reward": -7.526394367218018,
+        "unique_states_visited": 13
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "HIDE_AVOID": 1,
+          "WANDER": 28
+        },
+        "completed": false,
+        "episode": 36,
+        "mean_reward_per_step": -0.22679636478424073,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 12,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.3,
+        "total_reward": -9.071854591369629,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "EAT": 11,
+          "HIDE_AVOID": 1,
+          "WANDER": 28
+        },
+        "completed": false,
+        "episode": 37,
+        "mean_reward_per_step": -0.1935819387435913,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 12,
+        "stimulus_aligned_by_type": {
+          "fetch_with_food": 1,
+          "food_offer": 10,
+          "negative_feedback": 1
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.3,
+        "total_reward": -7.743277549743652,
+        "unique_states_visited": 16
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 38,
+        "mean_reward_per_step": -0.21466541290283203,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -8.586616516113281,
+        "unique_states_visited": 9
+      },
+      {
+        "action_counts": {
+          "EAT": 10,
+          "WANDER": 30
+        },
+        "completed": false,
+        "episode": 39,
+        "mean_reward_per_step": -0.24194135665893554,
+        "one_step_oracle_agreement_rate": 0.025,
+        "one_step_oracle_agreements": 1,
+        "one_step_oracle_checks": 40,
+        "steps": 40,
+        "stimulus_aligned_actions": 10,
+        "stimulus_aligned_by_type": {
+          "food_offer": 10
+        },
+        "stimulus_checks": 40,
+        "stimulus_checks_by_type": {
+          "fetch_far": 10,
+          "fetch_with_food": 10,
+          "food_offer": 10,
+          "negative_feedback": 10
+        },
+        "stimulus_response_alignment_rate": 0.25,
+        "total_reward": -9.677654266357422,
+        "unique_states_visited": 9
+      }
+    ],
+    "mean_reward": -7.913954496383667,
+    "mean_reward_per_step": -0.19784886240959168,
+    "mean_steps_per_episode": 40.0,
+    "mean_total_reward_per_episode": -7.913954496383667,
+    "one_step_oracle_agreement_rate": 0.025,
+    "stimulus_aligned_actions": 428,
+    "stimulus_checks": 1600,
+    "stimulus_response_alignment_rate": 0.2675,
+    "stimulus_response_audit_by_type": {
+      "fetch_far": {
+        "aligned": 0,
+        "alignment_rate": 0.0,
+        "checks": 400
+      },
+      "fetch_with_food": {
+        "aligned": 15,
+        "alignment_rate": 0.0375,
+        "checks": 400
+      },
+      "food_offer": {
+        "aligned": 400,
+        "alignment_rate": 1.0,
+        "checks": 400
+      },
+      "negative_feedback": {
+        "aligned": 13,
+        "alignment_rate": 0.0325,
+        "checks": 400
+      }
+    }
+  },
+  "q_table_format_version": 1,
+  "reward_model": "synthetic_v5_stochastic_user_feedback",
+  "scenario_sampling": "held-out joint state combinations absent from training catalogue",
+  "schema_version": 3,
+  "seed": 100050,
+  "state_encoding_version": "mixed_radix_memory_affect_affordance_v2",
+  "stimulus_alignment_note": "Heuristic engineering diagnostic for broad stimulus/action compatibility only; not a validated animal-behaviour model or measure of perceived believability.",
+  "stochastic_user_model": "hidden per-run response traits; probabilistic positive/neutral/negative/ignored feedback; paired user profile for both agents",
+  "transition_semantics": {
+    "terminated": "true terminal states suppress bootstrapping",
+    "truncated": "step-limit cutoffs bootstrap from the final observation"
+  }
+}

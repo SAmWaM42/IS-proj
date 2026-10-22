@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51
+  ],
+  "training_episodes_per_seed": 200,
+  "held_out_evaluation_episodes_per_seed": 40,
+  "steps_per_episode": 40,
+  "evaluation_description": "Policies are trained independently per seed, then evaluated without Q-table updates or exploration on held-out joint observation combinations; proposed-agent memory and affect still adapt online.",
+  "results": {
+    "baseline": {
+      "mean_reward_per_step": {
+        "training": {
+          "mean": 0.6743081446230411,
+          "sample_sd": 0.011845815270800707,
+          "n": 10
+        },
+        "held_out": {
+          "mean": 0.1596703505292535,
+          "sample_sd": 0.036680685182752075,
+          "n": 10
+        }
+      },
+      "completion_rate": {
+        "training": {
+          "mean": 0.998,
+          "sample_sd": 0.003496029493900508,
+          "n": 10
+        },
+        "held_out": {
+          "mean": 0.3,
+          "sample_sd": 0.37712361663282534,
+          "n": 10
+        }
+      },
+      "one_step_oracle_agreement_rate": {
+        "training": {
+          "mean": 0.54255,
+          "sample_sd": 0.05182932058422358,
+          "n": 10
+        },
+        "held_out": {
+          "mean": 0.0575,
+          "sample_sd": 0.02552912280340065,
+          "n": 10
+        }
+      }
+    },
+    "proposed": {
+      "mean_reward_per_step": {
+        "training": {
+          "mean": 0.564287410235405,
+          "sample_sd": 0.03522139897275761,
+          "n": 10
+        },
+        "held_out": {
+          "mean": -0.13407191376760602,
+          "sample_sd": 0.13821040650216887,
+          "n": 10
+        }
+      },
+      "completion_rate": {
+        "training": {
+          "mean": 0.9995,
+          "sample_sd": 0.001581138830084191,
+          "n": 10
+        },
+        "held_out": {
+          "mean": 0.1475,
+          "sample_sd": 0.2015392159247315,
+          "n": 10
+        }
+      },
+      "one_step_oracle_agreement_rate": {
+        "training": {
+          "mean": 0.426875,
+          "sample_sd": 0.10150278800221314,
+          "n": 10
+        },
+        "held_out": {
+          "mean": 0.0461875,
+          "sample_sd": 0.04453994189052239,
+          "n": 10
+        }
+      }
+    }
+  },
+  "justified_validation_approach": "Validation uses paired baseline/proposed runs with the same held-out scenario combinations and a fixed latent simulated-user profile within each run, shared by both agents. Evaluation freezes Q-table updates/exploration while allowing proposed-agent memory and affect to adapt online. Mean reward per step summarises the synthetic interaction objective while completion rate checks task outcomes; learning curves show whether training performance changes over episodes. Policy agreement is measured against the exact one-step Q* oracle for a separate diagnostic MDP whose next state is terminal; it is not claimed to be the optimal policy for the full multi-step environment. These synthetic metrics validate implementation and policy learning only. They do not establish perceived believability, which requires separate participant ratings and behavioural analysis."
+}

@@ -22,6 +22,8 @@ namespace
         bool completed = false;
         int stimulus_checks = 0;
         int stimulus_aligned_actions = 0;
+        int oracle_checks = 0;
+        int oracle_agreements = 0;
         std::map<std::string, int> stimulus_checks_by_type;
         std::map<std::string, int> stimulus_aligned_by_type;
         std::map<std::string, int> action_counts;
@@ -85,6 +87,23 @@ namespace
         return observation;
     }
 
+    struct SimulatedUserProfile
+    {
+        // Latent response traits are environment-owned and never encoded in agent state.
+        float praise_responsiveness = 0.5f;
+        float playfulness = 0.5f;
+        float noise_sensitivity = 0.5f;
+        float rejection_sensitivity = 0.5f;
+        float response_rate = 0.75f;
+    };
+
+    SimulatedUserProfile sampleUserProfile(std::mt19937 &rng)
+    {
+        std::uniform_real_distribution<float> trait(0.0f, 1.0f);
+        return {trait(rng), trait(rng), trait(rng), trait(rng),
+                0.45f + 0.55f * trait(rng)};
+    }
+
     struct EnvironmentStep
     {
         EnvironmentObservation next_observation;
@@ -93,6 +112,10 @@ namespace
         float stress_after = 0.2f;
         float user_satisfaction_after = 0.5f;
         bool completed = false;
+        int user_feedback = 0;
+        float context_fit = 0.0f;
+        float effort_cost = 0.0f;
+        float deterministic_reward = 0.0f;
     };
 
     struct ActionProfile
@@ -233,11 +256,127 @@ namespace
                           incongruencePenalty - 0.05f, -1.0f, 1.0f);
     }
 
+    struct UserFeedbackProbabilities
+    {
+        float negative = 0.0f;
+        float neutral = 0.0f;
+        float positive = 0.0f;
+        float ignored = 0.0f;
+    };
+
+    UserFeedbackProbabilities userFeedbackProbabilities(
+        const std::string &action,
+        const EnvironmentObservation &observation,
+        float energy,
+        float stress,
+        const SimulatedUserProfile &user)
+    {
+        const float fit = actionContextFit(action, observation, energy, stress);
+        float positiveGivenResponse = 0.18f +
+            0.34f * std::clamp((fit + 1.0f) * 0.5f, 0.0f, 1.0f) +
+            0.18f * user.praise_responsiveness;
+        if (observation.play_available) positiveGivenResponse += 0.12f * user.playfulness;
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+            positiveGivenResponse -= 0.18f * user.noise_sensitivity;
+
+        float negativeGivenResponse = 0.08f + 0.22f * user.rejection_sensitivity +
+            0.20f * std::clamp(-fit, 0.0f, 1.0f);
+        if (observation.user_status == 2)
+            negativeGivenResponse += 0.12f * user.rejection_sensitivity;
+
+        positiveGivenResponse = std::clamp(positiveGivenResponse, 0.03f, 0.85f);
+        negativeGivenResponse = std::clamp(negativeGivenResponse, 0.03f, 0.80f);
+        const float responseRate = std::clamp(user.response_rate, 0.0f, 1.0f);
+        float positive = positiveGivenResponse * responseRate;
+        float negative = negativeGivenResponse * responseRate;
+        const float responseNormaliser = positive + negative;
+        if (responseNormaliser > 0.92f * responseRate && responseNormaliser > 0.0f) {
+            const float scale = (0.92f * responseRate) / responseNormaliser;
+            positive *= scale;
+            negative *= scale;
+        }
+
+        UserFeedbackProbabilities result;
+        result.positive = positive;
+        result.negative = negative;
+        result.neutral = std::max(0.0f, responseRate - positive - negative);
+        result.ignored = std::max(0.0f, 1.0f - responseRate);
+        return result;
+    }
+
+    float expectedUserFeedbackReward(const std::string &action,
+                                     const EnvironmentObservation &observation,
+                                     float energy,
+                                     float stress,
+                                     const SimulatedUserProfile &user)
+    {
+        const auto probabilities = userFeedbackProbabilities(
+            action, observation, energy, stress, user);
+        return 0.16f * (probabilities.positive - probabilities.negative);
+    }
+
+    struct OneStepOracleResult
+    {
+        std::string best_action;
+        float best_value = -std::numeric_limits<float>::infinity();
+        std::map<std::string, float> q_values;
+    };
+
+    OneStepOracleResult exactOneStepOracle(
+        const EnvironmentObservation &observation,
+        float energy,
+        float stress,
+        float satisfaction,
+        const SimulatedUserProfile &user)
+    {
+        // Exact Q* for a separate one-step diagnostic MDP: the next state is
+        // terminal, so each Q*(s,a) is the analytically expected immediate reward.
+        // This is not presented as the optimal policy for the multi-step world.
+        const auto actions = validActionsForObservation(observation);
+        OneStepOracleResult result;
+        for (const auto &action : actions) {
+            float effort = 0.012f;
+            if (action == "FETCH" && observation.task_status == 1 && observation.target_proximity < 3) {
+                const int proximity = std::clamp(observation.target_proximity, 0, 2);
+                const float distanceCost[] = {0.035f, 0.085f, 0.16f};
+                effort = distanceCost[proximity] * (1.0f + 0.8f * (1.0f - energy));
+            } else if (action == "APPROACH_FOLLOW" && observation.target_proximity > 0 &&
+                       observation.target_proximity < 3 && observation.user_status != 2) {
+                effort = 0.045f * (1.0f + 0.8f * (1.0f - energy));
+            } else if (action == "SLEEP_LAY" ||
+                       (action == "EAT" && observation.food_available)) {
+                effort = 0.0f;
+            } else if (action == "PLAY" && observation.play_available) {
+                effort = 0.055f * (1.0f + 0.8f * (1.0f - energy));
+            }
+
+            float expectedBaseReward = rewardFor(action, observation, false, energy, stress, satisfaction);
+            if (action == "FETCH" && observation.task_status == 1 && observation.target_proximity < 3) {
+                const int proximity = std::clamp(observation.target_proximity, 0, 2);
+                const float baseProbability[] = {0.96f, 0.78f, 0.52f};
+                const float successProbability = std::clamp(
+                    baseProbability[proximity] * (0.55f + 0.45f * energy), 0.0f, 1.0f);
+                const float successReward = rewardFor(action, observation, true, energy, stress, satisfaction);
+                expectedBaseReward = successProbability * successReward +
+                                     (1.0f - successProbability) * expectedBaseReward;
+            }
+            const float expectedReward = expectedBaseReward - effort +
+                expectedUserFeedbackReward(action, observation, energy, stress, user);
+            result.q_values[action] = expectedReward;
+            if (expectedReward > result.best_value) {
+                result.best_value = expectedReward;
+                result.best_action = action;
+            }
+        }
+        return result;
+    }
+
     EnvironmentStep applyEnvironmentAction(const std::string &action,
                                            const EnvironmentObservation &observation,
                                            float energy,
                                            float stress,
                                            float userSatisfaction,
+                                           const SimulatedUserProfile &user,
                                            std::mt19937 &rng)
     {
         EnvironmentStep result;
@@ -316,22 +455,108 @@ namespace
         result.energy_after = std::clamp(energy, 0.0f, 1.0f);
         result.stress_after = stress;
         result.user_satisfaction_after = userSatisfaction;
-        result.reward = std::clamp(
-            rewardFor(action, observation, fetchSucceeded, energyBefore, stressBefore,
-                      satisfactionBefore) - effort,
-            -1.0f, 1.0f);
+        result.context_fit = fit;
+        result.effort_cost = effort;
         result.completed = action == "FETCH" && fetchSucceeded &&
                            observation.task_status == 1 && observation.target_proximity < 3;
+
+        // A latent simulated user supplies noisy positive/neutral/negative feedback.
+        // Traits influence probabilities, not observations or policy state.
+        const auto feedbackProbabilities = userFeedbackProbabilities(
+            action, observation, energyBefore, stressBefore, user);
+        std::discrete_distribution<int> feedback({
+            feedbackProbabilities.negative,
+            feedbackProbabilities.neutral,
+            feedbackProbabilities.positive,
+            feedbackProbabilities.ignored
+        });
+        result.user_feedback = feedback(rng) - 1; // -1 negative, 0 neutral, +1 positive, +2 ignored
+        const float stochasticFeedbackReward =
+            result.user_feedback == 2 ? 0.0f : 0.16f * static_cast<float>(result.user_feedback);
+        if (result.user_feedback != 2) {
+            result.user_satisfaction_after = std::clamp(
+                result.user_satisfaction_after + 0.04f * static_cast<float>(result.user_feedback),
+                0.0f, 1.0f);
+        }
+        result.deterministic_reward = rewardFor(
+            action, observation, fetchSucceeded, energyBefore, stressBefore,
+            satisfactionBefore) - effort;
+        result.reward = std::clamp(
+            result.deterministic_reward + stochasticFeedbackReward, -1.0f, 1.0f);
         return result;
+    }
+
+    std::vector<EnvironmentObservation> makeEpisodeObservations(
+        std::mt19937 &rng, int steps, bool heldOut)
+    {
+        std::vector<EnvironmentObservation> observations;
+        observations.reserve(static_cast<std::size_t>(steps));
+        if (heldOut) {
+            // A broader stress-test catalogue of unseen joint observation combinations.
+            // Shuffle the complete catalogue each block so all contexts are covered
+            // without a fixed ordering when steps is a multiple of the catalogue size.
+            std::vector<EnvironmentObservation> heldOutCatalog{
+                {1, 3, 1, 1, 0.70f, false, false}, // task active but target unavailable
+                {1, 2, 2, 1, 0.62f, true, false},  // far task, rejection and food
+                {2, 0, 1, 1, 0.92f, true, true},   // disturbance with task and both affordances
+                {0, 0, 2, 1, 0.40f, false, true},  // negative social context and pending task
+                {0, 2, 0, 0, 0.58f, true, false},  // social context with food available
+                {2, 1, 2, 0, 0.86f, false, true},  // disturbance with play available
+                {1, 0, 2, 1, 0.76f, false, true},  // near task with rejection and play
+                {2, 3, 0, 1, 0.35f, true, true},   // low-signal context with task and both affordances
+                {0, 1, 1, 1, 0.66f, true, true},   // social context with pending task and both affordances
+                {1, 1, 0, 1, 0.48f, true, true},   // near task with neutral status and both affordances
+                {2, 2, 2, 1, 0.77f, true, false},  // negative signal with far context and food
+                {0, 0, 0, 0, 0.25f, false, false}  // low-signal social context
+            };
+            std::uniform_real_distribution<float> signalJitter(-0.025f, 0.025f);
+            while (observations.size() < static_cast<std::size_t>(steps)) {
+                std::shuffle(heldOutCatalog.begin(), heldOutCatalog.end(), rng);
+                for (auto observation : heldOutCatalog) {
+                    observation.signal_strength = std::clamp(
+                        observation.signal_strength + signalJitter(rng), 0.0f, 1.0f);
+                    observations.push_back(observation);
+                    if (observations.size() >= static_cast<std::size_t>(steps)) break;
+                }
+            }
+            return observations;
+        }
+
+        // Shuffle the scenario catalogue per episode. When an episode exceeds the
+        // catalogue length, reshuffle each block instead of repeating one fixed order.
+        std::vector<int> scenarioIds(14);
+        for (int i = 0; i < 14; ++i) scenarioIds[static_cast<std::size_t>(i)] = i;
+        while (observations.size() < static_cast<std::size_t>(steps)) {
+            std::shuffle(scenarioIds.begin(), scenarioIds.end(), rng);
+            for (int id : scenarioIds) {
+                observations.push_back(makeObservation(rng, id));
+                if (observations.size() >= static_cast<std::size_t>(steps)) break;
+            }
+        }
+        return observations;
     }
 
     // Compatibility wrapper for deterministic transition tests.
     EnvironmentStep applyEnvironmentAction(const std::string &action,
                                            const EnvironmentObservation &observation,
                                            float energy,
+                                           float stress,
+                                           float userSatisfaction,
                                            std::mt19937 &rng)
     {
-        return applyEnvironmentAction(action, observation, energy, 0.2f, 0.5f, rng);
+        const SimulatedUserProfile neutralUser{};
+        return applyEnvironmentAction(action, observation, energy, stress,
+                                      userSatisfaction, neutralUser, rng);
+    }
+
+    EnvironmentStep applyEnvironmentAction(const std::string &action,
+                                           const EnvironmentObservation &observation,
+                                           float energy,
+                                           std::mt19937 &rng)
+    {
+        const SimulatedUserProfile neutralUser{};
+        return applyEnvironmentAction(action, observation, energy, 0.2f, 0.5f,
+                                      neutralUser, rng);
     }
 
     EnvironmentObservation mergeTaskTransition(const EnvironmentObservation &current,
@@ -534,7 +759,9 @@ namespace
                               float epsilon,
                               std::ofstream &stepLog,
                               const std::string &agentName,
-                              int episodeIndex)
+                              int episodeIndex,
+                              const SimulatedUserProfile &user,
+                              unsigned int environmentSeed)
     {
         agent.reset();
         agent.setLearningEnabled(learning);
@@ -558,13 +785,19 @@ namespace
 
             const float energyBefore = environmentEnergy;
             const float stressBefore = environmentStress;
+            const auto oracle = exactOneStepOracle(
+                observation, energyBefore, stressBefore, userSatisfaction, user);
+            ++metrics.oracle_checks;
+            const bool oracleAgreement = action == oracle.best_action;
+            if (oracleAgreement) ++metrics.oracle_agreements;
             // Same seed per episode/step gives both agents paired environmental noise,
             // independent of how many stochastic actions either policy selected.
-            std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
-                                       static_cast<unsigned int>(step) * 104729u);
+            std::mt19937 transitionRng(environmentSeed ^
+                (static_cast<unsigned int>(episodeIndex + 1) * 7919u) ^
+                (static_cast<unsigned int>(step) * 104729u));
             const EnvironmentStep transition =
                 applyEnvironmentAction(action, observation, environmentEnergy,
-                                       environmentStress, userSatisfaction, transitionRng);
+                                       environmentStress, userSatisfaction, user, transitionRng);
             environmentEnergy = transition.energy_after;
             environmentStress = transition.stress_after;
             userSatisfaction = transition.user_satisfaction_after;
@@ -610,7 +843,7 @@ namespace
             }
 
             nlohmann::json row;
-            row["schema_version"] = 2;
+            row["schema_version"] = 3;
             row["agent"] = agentName;
             row["episode"] = episodeIndex;
             row["step_index"] = step;
@@ -631,6 +864,17 @@ namespace
             row["encoded_state"] = stateKeyBeforeAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
             row["reward"] = transition.reward;
+            row["one_step_oracle_action"] = oracle.best_action;
+            row["one_step_oracle_expected_reward"] = oracle.best_value;
+            row["one_step_oracle_q_values"] = oracle.q_values;
+            row["one_step_oracle_agreement"] = oracleAgreement;
+            row["reward_components"] = {
+                {"context_fit_diagnostic", transition.context_fit},
+                {"effort_cost_diagnostic", transition.effort_cost},
+                {"deterministic_reward_before_stochastic_feedback", transition.deterministic_reward},
+                {"stochastic_user_feedback", transition.user_feedback == 2 ? 0.0f : 0.16f * static_cast<float>(transition.user_feedback)},
+                {"user_feedback_class", transition.user_feedback == 2 ? "ignored" : transition.user_feedback < 0 ? "negative" : transition.user_feedback > 0 ? "positive" : "neutral"}
+            };
             row["terminated"] = terminated;
             row["truncated"] = truncated;
             row["completed"] = transition.completed;
@@ -647,8 +891,14 @@ namespace
     {
         nlohmann::json result;
         result["total_reward"] = metrics.total_reward;
+        result["mean_reward_per_step"] = metrics.steps > 0
+            ? static_cast<double>(metrics.total_reward) / metrics.steps : 0.0;
         result["steps"] = metrics.steps;
         result["completed"] = metrics.completed;
+        result["one_step_oracle_checks"] = metrics.oracle_checks;
+        result["one_step_oracle_agreements"] = metrics.oracle_agreements;
+        result["one_step_oracle_agreement_rate"] = metrics.oracle_checks > 0
+            ? static_cast<double>(metrics.oracle_agreements) / metrics.oracle_checks : 0.0;
         result["action_counts"] = metrics.action_counts;
         result["unique_states_visited"] = metrics.visited_states.size();
         result["stimulus_checks"] = metrics.stimulus_checks;
@@ -669,7 +919,7 @@ bool runTrainingExperiment(const std::string &mode,
                            unsigned int seed,
                            const std::string &outputDirectory)
 {
-    if (mode != "train" && mode != "validate" && mode != "compare")
+    if (mode != "train" && mode != "validate" && mode != "validate-distribution" && mode != "compare")
     {
         std::cerr << "Unsupported experiment mode: " << mode << '\n';
         return false;
@@ -719,7 +969,7 @@ bool runTrainingExperiment(const std::string &mode,
     const unsigned int environmentSeed = mode == "train" ? seed : seed + 1000003u;
     std::mt19937 environmentRng(environmentSeed);
     nlohmann::json summary;
-    summary["schema_version"] = 2;
+    summary["schema_version"] = 3;
     summary["state_encoding_version"] = "mixed_radix_memory_affect_affordance_v2";
     summary["action_space_version"] = 1;
     summary["q_table_format_version"] = 1;
@@ -739,9 +989,10 @@ bool runTrainingExperiment(const std::string &mode,
     summary["environment_seed"] = environmentSeed;
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
-    summary["reward_model"] = "synthetic_v4_graded_context_fit";
-    summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request", "fetch_at_feeding_time"};
-    summary["note"] = "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.";
+    summary["reward_model"] = "synthetic_v5_stochastic_user_feedback";
+    summary["scenario_sampling"] = mode == "train" || mode == "validate-distribution" ? "per-episode shuffled 14-scenario catalogue" : "12 held-out joint state combinations absent from training catalogue";
+    summary["stochastic_user_model"] = "hidden per-run response traits; probabilistic positive/neutral/negative/ignored feedback; paired user profile for both agents";
+    summary["note"] = "Training shuffles a scenario catalogue per episode and uses a hidden stochastic user profile with positive, neutral, negative, and ignored responses. Rewards combine graded context fit, drive relief, successful task completion, effort, satisfaction-weighted disappointment, and stochastic feedback; non-compliance alone is not treated as automatically wrong. The held-out stress generator uses 12 joint observation combinations absent from training; validate-distribution samples the shuffled training catalogue using an independent evaluation seed. Stimulus alignment and diagnostic one-step oracle agreement are synthetic engineering diagnostics, not perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
     nlohmann::json proposedEpisodes = nlohmann::json::array();
@@ -751,15 +1002,14 @@ bool runTrainingExperiment(const std::string &mode,
     double proposedStepSum = 0.0;
     int baselineCompletions = 0;
     int proposedCompletions = 0;
+    // One latent user profile per experiment run lets the agents learn a stable
+    // interaction history instead of mixing unrelated users across episodes.
+    const SimulatedUserProfile userProfile = sampleUserProfile(environmentRng);
 
     for (int episode = 0; episode < episodes; ++episode)
     {
-        std::vector<EnvironmentObservation> observations;
-        observations.reserve(static_cast<std::size_t>(steps));
-        for (int step = 0; step < steps; ++step)
-        {
-            observations.push_back(makeObservation(environmentRng, step));
-        }
+        const std::vector<EnvironmentObservation> observations =
+            makeEpisodeObservations(environmentRng, steps, mode == "validate");
 
         const float epsilon = mode == "train"
                                   ? std::max(0.05f, 0.30f * (1.0f - static_cast<float>(episode) / static_cast<float>(episodes)))
@@ -767,9 +1017,9 @@ bool runTrainingExperiment(const std::string &mode,
         const bool learning = mode == "train";
 
         const EpisodeMetrics baselineMetrics = runEpisode(
-            baseline, observations, learning, epsilon, baselineLog, "baseline", episode);
+            baseline, observations, learning, epsilon, baselineLog, "baseline", episode, userProfile, environmentSeed);
         const EpisodeMetrics proposedMetrics = runEpisode(
-            proposed, observations, learning, epsilon, proposedLog, "proposed", episode);
+            proposed, observations, learning, epsilon, proposedLog, "proposed", episode, userProfile, environmentSeed);
 
         baselineRewardSum += baselineMetrics.total_reward;
         proposedRewardSum += proposedMetrics.total_reward;
@@ -850,6 +1100,18 @@ bool runTrainingExperiment(const std::string &mode,
 
     summary["baseline"]["mean_total_reward_per_episode"] = baselineRewardSum / episodes;
     summary["baseline"]["mean_reward_per_step"] = baselineStepSum > 0.0 ? baselineRewardSum / baselineStepSum : 0.0;
+    const int baselineOracleChecks = [&] { int n = 0; for (const auto &episode : baselineEpisodes) n += episode.value("one_step_oracle_checks", 0); return n; }();
+    const int baselineOracleAgreements = [&] { int n = 0; for (const auto &episode : baselineEpisodes) n += episode.value("one_step_oracle_agreements", 0); return n; }();
+    const int proposedOracleChecks = [&] { int n = 0; for (const auto &episode : proposedEpisodes) n += episode.value("one_step_oracle_checks", 0); return n; }();
+    const int proposedOracleAgreements = [&] { int n = 0; for (const auto &episode : proposedEpisodes) n += episode.value("one_step_oracle_agreements", 0); return n; }();
+    summary["baseline"]["one_step_oracle_agreement_rate"] = baselineOracleChecks > 0
+        ? static_cast<double>(baselineOracleAgreements) / baselineOracleChecks : 0.0;
+    summary["baseline"]["diagnostic_one_step_oracle_agreement_rate"] = summary["baseline"]["one_step_oracle_agreement_rate"];
+    summary["proposed"]["one_step_oracle_agreement_rate"] = proposedOracleChecks > 0
+        ? static_cast<double>(proposedOracleAgreements) / proposedOracleChecks : 0.0;
+    summary["proposed"]["diagnostic_one_step_oracle_agreement_rate"] = summary["proposed"]["one_step_oracle_agreement_rate"];
+    summary["diagnostic_one_step_oracle_scope"] = "Exact Q* for a separate one-step diagnostic MDP with terminal next state. Agreement is only a local action-ranking diagnostic, not optimality for the multi-step training environment.";
+    summary["one_step_oracle_scope"] = summary["diagnostic_one_step_oracle_scope"];
     summary["baseline"]["mean_steps_per_episode"] = baselineStepSum / episodes;
     summary["baseline"]["mean_reward"] = baselineRewardSum / episodes; // Backwards-compatible alias.
     summary["baseline"]["completion_rate"] = static_cast<double>(baselineCompletions) / episodes;
@@ -886,10 +1148,41 @@ bool runTrainingSelfTests()
     const bool taskPriorityPassed = testTaskPriorityReward();
     const bool completionContextPassed = testSuccessfulFetchAdvancesContext();
     const bool stableActionIdsPassed = testStableActionIds();
+    bool stochasticFeedbackPassed = false;
+    {
+        const EnvironmentObservation social{0, 1, 0, 0, 0.45f};
+        bool negative = false, neutral = false, positive = false, ignored = false;
+        for (unsigned int seed = 1; seed <= 120; ++seed) {
+            std::mt19937 rng(seed);
+            const EnvironmentStep transition = applyEnvironmentAction("WANDER", social, 0.8f, rng);
+            negative = negative || transition.user_feedback < 0;
+            neutral = neutral || transition.user_feedback == 0;
+            positive = positive || transition.user_feedback == 1;
+            ignored = ignored || transition.user_feedback == 2;
+        }
+        stochasticFeedbackPassed = negative && neutral && positive && ignored;
+    }
+    bool heldOutPassed = false;
+    {
+        std::mt19937 rng(2026);
+        const auto heldOut = makeEpisodeObservations(rng, 12, true);
+        bool unavailableTask = false, taskWithDisturbance = false, foodAndPlay = false;
+        for (const auto& observation : heldOut) {
+            unavailableTask = unavailableTask ||
+                (observation.goal_state == 1 && observation.task_status == 1 && observation.target_proximity == 3);
+            taskWithDisturbance = taskWithDisturbance ||
+                (observation.goal_state == 2 && observation.task_status == 1);
+            foodAndPlay = foodAndPlay || (observation.food_available && observation.play_available);
+        }
+        heldOutPassed = unavailableTask && taskWithDisturbance && foodAndPlay;
+    }
     std::cout << "Stable action identifiers: " << (stableActionIdsPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Action-dependent environment transitions: " << (transitionsPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed && stableActionIdsPassed;
+    std::cout << "Stochastic user feedback includes negative, neutral, positive and ignored responses: " << (stochasticFeedbackPassed ? "PASS" : "FAIL") << '\n';
+    std::cout << "Held-out generator includes unseen joint contexts: " << (heldOutPassed ? "PASS" : "FAIL") << '\n';
+    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed &&
+           stableActionIdsPassed && stochasticFeedbackPassed && heldOutPassed;
 }
