@@ -182,6 +182,100 @@ std::string levelText(float value) {
     return "High";
 }
 float clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
+
+struct RuntimeTransition {
+    EnvironmentObservation next;
+    float reward = 0.0f;
+    float energy = 0.8f;
+    float stress = 0.2f;
+    float satisfaction = 0.5f;
+    bool completed = false;
+};
+
+RuntimeTransition stepInteractiveWorld(const std::string& action,
+                                       const EnvironmentObservation& observation,
+                                       float energyBefore,
+                                       float stressBefore,
+                                       float satisfactionBefore,
+                                       float userFeedback,
+                                       std::mt19937& rng) {
+    RuntimeTransition result;
+    result.next = observation;
+    float energy = clamp01(energyBefore);
+    float stress = clamp01(stressBefore);
+    float satisfaction = clamp01(satisfactionBefore);
+    float effort = 0.012f;
+    float fit = -0.10f;
+
+    if (observation.goal_state == 1 && observation.task_status == 1) {
+        if (action == "FETCH") fit = 0.75f;
+        else if (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2) fit = 0.30f;
+        else fit = -0.25f;
+    } else if (observation.food_available) {
+        fit = action == "EAT" ? 0.85f : (action == "SNIFF" ? 0.20f : -0.12f);
+    } else if (observation.play_available) {
+        fit = action == "PLAY" ? 0.85f : (action == "APPROACH_FOLLOW" ? 0.30f : -0.12f);
+    } else if (observation.goal_state == 2 && observation.signal_strength >= 0.80f) {
+        fit = (action == "HIDE_AVOID" || action == "WHINE" || action == "BARK") ? 0.70f : -0.22f;
+    } else if (observation.user_status == 2) {
+        fit = (action == "HIDE_AVOID" || action == "ACT_CONFUSED" || action == "WHINE") ? 0.55f : -0.30f;
+    } else if (observation.goal_state == 0) {
+        fit = (action == "GREETING" || action == "NUZZLE" || action == "APPROACH_FOLLOW" || action == "PLAY") ? 0.65f : -0.08f;
+    } else if (action == "SLEEP_LAY" || action == "WANDER" || action == "SNIFF") {
+        fit = 0.25f;
+    }
+
+    if (action == "FETCH" && observation.task_status == 1 && observation.target_proximity < 3) {
+        const float baseProbability[] = {0.96f, 0.78f, 0.52f};
+        const int proximity = std::clamp(observation.target_proximity, 0, 2);
+        std::bernoulli_distribution success(baseProbability[proximity] * (0.55f + 0.45f * energy));
+        result.completed = success(rng);
+        effort = (proximity == 0 ? 0.035f : proximity == 1 ? 0.085f : 0.16f) *
+                 (1.0f + 0.8f * (1.0f - energy));
+        if (result.completed) result.next.task_status = 0;
+        else satisfaction -= 0.06f;
+    } else if (action == "APPROACH_FOLLOW" && observation.target_proximity > 0 &&
+               observation.target_proximity < 3 && observation.user_status != 2) {
+        effort = 0.045f * (1.0f + 0.8f * (1.0f - energy));
+        result.next.target_proximity = std::max(0, observation.target_proximity - 1);
+    } else if (action == "SLEEP_LAY") {
+        energy = std::min(1.0f, energy + 0.28f);
+        stress = std::max(0.0f, stress - 0.28f);
+        effort = 0.0f;
+    } else if (action == "EAT" && observation.food_available) {
+        energy = std::min(1.0f, energy + 0.24f);
+        result.next.food_available = false;
+        effort = 0.0f;
+    } else if (action == "PLAY" && observation.play_available) {
+        effort = 0.055f * (1.0f + 0.8f * (1.0f - energy));
+        result.next.play_available = false;
+        if (stress < 0.75f) stress = std::max(0.0f, stress - 0.08f);
+    } else {
+        energy = std::max(0.0f, energy - effort * 1.5f);
+    }
+
+    if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+        stress = std::min(1.0f, stress + 0.16f);
+    if (observation.user_status == 2)
+        stress = std::min(1.0f, stress + 0.10f);
+    if (result.completed) stress = std::max(0.0f, stress - 0.04f);
+
+    // User feedback is an observed external signal; action fit and world
+    // consequences remain separate so rewards are not a fixed button lookup.
+    const float feedbackTerm = 0.20f * std::clamp(userFeedback, -1.0f, 1.0f);
+    const float completionTerm = result.completed ? 0.62f : 0.0f;
+    const float driveTerm = action == "EAT" && observation.food_available ? 0.18f * (1.0f - energyBefore) :
+                            action == "SLEEP_LAY" ? 0.18f * stressBefore : 0.0f;
+    result.reward = std::clamp(fit + feedbackTerm + completionTerm + driveTerm - effort, -1.0f, 1.0f);
+    if (result.completed) satisfaction = std::min(1.0f, satisfaction + 0.10f);
+    else if (fit < 0.0f) satisfaction = std::max(0.0f, satisfaction - 0.025f);
+    else satisfaction = std::min(1.0f, satisfaction + 0.025f);
+
+    result.energy = clamp01(energy);
+    result.stress = clamp01(stress);
+    result.satisfaction = clamp01(satisfaction);
+    return result;
+}
 std::string utcTimestamp() {
     const auto now = std::chrono::system_clock::now();
     const std::time_t value = std::chrono::system_clock::to_time_t(now);
@@ -292,14 +386,15 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
             const std::size_t count = std::max<std::size_t>(1, frames->size());
             animationFrame = (animationFrame + 1) % static_cast<int>(count);
         }
-        if (visibleAction == "FETCH" || visibleAction == "WANDER" ||
-            visibleAction == "APPROACH_FOLLOW" || visibleAction == "SNIFF" ||
-            visibleAction == "HIDE_AVOID" || visibleAction == "PLAY") {
-            const float direction =
-                (visibleAction == "WANDER" || visibleAction == "HIDE_AVOID") ? -1.0f : 1.0f;
-            agentX += direction * elapsedSeconds * 70.0f;
-            agentX = std::clamp(agentX, 320.0f, 950.0f);
-        }
+        auto moveAgent = [&](const std::string& action, float& x) {
+            if (action == "FETCH" || action == "WANDER" || action == "APPROACH_FOLLOW" ||
+                action == "SNIFF" || action == "HIDE_AVOID" || action == "PLAY") {
+                const float direction = (action == "WANDER" || action == "HIDE_AVOID") ? -1.0f : 1.0f;
+                x = std::clamp(x + direction * elapsedSeconds * 70.0f, 320.0f, 950.0f);
+            }
+        };
+        moveAgent(latestBaselineAction, baselineAgentX);
+        moveAgent(latestProposedAction, proposedAgentX);
         if (actionDisplayTimer <= 0.0f) {
             animationActive = false;
             animationFrame = 0;
@@ -312,8 +407,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
     }
 }
 
-void CompanionUI::drawCompanion(float x, float y) {
-    const std::string& visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
+void CompanionUI::drawCompanion(float x, float y, const std::string& visibleAction) {
     const auto* frames = &framesForAction(
         visibleAction, idleFrames, walkFrames, sleepFrames, barkFrames, sitFrames, layFrames);
     if (!frames->empty()) {
@@ -724,6 +818,8 @@ void CompanionUI::handleClick(sf::Vector2f point) {
     if (y >= 14 && y <= 58) {
         if (x < 180) screen = Screen::Simulation;
         else if (x < 330) screen = Screen::AgentSelection;
+        else if (x < 490) screen = Screen::AgentState;
+        else if (x < 650) screen = Screen::Comparison;
         else if (x > 1030) controlsVisible = !controlsVisible;
         return;
     }
@@ -802,8 +898,8 @@ void CompanionUI::drawAgentSelectionScreen() {
 
 void CompanionUI::drawNavigation() {
     drawButton("Simulation", 28, 12, 145, 42, screen == Screen::Simulation);
-    if (screen == Screen::Simulation)
-        drawButton("Change Agent", 185, 12, 145, 42);
+    drawButton("Agent State", 185, 12, 145, 42, screen == Screen::AgentState);
+    drawButton("Comparison", 342, 12, 145, 42, screen == Screen::Comparison);
     if (screen == Screen::Simulation)
         drawButton(controlsVisible ? "Hide Controls" : "Show Controls", 1030, 12, 180, 42);
     drawText("ANIMAL AGENT / SFML", 760, 22, 15, kMuted);
@@ -879,10 +975,12 @@ void CompanionUI::drawSimulationScreen() {
     person.setFillColor(sf::Color(216, 122, 110));
     window.draw(person);
     drawText("YOU", userX - 3, userY + 67, 12, kInk);
-    drawCompanion(agentX, agentY);
-    drawText("COMPANION", agentX - 12, agentY + 64, 12, kInk);
-    const std::string visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
-    drawText(std::string("Agent ") + selectedAgentCode + " action: " + visibleAction, 50, 150, 16, kGreen);
+    drawCompanion(baselineAgentX, agentY, latestBaselineAction);
+    drawText("BASELINE", baselineAgentX - 12, agentY + 64, 12, kBlue);
+    drawCompanion(proposedAgentX, agentY, latestProposedAction);
+    drawText("PROPOSED", proposedAgentX - 12, agentY + 64, 12, kGreen);
+    drawText("Baseline: " + latestBaselineAction + " | reward " + std::to_string(baseline.getSessionContext().last_reward), 50, 150, 15, kBlue);
+    drawText("Proposed: " + latestProposedAction + " | reward " + std::to_string(proposed.getSessionContext().last_reward), 50, 176, 15, kGreen);
     drawText("Input interpretation: " + nlpMethod, 50, 202, 14, kMuted);
     if (!controlsVisible) {
         drawText("Controls hidden - use Show Controls to interact", 50, 235, 16, kInk);
