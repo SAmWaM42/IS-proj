@@ -1980,6 +1980,25 @@ bool testNegativeFeedbackUpdatesAffectDimensions() {
            affect.energy == AffectEnergy::LOW;
 }
 
+bool testProposedDecisionTraceExplainsSelection() {
+    EnvironmentConfig config;
+    config.seed = 19;
+    ProposedAgent agent(config);
+    agent.setExplorationRate(0.0f);
+    agent.setLearningEnabled(false);
+    const EnvironmentObservation observation{1, 1, 1, 1, 0.90f};
+    const std::string selected = agent.selectAction(observation);
+    const auto& trace = agent.getLastDecisionTrace();
+    if (trace.final_action != selected ||
+        trace.contextual_fallback.empty() ||
+        trace.policy_action.empty() ||
+        trace.valid_action_q_values.empty()) return false;
+    for (const auto& item : trace.valid_action_q_values) {
+        if (!isActionValidForObservation(item.first, observation)) return false;
+    }
+    return true;
+}
+
 bool testMemoryQueryRankingMatchesOnlyRelevantRecords() {
     record matching;
     matching.raw_fact.subject = "user";
@@ -2033,6 +2052,7 @@ bool runBaselineValidation() {
     results.push_back({"Context summary state changes", "PASS", testContextSummaryChangesState(), "state"});
     results.push_back({"Live memory summary state changes", "PASS", testLiveMemorySummariesChangeState(), "memory"});
     results.push_back({"Memory query ranking matches relevant records case-insensitively", "PASS", testMemoryQueryRankingMatchesOnlyRelevantRecords(), "memory"});
+    results.push_back({"Proposed action decision trace captures valid actions and final choice", "PASS", testProposedDecisionTraceExplainsSelection(), "policy"});
     results.push_back({"Persistence round trip and aggregation", "PASS", testPersistenceRoundTripAndAggregation(), "persistence"});
     results.push_back({"Runtime lifecycle and environment contract", "PASS", testRuntimeLifecycleAndEnvironmentContract(), "runtime"});
 
