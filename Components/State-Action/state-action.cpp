@@ -551,19 +551,22 @@ bool testCurrentRestContextOverridesStaleRejection() {
     agent.setExplorationRate(0.0f);
     agent.setLearningEnabled(false);
 
-    const EnvironmentObservation rest{2, 0, 0, 0, 0.55f};
-    const std::string firstAction = agent.selectAction(rest);
-    if (firstAction != "SLEEP_LAY") return false;
-
-    ActionOutcome negative;
-    negative.reward = -1.0f;
-    negative.terminal = true;
-    negative.outcome_tag = "negative";
-    agent.applyOutcome(rest, firstAction, negative);
+    const EnvironmentObservation rest{2, 0, 0, 0, 0.20f};
+    // Repeated negative feedback creates a stored rejection and raises stress
+    // enough for the contextual fallback to recommend rest.
+    for (int i = 0; i < 8; ++i) {
+        const std::string action = agent.selectAction(rest);
+        ActionOutcome negative;
+        negative.reward = -1.0f;
+        negative.terminal = true;
+        negative.outcome_tag = "negative";
+        agent.applyOutcome(rest, action, negative);
+    }
 
     const std::string nextAction = agent.selectAction(rest);
     const auto& trace = agent.getLastDecisionTrace();
-    return nextAction == "SLEEP_LAY" &&
+    return trace.contextual_fallback == "SLEEP_LAY" &&
+           nextAction == "SLEEP_LAY" &&
            trace.final_action == "SLEEP_LAY" &&
            !trace.rejection_override_applied;
 }
