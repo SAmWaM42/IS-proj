@@ -158,7 +158,7 @@ def main():
     curve_path.write_text(json.dumps(learning_curves, indent=2) + "\n", encoding="utf-8")
     (root / "validation-approach.txt").write_text(validation_paragraph + "\n", encoding="utf-8")
 
-    print("\nHeld-out results (mean ± sample SD across seeds):")
+    print("\nEvaluation results (mean ± sample SD across seeds):")
     for agent in agents:
         print(agent)
         for metric in metrics:
