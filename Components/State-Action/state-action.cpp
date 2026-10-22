@@ -544,6 +544,30 @@ bool testMemoryRetentionAfterInterveningInteractions() {
            !agent.getMemoryRecords().empty();
 }
 
+bool testCurrentRestContextOverridesStaleRejection() {
+    EnvironmentConfig config;
+    config.seed = 23;
+    ProposedAgent agent(config);
+    agent.setExplorationRate(0.0f);
+    agent.setLearningEnabled(false);
+
+    const EnvironmentObservation rest{2, 0, 0, 0, 0.55f};
+    const std::string firstAction = agent.selectAction(rest);
+    if (firstAction != "SLEEP_LAY") return false;
+
+    ActionOutcome negative;
+    negative.reward = -1.0f;
+    negative.terminal = true;
+    negative.outcome_tag = "negative";
+    agent.applyOutcome(rest, firstAction, negative);
+
+    const std::string nextAction = agent.selectAction(rest);
+    const auto& trace = agent.getLastDecisionTrace();
+    return nextAction == "SLEEP_LAY" &&
+           trace.final_action == "SLEEP_LAY" &&
+           !trace.rejection_override_applied;
+}
+
 bool testProposedAgentAvoidsRejectedAction() {
     EnvironmentConfig config;
     config.seed = 13;
@@ -1556,7 +1580,16 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
             if (it->raw_fact.relation == "prefers_action" || it->raw_fact.relation == "dislikes_action") break;
         }
     }
-    if (wasActionRejected(selected, memory_records)) {
+    // A contextual sleep/rest action represents the environment's current
+    // need, so stale negative feedback about SLEEP_LAY must not override it.
+    // Rejection memory still applies to other actions and contexts.
+    const bool honorCurrentRestContext =
+        selected == "SLEEP_LAY" &&
+        selected == fallback &&
+        observation.goal_state == 2 &&
+        observation.task_status == 0 &&
+        observation.signal_strength < 0.80f;
+    if (!honorCurrentRestContext && wasActionRejected(selected, memory_records)) {
         selected = alternativeAfterRejection(selected, observation);
         last_decision_trace.rejection_override_applied = true;
     }
@@ -2032,6 +2065,7 @@ bool runBaselineValidation() {
     results.push_back({"Task and signal state encoding", "PASS", testTaskAndSignalAreEncoded(), "state"});
     results.push_back({"State encoding has no memory radix collisions", "PASS", testStateEncodingHasNoMemoryRadixCollisions(), "state"});
     results.push_back({"Proposed agent adapts after negative feedback", "PASS", testProposedAgentAdaptsAfterNegativeFeedback(), "affect"});
+    results.push_back({"Current rest context overrides stale rejection", "PASS", testCurrentRestContextOverridesStaleRejection(), "memory"});
     results.push_back({"Proposed agent avoids rejected action", "PASS", testProposedAgentAvoidsRejectedAction(), "memory"});
     results.push_back({"Memory retention after intervening interactions", "PASS", testMemoryRetentionAfterInterveningInteractions(), "memory"});
     results.push_back({"Semantic preference survives intervening interactions", "PASS", testSemanticPreferenceSurvivesInterveningInteractions(), "memory"});
