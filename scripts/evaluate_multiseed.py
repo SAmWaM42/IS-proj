@@ -71,8 +71,8 @@ def main():
             shutil.rmtree(seed_dir)
         seed_dir.mkdir(parents=True)
         train = run(binary, "--train", args.episodes, args.steps, seed, seed_dir)
-        # Evaluation loads the saved policies, disables Q-table updates and exploration while allowing proposed-agent memory/affect to adapt online, and
-        # uses the held-out state-combination generator and a separate RNG seed.
+        # Evaluation loads saved policies and freezes Q-table updates/exploration while proposed-agent memory/affect can adapt online.
+        # The stress and in-distribution strata use separate environment seeds.
         evaluation_seed = seed + 100000
         held_out = run(binary, "--validate", args.eval_episodes, args.steps,
                        evaluation_seed, seed_dir)
