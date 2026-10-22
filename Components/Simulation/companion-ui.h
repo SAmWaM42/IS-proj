@@ -122,7 +122,7 @@ private:
                             bool preferencePositive = true, const std::string& sceneEvent = "");
     void executeInteraction(const std::string& label, const EnvironmentObservation& observation,
                             float feedbackReward, const std::string& preference = "",
-                            bool preferencePositive = true);
+                            bool preferencePositive = true, const std::string& sceneEvent = "");
     void processTextInteraction(const std::string& text);
     void handleClick(sf::Vector2f point);
     void draw();
