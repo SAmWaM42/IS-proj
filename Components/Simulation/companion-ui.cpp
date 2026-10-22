@@ -106,7 +106,7 @@ private:
         // A dead child must not terminate the UI through SIGPIPE.
         // Ignore SIGPIPE in the process; write() then returns EPIPE and
         // the normal service-unavailable fallback is used.
-        std::signal(SIGPIPE, SIG_IGN);
+        signal(SIGPIPE, SIG_IGN);
         const std::string payload = line + "\n";
         std::size_t written = 0;
         while (written < payload.size()) {
