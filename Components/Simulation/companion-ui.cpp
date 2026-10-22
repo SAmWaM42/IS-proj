@@ -555,7 +555,7 @@ void CompanionUI::executeInteraction(const std::string& label,
     }
 
     nlohmann::json row;
-    row["schema_version"] = 2;
+    row["schema_version"] = 3;
     row["run_id"] = runId;
     row["interaction_id"] = interactionId;
     row["sequence_index"] = interactionId - 1;
