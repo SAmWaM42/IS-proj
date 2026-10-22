@@ -294,8 +294,8 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
       outputDirectory(outputDirectoryValue),
       baseline(EnvironmentConfig{}),
       proposed(EnvironmentConfig{}) {
-    baseline.setLearningEnabled(false);
-    proposed.setLearningEnabled(false);
+    baseline.setLearningEnabled(true);
+    proposed.setLearningEnabled(true);
     baseline.setExplorationRate(0.0f);
     proposed.setExplorationRate(0.0f);
     const auto runTicks = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -459,15 +459,72 @@ void CompanionUI::executeInteraction(const std::string& label,
     lastActionInteractionId = interactionId;
     latestObservation = observation;
     latestStimulus = label;
+
+    // Both policies receive the same observation. Each action is executed against
+    // a paired world clone, using the same random seed for stochastic outcomes.
     latestBaselineAction = baseline.selectAction(observation);
     latestProposedAction = proposed.selectAction(observation);
     const std::size_t baselineStateBeforeOutcome = baseline.getCurrentState().encode();
     const std::size_t proposedStateBeforeOutcome = proposed.getCurrentState().encode();
+
+    std::mt19937 baselineRng(static_cast<unsigned int>(interactionId * 7919));
+    std::mt19937 proposedRng(static_cast<unsigned int>(interactionId * 7919));
+    const RuntimeTransition baselineTransition = stepInteractiveWorld(
+        latestBaselineAction, observation, baselineEnergy, baselineStress,
+        baselineSatisfaction, feedbackRewardValue, baselineRng);
+    const RuntimeTransition proposedTransition = stepInteractiveWorld(
+        latestProposedAction, observation, proposedEnergy, proposedStress,
+        proposedSatisfaction, feedbackRewardValue, proposedRng);
+
+    ActionOutcome baselineOutcome;
+    baselineOutcome.action_id = companionActionId(latestBaselineAction);
+    baselineOutcome.reward = baselineTransition.reward;
+    baselineOutcome.terminated = false;
+    baselineOutcome.truncated = false;
+    baselineOutcome.outcome_tag = baselineTransition.completed ? "goal_completed" : "interaction_outcome";
+    baselineOutcome.energy_after = baselineTransition.energy;
+
+    ActionOutcome proposedOutcome;
+    proposedOutcome.action_id = companionActionId(latestProposedAction);
+    proposedOutcome.reward = proposedTransition.reward;
+    proposedOutcome.terminated = false;
+    proposedOutcome.truncated = false;
+    proposedOutcome.outcome_tag = proposedTransition.completed ? "goal_completed" : "interaction_outcome";
+    proposedOutcome.energy_after = proposedTransition.energy;
+
+    baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome, baselineTransition.next);
+    proposed.applyOutcome(observation, latestProposedAction, proposedOutcome, proposedTransition.next);
+
+    baselineWorldObservation = baselineTransition.next;
+    proposedWorldObservation = proposedTransition.next;
+    baselineEnergy = baselineTransition.energy;
+    proposedEnergy = proposedTransition.energy;
+    baselineStress = baselineTransition.stress;
+    proposedStress = proposedTransition.stress;
+    baselineSatisfaction = baselineTransition.satisfaction;
+    proposedSatisfaction = proposedTransition.satisfaction;
+
+    animationActive = true;
+    animationClock = 0.0f;
+    animationFrame = 0;
+    actionDisplayTimer = 0.85f;
+    baselineRewards.push_back(baselineOutcome.reward);
+    proposedRewards.push_back(proposedOutcome.reward);
+    ++interactionCount;
+    appendLog("You: " + label);
+    appendLog("Baseline: " + describeAction(latestBaselineAction) +
+              " (reward " + std::to_string(baselineOutcome.reward) + ")");
+    appendLog("Proposed: " + describeAction(latestProposedAction) +
+              " (reward " + std::to_string(proposedOutcome.reward) + ")");
+
     nlohmann::json memoryCandidates = nlohmann::json::array();
     for (const auto& memory : proposed.getMemoryRecords()) {
         if (memory.raw_fact.subject == latestProposedAction ||
-            memory.raw_fact.relation == "prefers_action" || memory.raw_fact.relation == "dislikes_action" ||
-            memory.raw_fact.relation == "likes" || memory.raw_fact.relation == "dislikes") {
+            memory.raw_fact.relation == "prefers_action" ||
+            memory.raw_fact.relation == "dislikes_action" ||
+            memory.raw_fact.relation == "likes" ||
+            memory.raw_fact.relation == "dislikes" ||
+            memory.raw_fact.relation == "response_to_action") {
             memoryCandidates.push_back({
                 {"subject", memory.raw_fact.subject},
                 {"relation", memory.raw_fact.relation},
@@ -477,76 +534,62 @@ void CompanionUI::executeInteraction(const std::string& label,
             });
         }
     }
-    animationActive = true;
-    animationClock = 0.0f;
-    animationFrame = 0;
-    actionDisplayTimer = 0.85f;
 
-    ActionOutcome baselineOutcome;
-    baselineOutcome.action_id = companionActionId(latestBaselineAction);
-    baselineOutcome.reward = feedbackRewardValue;
-    baselineOutcome.terminated = true;
-    baselineOutcome.outcome_tag = "simulation_" + (feedbackRewardValue > 0 ? std::string("positive") :
-                                                    feedbackRewardValue < 0 ? std::string("negative") : std::string("neutral"));
-    ActionOutcome proposedOutcome = baselineOutcome;
-    proposedOutcome.action_id = companionActionId(latestProposedAction);
-    baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome);
-    proposed.applyOutcome(observation, latestProposedAction, proposedOutcome);
-
-    baselineRewards.push_back(feedbackRewardValue);
-    proposedRewards.push_back(feedbackRewardValue);
-    ++interactionCount;
-    appendLog("You: " + label);
-    appendLog("Baseline: " + describeAction(latestBaselineAction));
-    appendLog("Proposed: " + describeAction(latestProposedAction));
-    {
-        nlohmann::json row;
-        row["schema_version"] = 1;
-        row["run_id"] = runId;
-        row["interaction_id"] = interactionId;
-        row["sequence_index"] = interactionId - 1;
-        row["timestamp"] = utcTimestamp();
-        row["processing_status"] = "completed";
-        row["condition_code"] = std::string(1, selectedAgentCode);
-        row["input_summary"] = label;
-        row["observation"] = {
-            {"goal_state", observation.goal_state},
-            {"target_proximity", observation.target_proximity},
-            {"user_status", observation.user_status},
-            {"task_status", observation.task_status},
-            {"signal_strength", observation.signal_strength},
-            {"food_available", observation.food_available},
-            {"play_available", observation.play_available}
-        };
-        row["baseline"] = {{"action", latestBaselineAction}, {"action_id", baselineOutcome.action_id}, {"reward", baselineOutcome.reward},
-                           {"state_before_outcome", baselineStateBeforeOutcome},
-                           {"state_after_outcome", baseline.getCurrentState().encode()},
-                           {"learning_update_enabled", false}};
-        row["proposed"] = {
-            {"action", latestProposedAction}, {"action_id", proposedOutcome.action_id}, {"reward", proposedOutcome.reward},
-            {"state_before_outcome", proposedStateBeforeOutcome},
-            {"state_after_outcome", proposed.getCurrentState().encode()},
-            {"memory_candidates", memoryCandidates},
-            {"learning_update_enabled", false},
-            {"memory_count_before", memoryCountBefore},
-            {"memory_count_after", proposed.getMemoryRecords().size()},
-            {"affect_before", {
-                {"affinity", affectBefore.affinity}, {"stress", affectBefore.stress},
-                {"arousal", affectBefore.arousal}, {"engagement", affectBefore.engagement},
-                {"valence", static_cast<int>(affectBefore.valence)}
-            }},
-            {"affect_after", {
-                {"affinity", proposed.getAffectiveState().affinity},
-                {"stress", proposed.getAffectiveState().stress},
-                {"arousal", proposed.getAffectiveState().arousal},
-                {"engagement", proposed.getAffectiveState().engagement},
-                {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
-            }}
-        };
-        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
-        if (log) log << row.dump() << '\n';
-        else appendLog("WARNING: interaction event log could not be written.");
-    }
+    nlohmann::json row;
+    row["schema_version"] = 2;
+    row["run_id"] = runId;
+    row["interaction_id"] = interactionId;
+    row["sequence_index"] = interactionId - 1;
+    row["timestamp"] = utcTimestamp();
+    row["processing_status"] = "completed";
+    row["condition_code"] = std::string(1, selectedAgentCode);
+    row["input_summary"] = label;
+    row["observation"] = {
+        {"goal_state", observation.goal_state},
+        {"target_proximity", observation.target_proximity},
+        {"user_status", observation.user_status},
+        {"task_status", observation.task_status},
+        {"signal_strength", observation.signal_strength},
+        {"food_available", observation.food_available},
+        {"play_available", observation.play_available}
+    };
+    row["baseline"] = {
+        {"action", latestBaselineAction}, {"action_id", baselineOutcome.action_id},
+        {"reward", baselineOutcome.reward}, {"state_before_outcome", baselineStateBeforeOutcome},
+        {"state_after_outcome", baseline.getCurrentState().encode()},
+        {"energy_after", baselineTransition.energy}, {"stress_after", baselineTransition.stress},
+        {"satisfaction_after", baselineTransition.satisfaction},
+        {"terminated", baselineOutcome.terminated}, {"truncated", baselineOutcome.truncated},
+        {"completed", baselineTransition.completed}, {"learning_update_enabled", true}
+    };
+    row["proposed"] = {
+        {"action", latestProposedAction}, {"action_id", proposedOutcome.action_id},
+        {"reward", proposedOutcome.reward}, {"state_before_outcome", proposedStateBeforeOutcome},
+        {"state_after_outcome", proposed.getCurrentState().encode()},
+        {"memory_candidates", memoryCandidates},
+        {"memory_count_before", memoryCountBefore},
+        {"memory_count_after", proposed.getMemoryRecords().size()},
+        {"affect_before", {
+            {"affinity", affectBefore.affinity}, {"stress", affectBefore.stress},
+            {"arousal", affectBefore.arousal}, {"engagement", affectBefore.engagement},
+            {"valence", static_cast<int>(affectBefore.valence)}
+        }},
+        {"affect_after", {
+            {"affinity", proposed.getAffectiveState().affinity},
+            {"stress", proposed.getAffectiveState().stress},
+            {"arousal", proposed.getAffectiveState().arousal},
+            {"engagement", proposed.getAffectiveState().engagement},
+            {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
+        }},
+        {"energy_after", proposedTransition.energy}, {"stress_after", proposedTransition.stress},
+        {"satisfaction_after", proposedTransition.satisfaction},
+        {"terminated", proposedOutcome.terminated}, {"truncated", proposedOutcome.truncated},
+        {"completed", proposedTransition.completed}, {"learning_update_enabled", true}
+    };
+    std::ofstream log(std::filesystem::path(outputDirectory) /
+                      ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+    if (log) log << row.dump() << '\n';
+    else appendLog("WARNING: interaction event log could not be written.");
     saveSession();
 }
 
@@ -1103,8 +1146,8 @@ void CompanionUI::saveSession() {
             return;
         }
         out << session.dump(2) << '\n';
-        baseline.savePersistentState((directory / "baseline-session.qtable").string());
-        proposed.savePersistentContext((std::filesystem::path(policyDirectory) / "proposed.qtable").string());
+        baseline.savePersistentState((std::filesystem::path(policyDirectory) / "baseline.qtable").string());
+        proposed.savePersistentState((std::filesystem::path(policyDirectory) / "proposed.qtable").string());
     } catch (const std::exception& e) {
         std::cerr << "Unable to save simulation session: " << e.what() << '\n';
     }
