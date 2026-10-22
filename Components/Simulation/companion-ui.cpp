@@ -923,7 +923,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
     if (screen != Screen::Simulation) return;
     if (!controlsVisible) return;
     textInputFocused = y >= 755 && y <= 805;
-    if (y >= 550 && y <= 594) {
+    if (y >= 550 && y <= 594 && x >= 35.0f && x < 1235.0f) {
         const int buttonIndex = static_cast<int>((x - 35.0f) / 134.0f);
         switch (buttonIndex) {
             case 0: processInteraction("Greet the companion", {0, 1, 0, 0, 0.55f}, 0.0f); break;
@@ -1133,7 +1133,7 @@ void CompanionUI::drawAgentStateScreen() {
     const auto memories = rankRelevantRecords(proposed.getMemoryRecords(), latestStimulus);
     if (memories.empty()) drawText("No relevant interaction memories have been retrieved yet.", 50, 490, 16, kMuted);
     float y = 490;
-    for (auto it = memories.rbegin(); it != memories.rend() && y < 690; ++it, y += 38) {
+    for (auto it = memories.begin(); it != memories.end() && y < 690; ++it, y += 38) {
         std::ostringstream row;
         row << it->raw_fact.subject << "  --" << it->raw_fact.relation << "-->  "
             << it->raw_fact.object << "   | confidence " << std::fixed << std::setprecision(2) << it->confidence
