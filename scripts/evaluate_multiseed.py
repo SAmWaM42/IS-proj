@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproducible multi-seed train/held-out evaluation for IS-2.
+"""Reproducible multi-seed training and two-stratum evaluation for IS-2.
 
 The reported oracle agreement is explicitly a one-step contextual diagnostic,
 not a claim of optimality for the full multi-step environment.
@@ -26,6 +26,14 @@ def mean_sd(values):
 def read_json(path):
     with path.open(encoding="utf-8") as stream:
         return json.load(stream)
+
+def metric_value(summary, agent, metric):
+    # Historical summaries used the shorter oracle key; accept them when reading
+    # old training artifacts while writing the explicit diagnostic name.
+    if metric == "diagnostic_one_step_oracle_agreement_rate":
+        return summary[agent].get(
+            metric, summary[agent].get("one_step_oracle_agreement_rate", 0.0))
+    return summary[agent].get(metric, 0.0)
 
 
 def run(binary, mode, episodes, steps, seed, out_dir):
@@ -109,17 +117,10 @@ def main():
     for agent in agents:
         aggregate["results"][agent] = {}
         for metric in metrics:
-            if metric == "diagnostic_one_step_oracle_agreement_rate":
-                def get_metric(summary):
-                    return summary[agent].get(
-                        metric, summary[agent].get("one_step_oracle_agreement_rate", 0.0))
-            else:
-                def get_metric(summary):
-                    return summary[agent].get(metric, 0.0)
             aggregate["results"][agent][metric] = {
-                "training": mean_sd(get_metric(summary) for summary in train_summaries),
-                "held_out_stress": mean_sd(get_metric(summary) for summary in held_out_summaries),
-                "in_distribution": mean_sd(get_metric(summary) for summary in distribution_summaries),
+                "training": mean_sd(metric_value(summary, agent, metric) for summary in train_summaries),
+                "held_out_stress": mean_sd(metric_value(summary, agent, metric) for summary in held_out_summaries),
+                "in_distribution": mean_sd(metric_value(summary, agent, metric) for summary in distribution_summaries),
             }
 
     # Per-episode reward curves aligned by episode index across independent seeds.
