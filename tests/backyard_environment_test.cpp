@@ -21,8 +21,8 @@ int main() {
     environment.applyStimulus("The companion should rest");
     environment.applyAction("SLEEP_LAY");
     assert(environment.state().dogResting);
-    assert(environment.state().ballAvailable);
-    assert(!environment.state().dogHasBall);
+    assert(!environment.state().ballAvailable);
+    assert(environment.state().dogHasBall);
 
     environment.beginInteraction();
     environment.applyStimulus("A sudden loud noise occurs");
