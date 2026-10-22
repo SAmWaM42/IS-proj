@@ -26,11 +26,11 @@ Training episodes shuffle a 14-scenario catalogue instead of using a fixed posit
 
 The environment contains action-dependent transitions: fetch may succeed or fail probabilistically, approach changes target proximity, rest/eating restore energy, and play consumes its affordance. The same canonical transition outcome controls task completion and the corresponding completion bonus. A far target is reachable but has higher effort and lower fetch success probability; an unavailable target is not a valid fetch action.
 
-Each experiment run samples one latent simulated-user profile. Its praise responsiveness, playfulness, noise sensitivity, rejection sensitivity and response rate affect stochastic positive/neutral/negative feedback. The profile is hidden from the policy observation and shared by the baseline/proposed agents for paired comparisons. Per-step logs include the sampled feedback class and reward diagnostics. The profile is held stable across episodes in a run so the proposed agent's persistent memory is not mixing unrelated synthetic users.
+Each experiment run samples one latent simulated-user profile. Its praise responsiveness, playfulness, noise sensitivity, rejection sensitivity and response rate affect stochastic positive/neutral/negative/ignored feedback. The profile is hidden from the policy observation and shared by the baseline/proposed agents for paired comparisons. Per-step logs include the sampled feedback class and reward diagnostics. The profile is held stable across episodes in a run so the proposed agent's persistent memory is not mixing unrelated synthetic users.
 
 ### Held-out evaluation
 
-\`--validate\` and \`--compare\` load saved policies, disable Q-learning updates and exploration, use a separate environment seed, and sample a held-out generator. The held-out generator deliberately includes joint observation combinations absent from the training catalogue, including:
+\`--validate\` and \`--compare\` load saved policies, disable Q-table updates and exploration, use a separate environment seed, and sample a held-out generator. Proposed-agent memory and affect still update from evaluation outcomes, because that online adaptation is part of the behaviour under test. The held-out generator deliberately includes joint observation combinations absent from the training catalogue, including:
 
 - an active task with an unavailable target;
 - a far task with negative user status and food available;
