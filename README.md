@@ -62,7 +62,7 @@ Build the project with the existing CMake setup, then run:
 ./build/IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training
 ```
 
-Training saves `baseline.qtable` and `proposed.qtable`. Validation and comparison load those checkpoints, disable exploration and policy updates, and use an evaluation scenario seed offset from the supplied seed. Step logs are written to `<mode>_baseline_steps.jsonl` and `<mode>_proposed_steps.jsonl`, preventing later runs from overwriting earlier mode logs; a mode-specific JSON summary is also written.
+Training saves `baseline.qtable` and `proposed.qtable`. Validation and comparison load those checkpoints, disable exploration and Q-table updates, and use a held-out scenario generator plus an evaluation seed offset from the supplied seed. Proposed-agent memory and affect continue updating from evaluation outcomes, since online adaptation is part of the behaviour being evaluated. Step logs are written to `<mode>_baseline_steps.jsonl` and `<mode>_proposed_steps.jsonl`, preventing later runs from overwriting earlier mode logs; a mode-specific JSON summary is also written.
 
 The policy state includes task availability, discretized signal strength, and explicit food/play affordances. Both agents use the same 14-action vocabulary and observable-context mask; invalid actions are excluded from selection and Q-value bootstrapping. The synthetic reward is also intent-conditioned (social greeting, explicit request, or disturbance/rest).
 
