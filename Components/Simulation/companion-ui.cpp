@@ -390,17 +390,12 @@ void CompanionUI::startNewParticipant() {
 
 void CompanionUI::openStudyForm() {
     const std::string code(1, selectedAgentCode);
-    const char* configuredFormUrl = std::getenv("ANIMAL_AGENT_STUDY_FORM_URL");
-    if (configuredFormUrl == nullptr || *configuredFormUrl == '\0') {
-        appendLog("Study form is not configured. Set ANIMAL_AGENT_STUDY_FORM_URL to your questionnaire URL.");
+    const char* configuredUrl = std::getenv("ANIMAL_AGENT_STUDY_FORM_URL");
+    if (configuredUrl == nullptr || *configuredUrl == '\0') {
+        appendLog("Study questionnaire URL is not configured. Set ANIMAL_AGENT_STUDY_FORM_URL.");
         return;
     }
-    const std::string baseUrl(configuredFormUrl);
-    if ((baseUrl.rfind("https://", 0) != 0 && baseUrl.rfind("http://", 0) != 0) ||
-        baseUrl.find('\'') != std::string::npos || baseUrl.find_first_of(" \t\r\n") != std::string::npos) {
-        appendLog("Study form URL is invalid; use an http(s) URL without spaces.");
-        return;
-    }
+    const std::string baseUrl(configuredUrl);
     const std::string url = baseUrl + (baseUrl.find('?') == std::string::npos ? "?" : "&") +
                             "condition=" + code + "&run=" + runId;
     {
@@ -414,10 +409,13 @@ void CompanionUI::openStudyForm() {
         if (log) log << row.dump() << '\n';
     }
     appendLog("Opened study form for condition " + code);
-    // url only contains the constant above, an A/B letter and "run-<digits>", so it is shell-safe.
-    const std::string command = "xdg-open '" + url + "' >/dev/null 2>&1 &";
-    if (std::system(command.c_str()) != 0)
-        appendLog("Could not open the browser automatically: " + url);
+    const pid_t browser = fork();
+    if (browser == 0) {
+        execlp("xdg-open", "xdg-open", url.c_str(), static_cast<char*>(nullptr));
+        _exit(127);
+    }
+    if (browser < 0)
+        appendLog("Could not start the browser for questionnaire URL: " + url);
 }
 
 void CompanionUI::applySceneEvent(const std::string& sceneEvent) {
@@ -974,30 +972,6 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["processing_status"] = "completed";
         row["condition_code"] = std::string(1, selectedAgentCode);
         row["input_summary"] = label;
-        row["nlp_method"] = nlpMethod;
-        const auto& decisionTrace = proposed.getLastDecisionTrace();
-        nlohmann::json qValues = nlohmann::json::object();
-        for (const auto& item : decisionTrace.valid_action_q_values) {
-            qValues[item.first] = item.second;
-        }
-        row["proposed_decision_trace"] = {
-            {"encoded_state", decisionTrace.encoded_state},
-            {"contextual_fallback", decisionTrace.contextual_fallback},
-            {"policy_action_before_overrides", decisionTrace.policy_action},
-            {"general_preference_override", decisionTrace.general_preference_override},
-            {"rejection_override_applied", decisionTrace.rejection_override_applied},
-            {"final_action", decisionTrace.final_action},
-            {"valid_action_q_values", qValues},
-            {"memory_record_count", decisionTrace.memory_record_count},
-            {"affect", {
-                {"valence", static_cast<int>(decisionTrace.affect.valence)},
-                {"energy", static_cast<int>(decisionTrace.affect.energy)},
-                {"stress", decisionTrace.affect.stress},
-                {"affinity", decisionTrace.affect.affinity},
-                {"arousal", decisionTrace.affect.arousal},
-                {"engagement", decisionTrace.affect.engagement}
-            }}
-        };
         row["observation"] = {
             {"goal_state", observation.goal_state},
             {"target_proximity", observation.target_proximity},
@@ -1031,4 +1005,613 @@ void CompanionUI::executeInteraction(const std::string& label,
                 {"engagement", proposed.getAffectiveState().engagement},
                 {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
             }}
-        };
+        };        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+        if (log) log << row.dump() << '\n';
+        else appendLog("WARNING: interaction event log could not be written.");
+    }
+    saveSession();
+}
+
+std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward) {
+    observation = EnvironmentObservation{0, 1, 0, 0, 0.45f};
+    reward = 0.25f;
+    std::string lowered = text;
+    std::transform(lowered.begin(), lowered.end(), lowered.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    const std::string output = callNlp(text);
+    try {
+        if (!output.empty()) {
+            const auto parsed = json::parse(output);
+            const std::string intent = parsed.value("intent", std::string("unknown"));
+            const bool negativeFeedback = intent == "negative_feedback" ||
+                lowered.find("stop") != std::string::npos ||
+                lowered.find("annoy") != std::string::npos ||
+                lowered.find("scold") != std::string::npos ||
+                lowered.find("dislike") != std::string::npos ||
+                lowered.find("hate") != std::string::npos ||
+                lowered.find("don't") != std::string::npos ||
+                lowered.find("do not") != std::string::npos;
+            // Named arguments: EnvironmentObservation's member order is goal, proximity,
+            // USER status, TASK status. The previous positional list swapped the last two.
+            observation = makeObservation(
+                parsed.value("goal_state", 0), parsed.value("target_proximity", 1),
+                negativeFeedback ? 2 : parsed.value("user_status", 0), parsed.value("task_status", 0),
+                parsed.value("signal_strength", 0.45f),
+                parsed.value("food_available", false), parsed.value("play_available", false));
+            observation.food_available = observation.food_available ||
+                lowered.find("food") != std::string::npos || lowered.find("feed") != std::string::npos;
+            observation.play_available = observation.play_available ||
+                lowered.find("play") != std::string::npos || lowered.find("toy") != std::string::npos;
+            reward = parsed.value("reward", 0.25f);
+            nlpMethod = parsed.value("method", std::string("unknown"));
+            return intent;
+        }
+    } catch (const std::exception&) {
+        // Continue with a local fallback if Python is missing or returns invalid JSON.
+    }
+    nlpMethod = "C++ keyword fallback";
+    if (lowered.find("stop") != std::string::npos || lowered.find("annoy") != std::string::npos ||
+        lowered.find("don't") != std::string::npos || lowered.find("do not") != std::string::npos || lowered.find("scold") != std::string::npos) {
+        observation = EnvironmentObservation{0, 1, 2, 0, 0.45f}; reward = -1.0f; return "negative_feedback";
+    }
+    if (lowered.find("fetch") != std::string::npos || lowered.find("ball") != std::string::npos ||
+        lowered.find("bring") != std::string::npos || lowered.find("retrieve") != std::string::npos) {
+        observation = makeObservation(1, 1, 1, 1, 0.85f); reward = 0.65f; return "request";   // task_status must be 1 for FETCH to be valid
+    }
+    if (lowered.find("noise") != std::string::npos || lowered.find("scared") != std::string::npos ||
+        lowered.find("loud") != std::string::npos) {
+        observation = EnvironmentObservation{2, 0, 0, 0, 0.95f}; reward = 0.0f; return "disturbance";
+    }
+    if (lowered.find("feed") != std::string::npos || lowered.find("food") != std::string::npos ||
+        lowered.find("eat") != std::string::npos) {
+        observation = EnvironmentObservation{2, 0, 1, 0, 0.30f, true, false};
+        reward = 0.5f; return "feeding";
+    }
+    if (lowered.find("play") != std::string::npos || lowered.find("toy") != std::string::npos) {
+        observation = EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true};
+        reward = 0.5f; return "play";
+    }
+    if (lowered.find("rest") != std::string::npos || lowered.find("tired") != std::string::npos ||
+        lowered.find("quiet") != std::string::npos) {
+        observation = EnvironmentObservation{2, 2, 0, 0, 0.20f}; reward = 0.25f; return "rest";
+    }
+    if (lowered.find("good") != std::string::npos || lowered.find("praise") != std::string::npos ||
+        lowered.find("well done") != std::string::npos) {
+        observation = EnvironmentObservation{0, 0, 1, 0, 0.75f}; reward = 1.0f; return "praise";
+    }
+    if (lowered.find("hello") != std::string::npos || lowered.find("hi") != std::string::npos ||
+        lowered.find("hey") != std::string::npos) return "greeting";
+    return "unknown";
+}
+
+void CompanionUI::processTextInteraction(const std::string& text) {
+    std::string lower = text;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+        [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+    const bool explicitLike = lower.find("prefer") != std::string::npos ||
+                              lower.find(" like ") != std::string::npos ||
+                              lower.rfind("like ", 0) == 0 ||
+                              lower.find("love") != std::string::npos;
+    const bool explicitDislike = lower.find("dislike") != std::string::npos ||
+                                 lower.find("hate") != std::string::npos ||
+                                 lower.find("don't like") != std::string::npos ||
+                                 lower.find("do not like") != std::string::npos ||
+                                 lower.find("not like") != std::string::npos;
+
+    // Preference statements are records first, not commands. They may also
+    // refer to a recent action/event, but that relationship remains a candidate.
+    if (explicitLike || explicitDislike) {
+        std::string object;
+        if (lower.find("ball") != std::string::npos || lower.find("toy") != std::string::npos ||
+            lower.find("fetch") != std::string::npos) object = "ball";
+        else if (lower.find("sound") != std::string::npos || lower.find("noise") != std::string::npos ||
+                 lower.find("bark") != std::string::npos) object = "sound";
+        else if (lower.find("rest") != std::string::npos || lower.find("sleep") != std::string::npos) object = "rest";
+        else {
+            std::size_t relationStart = std::string::npos;
+            std::size_t relationLength = 0;
+            for (const std::string& marker : {std::string("like"), std::string("love"),
+                                              std::string("prefer"), std::string("hate"),
+                                              std::string("dislike")}) {
+                const std::size_t found = lower.find(marker);
+                if (found != std::string::npos && (relationStart == std::string::npos || found < relationStart)) {
+                    relationStart = found;
+                    relationLength = marker.size();
+                }
+            }
+            if (relationStart != std::string::npos) {
+                object = lower.substr(relationStart + relationLength);
+                while (!object.empty() && !std::isalnum(static_cast<unsigned char>(object.front()))) object.erase(object.begin());
+                while (!object.empty() && !std::isalnum(static_cast<unsigned char>(object.back()))) object.pop_back();
+                for (const std::string& article : {std::string("the "), std::string("a "), std::string("an ")}) {
+                    if (object.rfind(article, 0) == 0) { object.erase(0, article.size()); break; }
+                }
+                if (object.size() > 80) object.resize(80);
+            }
+        }
+
+        if (object.empty()) {
+            ++interactionCount;
+            appendLog("You: " + text + " [preference statement; object unresolved; no action selected]");
+            nlohmann::json row;
+            row["schema_version"] = 2;
+            row["run_id"] = runId;
+            row["interaction_id"] = interactionCount;
+            row["sequence_index"] = interactionCount - 1;
+            row["timestamp"] = utcTimestamp();
+            row["processing_status"] = "statement_object_unresolved";
+            row["condition_code"] = std::string(1, selectedAgentCode);
+            row["input_summary"] = text;
+            row["utterance_analysis"] = {{"kind", "preference_statement"}, {"memory_updated", false},
+                                         {"response_required", false}, {"response_action", "NONE"},
+                                         {"candidate_association", "unresolved"}};
+            std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+            if (log) log << row.dump() << '\n';
+            else appendLog("WARNING: interaction event log could not be written.");
+            saveSession();
+            return;
+        } else {
+            const std::string relation = explicitDislike ? "dislikes" : "likes";
+            proposed.recordUserStatement(relation, object);
+            const std::string previousContext = latestStimulus;
+            std::string associationType = "none";
+            std::string associationReason = "No recent matching action or event was found.";
+            float associationConfidence = 0.0f;
+            const bool hasPriorAction = interactionCount > 0 && lastActionInteractionId > 0 &&
+                interactionCount == lastActionInteractionId;
+            const bool mentionsSound = object == "sound";
+            const bool mentionsBall = object == "ball";
+            const bool mentionsRest = object == "rest";
+            const bool contextMatches = hasPriorAction && (
+                (mentionsSound && (previousContext.find("noise") != std::string::npos ||
+                                   previousContext.find("sound") != std::string::npos ||
+                                   latestBaselineAction == "BARK" || latestProposedAction == "BARK" ||
+                                   latestBaselineAction == "WHINE" || latestProposedAction == "WHINE")) ||
+                (mentionsBall && (previousContext.find("ball") != std::string::npos ||
+                                  previousContext.find("fetch") != std::string::npos ||
+                                  latestBaselineAction == "FETCH" || latestProposedAction == "FETCH")) ||
+                (mentionsRest && (previousContext.find("rest") != std::string::npos ||
+                                  previousContext.find("sleep") != std::string::npos ||
+                                  latestBaselineAction == "SLEEP_LAY" || latestProposedAction == "SLEEP_LAY")));
+            if (contextMatches) {
+                associationType = "candidate_recent_context";
+                associationConfidence = 0.65f;
+                associationReason = "The statement object matches the immediately preceding event or action; this is not proof of causation.";
+            }
+
+            ++interactionCount;
+            appendLog("You: " + text + " [preference statement]");
+            appendLog("Memory: stored user " + relation + " " + object);
+            appendLog(contextMatches ? "Context: candidate association with preceding interaction."
+                                     : "Context: no relevant preceding interaction; stored as a general preference record.");
+
+            nlohmann::json row;
+            row["schema_version"] = 2;
+            row["run_id"] = runId;
+            row["interaction_id"] = interactionCount;
+            row["sequence_index"] = interactionCount - 1;
+            row["timestamp"] = utcTimestamp();
+            row["processing_status"] = "recorded_no_action";
+            row["condition_code"] = std::string(1, selectedAgentCode);
+            row["input_summary"] = text;
+            row["utterance_analysis"] = {
+                {"kind", "preference_statement"}, {"relation", relation}, {"object", object},
+                {"memory_updated", true}, {"response_required", false}, {"response_action", "NONE"},
+                {"candidate_association", associationType}, {"association_confidence", associationConfidence},
+                {"association_reason", associationReason},
+                {"referenced_interaction_id", contextMatches ? lastActionInteractionId : 0},
+                {"preceding_context", hasPriorAction ? previousContext : ""},
+                {"preceding_baseline_action", hasPriorAction ? latestBaselineAction : ""},
+                {"preceding_proposed_action", hasPriorAction ? latestProposedAction : ""}
+            };
+            row["learning_update_enabled"] = false;
+            std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+            if (log) log << row.dump() << '\n';
+            else appendLog("WARNING: interaction event log could not be written.");
+            saveSession();
+            return;
+        }
+    }
+
+    EnvironmentObservation observation;
+    float reward = 0.25f;
+    const std::string intent = interpretIntent(text, observation, reward);
+
+    // Unknown utterances are not automatically treated as commands. Keep them
+    // visible in the log without forcing a policy action or inventing a fact.
+    if (intent == "unknown") {
+        ++interactionCount;
+        appendLog("You: " + text + " [unclassified statement; no action selected]");
+        nlohmann::json row;
+        row["schema_version"] = 2;
+        row["run_id"] = runId;
+        row["interaction_id"] = interactionCount;
+        row["sequence_index"] = interactionCount - 1;
+        row["timestamp"] = utcTimestamp();
+        row["processing_status"] = "unclassified_no_action";
+        row["condition_code"] = std::string(1, selectedAgentCode);
+        row["input_summary"] = text;
+        row["utterance_analysis"] = {{"kind", "unclassified"}, {"memory_updated", false},
+                                     {"response_required", false}, {"response_action", "NONE"}};
+        row["learning_update_enabled"] = false;
+        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+        if (log) log << row.dump() << '\n';
+        else appendLog("WARNING: interaction event log could not be written.");
+        saveSession();
+        return;
+    }
+
+    // Scene reaction for typed commands (ball placed / thrown, food put in the bowl).
+    std::string sceneEvent;
+    if (lower.find("throw") != std::string::npos) sceneEvent = "throw_ball";
+    else if (intent == "request" && (lower.find("ball") != std::string::npos ||
+                                     lower.find("fetch") != std::string::npos ||
+                                     lower.find("bring") != std::string::npos)) sceneEvent = "fetch_ball";
+    else if (intent == "feeding") sceneEvent = "feed";
+
+    processInteraction(text + " [" + intent + " / " + nlpMethod + "]", observation, reward, "", true, sceneEvent);
+}
+
+void CompanionUI::handleClick(sf::Vector2f point) {
+    const float x = point.x, y = point.y;
+    if (screen == Screen::AgentSelection) {
+        if (researcherMode && y >= 530 && y <= 600 && x >= 180 && x <= 580) {
+            proposed.clearMemory();
+            std::error_code ec;
+            const auto memoryPath = std::filesystem::path(policyDirectory) / "proposed.qtable.memory.json";
+            std::filesystem::remove(memoryPath, ec);
+            appendLog(ec ? "Memory file deletion failed: " + ec.message() : "Persistent memory cleared.");
+            return;
+        }
+        if (researcherMode && y >= 530 && y <= 600 && x >= 700 && x <= 1100) {
+            startNewParticipant();
+            return;
+        }
+        if (y >= 300 && y <= 380 && ((x >= 180 && x <= 580) || (x >= 700 && x <= 1100))) {
+            selectedAgentCode = x < 640.0f ? 'A' : 'B';
+            selectedAgentIsProposed = selectedAgentCode == 'A' ? agentAIsProposed : !agentAIsProposed;
+            {
+                nlohmann::json manifest;
+                manifest["schema_version"] = 1;
+                manifest["mode"] = "interactive_simulation";
+                manifest["ui_mode"] = researcherMode ? "researcher" : "study";
+                manifest["run_id"] = runId;
+                manifest["started_at"] = utcTimestamp();
+                manifest["policy_updates_enabled"] = false;
+                manifest["selected_condition"] = std::string(1, selectedAgentCode);
+                manifest["condition_key"] = {
+                    {"A", agentAIsProposed ? "proposed" : "baseline"},
+                    {"B", agentAIsProposed ? "baseline" : "proposed"}
+                };
+                std::ofstream manifestOut(std::filesystem::path(outputDirectory) / ("run-manifest-" + runId + ".json"));
+                if (manifestOut) manifestOut << manifest.dump(2) << '\n';
+            }
+            resetScene();
+            screen = Screen::Simulation;
+            appendLog(std::string("Loaded blind condition ") + selectedAgentCode);
+        }
+        return;
+    }
+    if (y >= 14 && y <= 58) {
+        if (x >= 28 && x < 173) {
+            screen = Screen::Simulation;
+        } else if (researcherMode) {
+            if (x >= 185 && x < 330) screen = Screen::AgentSelection;
+            else if (x >= 342 && x < 487) screen = Screen::AgentState;
+            else if (x >= 499 && x < 644) screen = Screen::Comparison;
+            else if (x >= 1030 && screen == Screen::Simulation) controlsVisible = !controlsVisible;
+        } else {
+            if (x >= 185 && x < 345) screen = Screen::AgentSelection;       // Change Model
+            else if (x >= 357 && x < 517) openStudyForm();                  // Answer Form
+        }
+        return;
+    }
+    if (researcherMode && screen == Screen::AgentState && x >= 930 && y >= 750 && y <= 810) {
+        proposed.clearMemory();
+        std::error_code ec;
+        const auto prefix = std::filesystem::path(policyDirectory) / "proposed.qtable";
+        std::filesystem::remove(prefix.string() + ".memory.json", ec);
+        if (ec) appendLog("Memory file deletion failed: " + ec.message());
+        else appendLog("Persistent memory cleared by user request.");
+        return;
+    }
+    if (screen != Screen::Simulation) return;
+    if (!controlsVisible) return;
+
+    const SceneLayout L = sceneLayout();
+    const float firstRowY = L.y + L.h + 15.0f;
+    for (std::size_t i = 0; i < kControls.size(); ++i) {
+        const float bx = kButtonX0 + static_cast<float>(i % 5) * (kButtonW + kButtonGap);
+        const float by = firstRowY + static_cast<float>(i / 5) * kButtonRowStep;
+        if (x >= bx && x < bx + kButtonW && y >= by && y < by + kButtonH) {
+            const ControlButton& control = kControls[i];
+            textInputFocused = false;
+            processInteraction(control.stimulus,
+                               makeObservation(control.goal, control.proximity, control.user, control.task,
+                                               control.signal, control.food, control.play),
+                               control.reward, "", true, control.sceneEvent);
+            return;
+        }
+    }
+    textInputFocused = y >= kInputY && y <= kInputY + kInputH && x < 1020.0f;
+    if (y >= kInputY && y <= kInputY + kInputH && x >= 1020.0f && !textInput.empty()) {
+        processTextInteraction(textInput);
+        textInput.clear();
+    }
+}
+
+void CompanionUI::drawText(const std::string& value, float x, float y, unsigned int size, sf::Color color) {
+    sf::Text text(font, value);
+    text.setCharacterSize(size);
+    text.setFillColor(color);
+    text.setPosition({x, y});
+    window.draw(text);
+}
+
+void CompanionUI::drawButton(const std::string& label, float x, float y, float width, float height, bool selected) {
+    sf::RectangleShape rect({width, height});
+    rect.setPosition({x, y});
+    rect.setFillColor(selected ? sf::Color(218, 233, 247) : kPanel);
+    rect.setOutlineColor(selected ? kBlue : sf::Color(215, 222, 230));
+    rect.setOutlineThickness(1.0f);
+    window.draw(rect);
+    drawText(label, x + 12, y + 12, 16, selected ? kBlue : kInk);
+}
+
+void CompanionUI::drawBar(const std::string& label, float value, float x, float y, float width) {
+    drawText(label + "  " + levelText(value), x, y, 15, kInk);
+    sf::RectangleShape track({width, 10});
+    track.setPosition({x, y + 25});
+    track.setFillColor(sf::Color(225, 230, 235));
+    window.draw(track);
+    sf::RectangleShape fill({width * clamp01(value), 10});
+    fill.setPosition({x, y + 25});
+    fill.setFillColor(kBlue);
+    window.draw(fill);
+}
+
+void CompanionUI::appendLog(const std::string& value) {
+    eventLog.push_back(value);
+    if (eventLog.size() > 12) eventLog.erase(eventLog.begin());
+}
+
+void CompanionUI::drawAgentSelectionScreen() {
+    drawText("CHOOSE COMPANION", 60, 120, 30, kInk);
+    drawText(researcherMode
+                 ? "Select A or B. The interface does not disclose the model behind either label."
+                 : "Select a companion to interact with.",
+             60, 170, 17, kMuted);
+    drawButton("Load Agent A", 180, 300, 400, 80, selectedAgentCode == 'A');
+    drawButton("Load Agent B", 700, 300, 400, 80, selectedAgentCode == 'B');
+    if (!researcherMode) {
+        drawText("After each interaction, use \"Answer Form\" to rate that companion.", 180, 430, 16, kMuted);
+        return;
+    }
+    drawText("[researcher mode]", 60, 205, 15, kMuted);
+    drawText(std::string("Mapping for this participant: A = ") + (agentAIsProposed ? "proposed" : "baseline") +
+                 ", B = " + (agentAIsProposed ? "baseline" : "proposed"),
+             180, 430, 16, kMuted);
+    drawText("Memory persists between sessions for the proposed model.", 180, 460, 16, kMuted);
+    drawButton("Clear Persistent Memory", 180, 540, 400, 54);
+    drawButton("New Participant", 700, 540, 400, 54);
+    drawText("Clear Persistent Memory deletes the proposed agent's saved memory only.", 180, 610, 14, kMuted);
+    drawText("New Participant clears memory, resets the session and alternates the A/B mapping.", 180, 632, 14, kMuted);
+}
+
+void CompanionUI::drawNavigation() {
+    drawButton("Simulation", 28, 12, 145, 42, screen == Screen::Simulation);
+    if (researcherMode) {
+        drawButton("Change Agent", 185, 12, 145, 42);
+        drawButton("Agent State", 342, 12, 145, 42, screen == Screen::AgentState);
+        drawButton("Comparison", 499, 12, 145, 42, screen == Screen::Comparison);
+        if (screen == Screen::Simulation)
+            drawButton(controlsVisible ? "Hide Controls" : "Show Controls", 1030, 12, 180, 42);
+        drawText("ANIMAL AGENT / SFML [researcher]", 700, 22, 15, kMuted);
+    } else {
+        drawButton("Change Model", 185, 12, 160, 42);
+        drawButton("Answer Form", 357, 12, 160, 42);
+    }
+}
+
+void CompanionUI::drawBackdrop(float x, float y, float width, float height) {
+    // Side-on yard: sky, lawn, a dirt strip that every character stands on, then
+    // atlas sprites. Source rectangles were measured from free.png (the house is
+    // 64x73 starting at y=55; the earlier crop cut the door off).
+    const SceneLayout L = sceneLayout();
+    const float horizon = y + height * 0.42f;
+
+    sf::RectangleShape sky({width, horizon - y});
+    sky.setPosition({x, y});
+    sky.setFillColor(sf::Color(158, 205, 232));
+    window.draw(sky);
+
+    sf::RectangleShape lawn({width, y + height - horizon});
+    lawn.setPosition({x, horizon});
+    lawn.setFillColor(sf::Color(122, 145, 78));
+    window.draw(lawn);
+
+    sf::RectangleShape track({width, 44.0f});
+    track.setPosition({x, L.groundY - 10.0f});
+    track.setFillColor(sf::Color(160, 135, 83));
+    window.draw(track);
+
+    auto sprite = [&](sf::IntRect source, sf::Vector2f position, float scale) {
+        if (!environmentTextureLoaded) return;
+        sf::Sprite item(environmentTexture);
+        item.setTextureRect(source);
+        item.setScale({scale, scale});
+        item.setPosition(position);
+        window.draw(item);
+    };
+
+    sprite(sf::IntRect({0, 55}, {64, 73}), {L.houseX, L.groundY - 30.0f - 73.0f * 3.0f}, 3.0f);
+    sprite(sf::IntRect({144, 48}, {32, 32}), {L.treeX, L.groundY - 20.0f - 32.0f * 4.0f}, 4.0f);
+    for (int i = 0; i < 4; ++i) {
+        sprite(sf::IntRect({160, 133}, {16, 26}),
+               {x + width - 250.0f + static_cast<float>(i) * 44.0f, y + height - 8.0f - 26.0f * 2.5f}, 2.5f);
+    }
+}
+
+void CompanionUI::drawSimulationScreen() {
+    const SceneLayout L = sceneLayout();
+    drawText(researcherMode ? "MAIN SIMULATION" : "COMPANION SIMULATION", 30, 75, 26, kInk);
+    drawText(researcherMode ? "Both policies receive the same interpreted interaction."
+                            : "Use the buttons or the message box to interact with the companion.",
+             30, 106, 15, kMuted);
+
+    sf::RectangleShape scene({L.w, L.h});
+    scene.setPosition({L.x, L.y});
+    scene.setFillColor(sf::Color(122, 145, 78));
+    scene.setOutlineColor(sf::Color(83, 104, 55));
+    scene.setOutlineThickness(1);
+    window.draw(scene);
+    drawBackdrop(L.x, L.y, L.w, L.h);
+    drawSceneObjects();
+    drawPlayer(L.userX, L.groundY);
+    drawCompanion(agentX, L.groundY);
+    drawText("YOU", L.userX - 14.0f, L.groundY + 14.0f, 13, kInk);
+    drawText(std::string("Companion ") + selectedAgentCode, agentX - 46.0f, L.groundY + 14.0f, 13, kInk);
+
+    if (researcherMode) {
+        const std::string visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
+        drawText(std::string("Agent ") + selectedAgentCode + " action: " + visibleAction, 50, 150, 16, kGreen);
+        drawText("Input interpretation: " + nlpMethod, 50, 172, 14, kMuted);
+    }
+    if (!controlsVisible) {
+        drawText("Controls hidden - use Show Controls to interact", 50, 200, 16, kInk);
+        drawHover();
+        return;
+    }
+
+    const float firstRowY = L.y + L.h + 15.0f;
+    for (std::size_t i = 0; i < kControls.size(); ++i) {
+        drawButton(kControls[i].label,
+                   kButtonX0 + static_cast<float>(i % 5) * (kButtonW + kButtonGap),
+                   firstRowY + static_cast<float>(i / 5) * kButtonRowStep, kButtonW, kButtonH);
+    }
+    drawButton(textInput.empty() ? "Type a message here, then press Enter" : textInput,
+               35, kInputY, 980, kInputH, textInputFocused);
+    drawButton("Send", 1030, kInputY, 120, kInputH);
+    drawText("Enter to send | Esc to quit", 850, kInputY + 54.0f, 13, kMuted);
+
+    if (researcherMode) {
+        drawText("Recent activity", 35, 768, 18, kInk);
+        float logY = 794;
+        for (auto it = eventLog.rbegin(); it != eventLog.rend() && logY < 880; ++it, logY += 19)
+            drawText(*it, 45, logY, 13, kMuted);
+    }
+    drawHover();
+}
+
+void CompanionUI::drawAgentStateScreen() {
+    drawText("AGENT STATE", 30, 75, 26, kInk);
+    drawText("Current context, affect and retrieved memory", 30, 106, 15, kMuted);
+    drawButton("Clear Memory Files", 930, 750, 280, 44);
+    auto panel = [&](float x, float y, float w, float h) {
+        sf::RectangleShape r({w, h}); r.setPosition({x, y}); r.setFillColor(kPanel);
+        r.setOutlineColor(sf::Color(220, 225, 232)); r.setOutlineThickness(1); window.draw(r);
+    };
+    panel(30, 140, 590, 270); panel(640, 140, 608, 270); panel(30, 425, 1218, 300);
+    const auto& affect = proposed.getAffectiveState();
+    drawText("Affective state (proposed agent)", 50, 158, 19, kGreen);
+    drawBar("Attachment / affinity", affect.affinity, 50, 200, 235);
+    drawBar("Stress", affect.stress, 340, 200, 235);
+    drawBar("Arousal", affect.arousal, 50, 270, 235);
+    drawBar("Engagement", affect.engagement, 340, 270, 235);
+    drawText("Valence", 50, 350, 15, kInk);
+    drawText(affect.valence == AffectValence::POSITIVE ? "Positive" :
+             affect.valence == AffectValence::NEGATIVE ? "Negative" : "Neutral", 150, 350, 15, kBlue);
+    drawText("Current action: " + latestProposedAction, 50, 380, 15, kInk);
+
+    drawText("Current interaction context", 660, 158, 19, kBlue);
+    drawText("Stimulus: " + latestStimulus, 660, 200, 15);
+    drawText("Intent code: " + std::to_string(latestObservation.goal_state), 660, 230, 15);
+    drawText("Target proximity: " + std::to_string(latestObservation.target_proximity), 660, 260, 15);
+    drawText("Task active: " + std::string(latestObservation.task_status ? "Yes" : "No"), 660, 290, 15);
+    drawText("Signal strength: " + std::to_string(latestObservation.signal_strength), 660, 320, 15);
+    drawText("Interactions: " + std::to_string(interactionCount), 660, 350, 15);
+    drawText("Current user context: local simulation session", 660, 380, 15);
+
+    drawText("Relevant stored memories (proposed agent)", 50, 445, 19, kGreen);
+    const auto& memories = proposed.getMemoryRecords();
+    if (memories.empty()) drawText("No interaction memories have been recorded yet.", 50, 490, 16, kMuted);
+    float y = 490;
+    for (auto it = memories.rbegin(); it != memories.rend() && y < 690; ++it, y += 38) {
+        std::ostringstream row;
+        row << it->raw_fact.subject << "  --" << it->raw_fact.relation << "-->  "
+            << it->raw_fact.object << "   | confidence " << std::fixed << std::setprecision(2) << it->confidence
+            << " | context " << (it->current_context == record::USER_SPECIFIC ? "user-specific" : "general");
+        drawText(row.str(), 50, y, 14, kInk);
+    }
+}
+
+void CompanionUI::drawComparisonScreen() {
+    drawText("AGENT COMPARISON", 30, 75, 26, kInk);
+    drawText("Both agents receive identical interaction scenarios.", 30, 106, 15, kMuted);
+    sf::RectangleShape left({590, 260}); left.setPosition({30, 145}); left.setFillColor(kPanel);
+    left.setOutlineColor(sf::Color(215, 222, 230)); left.setOutlineThickness(1); window.draw(left);
+    sf::RectangleShape right({608, 260}); right.setPosition({640, 145}); right.setFillColor(kPanel);
+    right.setOutlineColor(sf::Color(215, 222, 230)); right.setOutlineThickness(1); window.draw(right);
+    drawText("BASELINE AGENT", 55, 165, 20, kBlue);
+    drawText(describeAction(latestBaselineAction), 55, 220, 18, kInk);
+    drawText("No persistent semantic memory / affect augmentation", 55, 265, 14, kMuted);
+    drawText("Interactions observed: " + std::to_string(baseline.getInteractionHistory().size()), 55, 310, 15);
+    drawText("Last reward signal: " + std::to_string(baseline.getSessionContext().last_reward), 55, 345, 15);
+    drawText("PROPOSED AGENT", 665, 165, 20, kGreen);
+    drawText(describeAction(latestProposedAction), 665, 220, 18, kInk);
+    drawText("Memory + affective-state augmentation", 665, 265, 14, kMuted);
+    drawText("Memories stored: " + std::to_string(proposed.getMemoryRecords().size()), 665, 310, 15);
+    drawText("Interactions observed: " + std::to_string(proposed.getInteractionHistory().size()), 665, 345, 15);
+    drawText("Last reward signal: " + std::to_string(proposed.getSessionContext().last_reward), 665, 380, 15);
+
+    sf::RectangleShape logPanel({1218, 265}); logPanel.setPosition({30, 425}); logPanel.setFillColor(kPanel);
+    logPanel.setOutlineColor(sf::Color(215, 222, 230)); logPanel.setOutlineThickness(1); window.draw(logPanel);
+    drawText("Response history", 50, 445, 19, kInk);
+    float y = 485;
+    for (auto it = eventLog.rbegin(); it != eventLog.rend() && y < 660; ++it, y += 27) {
+        drawText(*it, 55, y, 15, kMuted);
+    }
+    drawText("Use the Simulation tab to run another shared interaction.", 50, 690, 14, kMuted);
+}
+
+void CompanionUI::draw() {
+    window.clear(kBackground);
+    if (screen == Screen::AgentSelection) {
+        drawAgentSelectionScreen();
+    } else {
+        drawNavigation();
+        if (screen == Screen::Simulation) drawSimulationScreen();
+        else if (screen == Screen::AgentState) drawAgentStateScreen();
+        else drawComparisonScreen();
+    }
+    window.display();
+}
+
+void CompanionUI::saveSession() {
+    try {
+        const auto directory = std::filesystem::path(outputDirectory);
+        std::filesystem::create_directories(directory);
+        nlohmann::json session;
+        session["run_id"] = runId;
+        session["condition_code"] = std::string(1, selectedAgentCode);
+        session["interaction_count"] = interactionCount;
+        session["latest_stimulus"] = latestStimulus;
+        session["baseline_action"] = latestBaselineAction;
+        session["proposed_action"] = latestProposedAction;
+        session["interactions"] = nlohmann::json::array();
+        for (std::size_t i = 0; i < eventLog.size(); ++i) {
+            session["interactions"].push_back(eventLog[i]);
+        }
+        std::ofstream out(directory / "simulation-session.json");
+        if (!out) {
+            std::cerr << "Unable to write simulation session summary.\n";
+            return;
+        }
+        out << session.dump(2) << '\n';
+        baseline.savePersistentState((directory / "baseline-session.qtable").string());
+        proposed.savePersistentContext((std::filesystem::path(policyDirectory) / "proposed.qtable").string());
+    } catch (const std::exception& e) {
+        std::cerr << "Unable to save simulation session: " << e.what() << '\n';
+    }
+}
