@@ -72,7 +72,7 @@ These are synthetic engineering diagnostics only. The reward model does not meas
 
 ### Interactive SFML simulation UI
 
-Launch the replacement three-screen simulation interface:
+Launch the participant-facing companion simulation interface:
 
 ```sh
 ./build/IS-2 --sim
@@ -87,7 +87,7 @@ export ANIMAL_AGENT_STUDY_FORM_URL="https://your-approved-questionnaire-url"
 ./build/IS-2 --sim
 ```
 
-If the variable is unset or invalid, the application logs a message instead of opening a placeholder URL. Researcher mode is available through the `CompanionUI` constructor's third argument; the default `--sim` launch intentionally uses participant-facing mode.
+If the variable is unset or invalid, the application logs a message instead of opening a placeholder URL. Launch `./build/IS-2 --sim-researcher` to enable researcher mode; the default `--sim` launch intentionally uses participant-facing mode.
 
 The text input is routed through the persistent spaCy NLP service when available, with a C++ keyword fallback. It recognises fetch/request, praise, disturbance, rest, negative feedback, feeding, and play contexts. Preset controls use fixed development reward signals, so this UI is for simulation and debugging, not a substitute for the controlled participant-study protocol. The interface saves a session summary and session Q-table copies under `artifacts/simulation/`. Explicit general preferences are stored without forcing an immediate action; the proposed agent may use a preference only when the later context is relevant (for example, a dislike of sound during a loud disturbance). Such general preferences do not override urgent affective needs or a directly matching explicit fetch request. Interaction logs include general semantic preference records among the proposed agent's memory candidates.
 
