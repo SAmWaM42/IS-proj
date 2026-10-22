@@ -1958,6 +1958,30 @@ bool testNegativeFeedbackUpdatesAffectDimensions() {
            affect.energy == AffectEnergy::LOW;
 }
 
+bool testMemoryQueryRankingMatchesOnlyRelevantRecords() {
+    record matching;
+    matching.raw_fact.subject = "user";
+    matching.raw_fact.relation = "likes";
+    matching.raw_fact.object = "fetch";
+    matching.confidence = 0.5f;
+    matching.relevance = 0.5f;
+    matching.recency = 0.5f;
+
+    record unrelated;
+    unrelated.raw_fact.subject = "user";
+    unrelated.raw_fact.relation = "dislikes";
+    unrelated.raw_fact.object = "barking";
+    unrelated.confidence = 0.5f;
+    unrelated.relevance = 0.5f;
+    unrelated.recency = 0.5f;
+
+    const auto ranked = rankRelevantRecords({unrelated, matching}, "FETCH");
+    if (ranked.size() != 2) return false;
+    // Matching record receives a relevance bonus and should rank first even
+    // when it starts second in the input list.
+    return ranked.front().raw_fact.object == "fetch";
+}
+
 bool runBaselineValidation() {
     std::vector<TestResultRecord> results;
     results.push_back({"Basic Q update", "PASS", testBasicQUpdate(), "baseline"});
@@ -1986,6 +2010,7 @@ bool runBaselineValidation() {
     results.push_back({"Memory/affect encoding", "PASS", testMemoryAffectStateEncoding(), "state"});
     results.push_back({"Context summary state changes", "PASS", testContextSummaryChangesState(), "state"});
     results.push_back({"Live memory summary state changes", "PASS", testLiveMemorySummariesChangeState(), "memory"});
+    results.push_back({"Memory query ranking matches relevant records case-insensitively", "PASS", testMemoryQueryRankingMatchesOnlyRelevantRecords(), "memory"});
     results.push_back({"Persistence round trip and aggregation", "PASS", testPersistenceRoundTripAndAggregation(), "persistence"});
     results.push_back({"Runtime lifecycle and environment contract", "PASS", testRuntimeLifecycleAndEnvironmentContract(), "runtime"});
 
