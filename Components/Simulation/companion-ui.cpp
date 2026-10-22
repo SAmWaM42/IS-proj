@@ -879,11 +879,18 @@ void CompanionUI::handleClick(sf::Vector2f point) {
     if (!controlsVisible) return;
     textInputFocused = y >= 755 && y <= 805;
     if (y >= 550 && y <= 594) {
-        if (x >= 40 && x < 255) processInteraction("Greet the companion", {0, 1, 0, 0, 0.55f}, 0.65f);
-        else if (x >= 275 && x < 490) processInteraction("Ask the companion to fetch the ball", {1, 1, 1, 1, 0.85f}, 0.85f);
-        else if (x >= 510 && x < 725) processInteraction("Praise the companion", {0, 0, 1, 0, 0.75f}, 1.0f);
-        else if (x >= 745 && x < 960) processInteraction("A sudden loud noise occurs", {2, 0, 0, 0, 0.95f}, -0.15f);
-        else if (x >= 980 && x < 1200) processInteraction("The companion should rest", {2, 2, 0, 0, 0.20f}, 0.25f);
+        const int buttonIndex = static_cast<int>((x - 35.0f) / 151.0f);
+        switch (buttonIndex) {
+            case 0: processInteraction("Greet the companion", {0, 1, 0, 0, 0.55f}, 0.0f); break;
+            case 1: processInteraction("Ask the companion to fetch the ball", {1, 1, 1, 1, 0.85f}, 0.0f); break;
+            case 2: processInteraction("Feed the companion", {2, 0, 1, 0, 0.30f, true, false}, 0.0f); break;
+            case 3: processInteraction("Invite the companion to play", {0, 1, 1, 0, 0.70f, false, true}, 0.0f); break;
+            case 4: processInteraction("Praise the companion", {0, 0, 1, 0, 0.75f}, 1.0f); break;
+            case 5: processInteraction("Scold the companion", {0, 1, 2, 0, 0.45f}, -1.0f); break;
+            case 6: processInteraction("Explore the yard", {2, 2, 0, 0, 0.40f}, 0.0f); break;
+            case 7: processInteraction("The companion should rest", {2, 2, 0, 0, 0.20f}, 0.0f); break;
+            default: break;
+        }
         return;
     }
     if (y >= 755 && y <= 805 && x >= 1020 && !textInput.empty()) {
@@ -1029,9 +1036,9 @@ void CompanionUI::drawSimulationScreen() {
         drawText("Controls hidden - use Show Controls to interact", 50, 235, 16, kInk);
         return;
     }
-    const std::array<std::string, 5> labels{{"Greet", "Fetch ball", "Praise", "Loud noise", "Rest"}};
+    const std::array<std::string, 8> labels{{"Greet", "Fetch", "Feed", "Play", "Praise", "Scold", "Explore", "Rest"}};
     for (std::size_t i = 0; i < labels.size(); ++i)
-        drawButton(labels[i], 40.0f + static_cast<float>(i) * 235.0f, 550, 215, 44);
+        drawButton(labels[i], 35.0f + static_cast<float>(i) * 151.0f, 550, 143, 44);
     drawText("Recent activity", 35, 610, 18, kInk);
     float logY = 637;
     for (auto it = eventLog.rbegin(); it != eventLog.rend() && logY < 720; ++it, logY += 20)
@@ -1056,10 +1063,11 @@ void CompanionUI::drawAgentStateScreen() {
     drawBar("Stress", affect.stress, 340, 200, 235);
     drawBar("Arousal", affect.arousal, 50, 270, 235);
     drawBar("Engagement", affect.engagement, 340, 270, 235);
-    drawText("Valence", 50, 350, 15, kInk);
+    drawBar("Energy", proposedEnergy, 50, 320, 235);
+    drawText("Valence", 340, 350, 15, kInk);
     drawText(affect.valence == AffectValence::POSITIVE ? "Positive" :
-             affect.valence == AffectValence::NEGATIVE ? "Negative" : "Neutral", 150, 350, 15, kBlue);
-    drawText("Current action: " + latestProposedAction, 50, 380, 15, kInk);
+             affect.valence == AffectValence::NEGATIVE ? "Negative" : "Neutral", 440, 350, 15, kBlue);
+    drawText("Current action: " + latestProposedAction, 50, 385, 15, kInk);
 
     drawText("Current interaction context", 660, 158, 19, kBlue);
     drawText("Stimulus: " + latestStimulus, 660, 200, 15);
@@ -1071,8 +1079,8 @@ void CompanionUI::drawAgentStateScreen() {
     drawText("Current user context: local simulation session", 660, 380, 15);
 
     drawText("Relevant stored memories (proposed agent)", 50, 445, 19, kGreen);
-    const auto& memories = proposed.getMemoryRecords();
-    if (memories.empty()) drawText("No interaction memories have been recorded yet.", 50, 490, 16, kMuted);
+    const auto memories = rankRelevantRecords(proposed.getMemoryRecords(), latestStimulus);
+    if (memories.empty()) drawText("No relevant interaction memories have been retrieved yet.", 50, 490, 16, kMuted);
     float y = 490;
     for (auto it = memories.rbegin(); it != memories.rend() && y < 690; ++it, y += 38) {
         std::ostringstream row;
