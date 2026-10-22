@@ -17,6 +17,7 @@ struct BackyardWorldState {
 class BackyardEnvironment {
 public:
     const BackyardWorldState& state() const noexcept { return world; }
+    void reset();
     void beginInteraction();
     void applyAction(const std::string& action);
     void applyStimulus(const std::string& stimulus);
