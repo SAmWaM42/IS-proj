@@ -282,7 +282,14 @@ namespace
         return 0.16f * (positiveWeight - negativeWeight);
     }
 
-    std::pair<std::string, float> exactOneStepOracle(
+    struct OneStepOracleResult
+    {
+        std::string best_action;
+        float best_value = -std::numeric_limits<float>::infinity();
+        std::map<std::string, float> q_values;
+    };
+
+    OneStepOracleResult exactOneStepOracle(
         const EnvironmentObservation &observation,
         float energy,
         float stress,
@@ -293,8 +300,7 @@ namespace
         // terminal, so each Q*(s,a) is the analytically expected immediate reward.
         // This is not presented as the optimal policy for the multi-step world.
         const auto actions = validActionsForObservation(observation);
-        std::string bestAction = actions.front();
-        float bestValue = -std::numeric_limits<float>::infinity();
+        OneStepOracleResult result;
         for (const auto &action : actions) {
             float effort = 0.012f;
             if (action == "FETCH" && observation.task_status == 1 && observation.target_proximity < 3) {
@@ -323,12 +329,13 @@ namespace
             }
             const float expectedReward = expectedBaseReward - effort +
                 expectedUserFeedbackReward(action, observation, energy, stress, satisfaction, user);
-            if (expectedReward > bestValue) {
-                bestValue = expectedReward;
-                bestAction = action;
+            result.q_values[action] = expectedReward;
+            if (expectedReward > result.best_value) {
+                result.best_value = expectedReward;
+                result.best_action = action;
             }
         }
-        return {bestAction, bestValue};
+        return result;
     }
 
     EnvironmentStep applyEnvironmentAction(const std::string &action,
@@ -752,7 +759,7 @@ namespace
             const auto oracle = exactOneStepOracle(
                 observation, energyBefore, stressBefore, userSatisfaction, user);
             ++metrics.oracle_checks;
-            const bool oracleAgreement = action == oracle.first;
+            const bool oracleAgreement = action == oracle.best_action;
             if (oracleAgreement) ++metrics.oracle_agreements;
             // Same seed per episode/step gives both agents paired environmental noise,
             // independent of how many stochastic actions either policy selected.
@@ -828,8 +835,9 @@ namespace
             row["encoded_state"] = stateKeyBeforeAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
             row["reward"] = transition.reward;
-            row["one_step_oracle_action"] = oracle.first;
-            row["one_step_oracle_expected_reward"] = oracle.second;
+            row["one_step_oracle_action"] = oracle.best_action;
+            row["one_step_oracle_expected_reward"] = oracle.best_value;
+            row["one_step_oracle_q_values"] = oracle.q_values;
             row["one_step_oracle_agreement"] = oracleAgreement;
             row["reward_components"] = {
                 {"context_fit", transition.context_fit},
