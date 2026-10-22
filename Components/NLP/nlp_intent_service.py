@@ -20,8 +20,8 @@ INTENTS = {
     "explore": (2, 2, 0, 0.40, 0.0),
     "disturbance": (2, 0, 0, 0.95, 0.0),
     "rest": (2, 2, 0, 0.20, 0.0),
-    "negative_feedback": (0, 1, 2, 0.45, -1.0),
-    "praise": (0, 0, 1, 0.75, 1.0),
+    "negative_feedback": (0, 1, 0, 0.45, -1.0),
+    "praise": (0, 0, 0, 0.75, 1.0),
     "unknown": (0, 1, 0, 0.45, 0.25),
 }
 
@@ -101,6 +101,7 @@ def handle_line(line):
     goal, proximity, task, signal, reward = INTENTS[intent]
     print(json.dumps({
         "intent": intent, "goal_state": goal, "target_proximity": proximity,
+        "user_status": 2 if intent == "negative_feedback" else 1 if intent == "praise" else 0,
         "task_status": task, "signal_strength": signal, "reward": reward,
         "food_available": intent == "feeding",
         "play_available": intent == "play",
