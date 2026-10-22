@@ -913,7 +913,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
     if (!controlsVisible) return;
     textInputFocused = y >= 755 && y <= 805;
     if (y >= 550 && y <= 594) {
-        const int buttonIndex = static_cast<int>((x - 35.0f) / 151.0f);
+        const int buttonIndex = static_cast<int>((x - 35.0f) / 134.0f);
         switch (buttonIndex) {
             case 0: processInteraction("Greet the companion", {0, 1, 0, 0, 0.55f}, 0.0f); break;
             case 1: processInteraction("Ask the companion to fetch the ball", {1, 1, 1, 1, 0.85f}, 0.0f); break;
@@ -923,6 +923,12 @@ void CompanionUI::handleClick(sf::Vector2f point) {
             case 5: processInteraction("Scold the companion", {0, 1, 2, 0, 0.45f}, -1.0f); break;
             case 6: processInteraction("Explore the yard", {2, 2, 0, 0, 0.40f}, 0.0f); break;
             case 7: processInteraction("The companion should rest", {2, 2, 0, 0, 0.20f}, 0.0f); break;
+            case 8:
+                if (interactionCount > 0)
+                    processInteraction("Repeat: " + latestStimulus, latestObservation, 0.0f);
+                else
+                    appendLog("Interact once before repeating a scenario.");
+                break;
             default: break;
         }
         return;
@@ -1070,9 +1076,9 @@ void CompanionUI::drawSimulationScreen() {
         drawText("Controls hidden - use Show Controls to interact", 50, 235, 16, kInk);
         return;
     }
-    const std::array<std::string, 8> labels{{"Greet", "Fetch", "Feed", "Play", "Praise", "Scold", "Explore", "Rest"}};
+    const std::array<std::string, 9> labels{{"Greet", "Fetch", "Feed", "Play", "Praise", "Scold", "Explore", "Rest", "Repeat last"}};
     for (std::size_t i = 0; i < labels.size(); ++i)
-        drawButton(labels[i], 35.0f + static_cast<float>(i) * 151.0f, 550, 143, 44);
+        drawButton(labels[i], 35.0f + static_cast<float>(i) * 134.0f, 550, 128, 44);
     drawText("Recent activity", 35, 610, 18, kInk);
     float logY = 637;
     for (auto it = eventLog.rbegin(); it != eventLog.rend() && logY < 720; ++it, logY += 20)
