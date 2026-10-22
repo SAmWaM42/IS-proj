@@ -78,7 +78,16 @@ Launch the replacement three-screen simulation interface:
 ./build/IS-2 --sim
 ```
 
-The UI follows the Chapter 3.5.3 wireframes: **Main Simulation** provides the environment, preset interaction controls and text input; **Agent State** exposes proposed-agent affect and recent stored memory records; **Comparison** presents both agents' responses to the same interaction stream.
+The UI follows the Chapter 3.5.3 wireframes. The default participant-facing mode presents an A/B companion selection and simulation without exposing internal action labels, memory, affect, or comparison statistics. The simulation includes a backyard scene, animated companion behaviour, preset interactions, hover descriptions for scene objects, and text input. The optional researcher mode exposes agent state and comparison screens for debugging.
+
+The participant-facing Answer Form button opens the configured questionnaire URL. Set it in the environment before launching the UI (do not hard-code participant URLs into source control):
+
+```sh
+export ANIMAL_AGENT_STUDY_FORM_URL="https://your-approved-questionnaire-url"
+./build/IS-2 --sim
+```
+
+If the variable is unset or invalid, the application logs a message instead of opening a placeholder URL. Researcher mode is available through the `CompanionUI` constructor's third argument; the default `--sim` launch intentionally uses participant-facing mode.
 
 The text input is routed through the persistent spaCy NLP service when available, with a C++ keyword fallback. It recognises fetch/request, praise, disturbance, rest, negative feedback, feeding, and play contexts. Preset controls use fixed development reward signals, so this UI is for simulation and debugging, not a substitute for the controlled participant-study protocol. The interface saves a session summary and session Q-table copies under `artifacts/simulation/`. Explicit general preferences are stored without forcing an immediate action; the proposed agent may use a preference only when the later context is relevant (for example, a dislike of sound during a loud disturbance). Such general preferences do not override urgent affective needs or a directly matching explicit fetch request. Interaction logs include general semantic preference records among the proposed agent's memory candidates.
 
@@ -95,9 +104,7 @@ python -m pip install spacy
 python -m spacy download en_core_web_sm
 ```
 
-The UI currently launches `python3` by name, so ensure the desired Python environment is active before starting the application. The renderer maps both agents' selected actions to the same available animation groups. The included dog sprite sheet is loaded from `Data/Assets/DogMegaPackFree/DogMegaPackFree/Dogs.png`; verify the source sheet's exact frame layout visually and adjust the 4-by-4 frame mapping if its cells do not correspond to animation frames. If the image cannot be loaded, it falls back to the vector placeholder. The larger window and Hide Controls button provide more room for the yard view.
-
-This is an initial sprite-sheet integration: verify the source sheet's exact frame layout visually and adjust the 4-by-4 frame mapping if its cells do not correspond to animation frames. The NLP intent mapper still emits a small set of discrete intents and fixed development reward signals; it is not a general dialogue model or a validated participant-feedback mechanism.
+The UI launches `python3` by name, so activate the intended virtual environment before starting the application. The scene uses the supplied dog pose frames from `Data/Assets/white_dog_by_Brysia/` and the backyard atlas from `Data/Assets/free version/free.png`. If pose frames are missing, the UI reports this in the activity log; verify that these asset paths exist in your checkout. The NLP intent mapper still emits a small set of discrete intents and fixed development reward signals; it is not a general dialogue model or a validated participant-feedback mechanism.
 
 ### Participant study prototype
 
