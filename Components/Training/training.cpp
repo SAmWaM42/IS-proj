@@ -255,31 +255,63 @@ namespace
                           incongruencePenalty - 0.05f, -1.0f, 1.0f);
     }
 
+    struct UserFeedbackProbabilities
+    {
+        float negative = 0.0f;
+        float neutral = 0.0f;
+        float positive = 0.0f;
+        float ignored = 0.0f;
+    };
+
+    UserFeedbackProbabilities userFeedbackProbabilities(
+        const std::string &action,
+        const EnvironmentObservation &observation,
+        float energy,
+        float stress,
+        const SimulatedUserProfile &user)
+    {
+        const float fit = actionContextFit(action, observation, energy, stress);
+        float positiveGivenResponse = 0.18f +
+            0.34f * std::clamp((fit + 1.0f) * 0.5f, 0.0f, 1.0f) +
+            0.18f * user.praise_responsiveness;
+        if (observation.play_available) positiveGivenResponse += 0.12f * user.playfulness;
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+            positiveGivenResponse -= 0.18f * user.noise_sensitivity;
+
+        float negativeGivenResponse = 0.08f + 0.22f * user.rejection_sensitivity +
+            0.20f * std::clamp(-fit, 0.0f, 1.0f);
+        if (observation.user_status == 2)
+            negativeGivenResponse += 0.12f * user.rejection_sensitivity;
+
+        positiveGivenResponse = std::clamp(positiveGivenResponse, 0.03f, 0.85f);
+        negativeGivenResponse = std::clamp(negativeGivenResponse, 0.03f, 0.80f);
+        const float responseRate = std::clamp(user.response_rate, 0.0f, 1.0f);
+        float positive = positiveGivenResponse * responseRate;
+        float negative = negativeGivenResponse * responseRate;
+        const float responseNormaliser = positive + negative;
+        if (responseNormaliser > 0.92f * responseRate && responseNormaliser > 0.0f) {
+            const float scale = (0.92f * responseRate) / responseNormaliser;
+            positive *= scale;
+            negative *= scale;
+        }
+
+        UserFeedbackProbabilities result;
+        result.positive = positive;
+        result.negative = negative;
+        result.neutral = std::max(0.0f, responseRate - positive - negative);
+        result.ignored = std::max(0.0f, 1.0f - responseRate);
+        return result;
+    }
+
     float expectedUserFeedbackReward(const std::string &action,
                                      const EnvironmentObservation &observation,
                                      float energy,
                                      float stress,
-                                     float satisfaction,
                                      const SimulatedUserProfile &user)
     {
-        const float fit = actionContextFit(action, observation, energy, stress);
-        float positiveWeight = 0.18f + 0.34f * std::clamp((fit + 1.0f) * 0.5f, 0.0f, 1.0f)
-                             + 0.18f * user.praise_responsiveness;
-        if (observation.play_available) positiveWeight += 0.12f * user.playfulness;
-        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
-            positiveWeight -= 0.18f * user.noise_sensitivity;
-        float negativeWeight = 0.08f + 0.22f * user.rejection_sensitivity
-                             + 0.20f * std::clamp(-fit, 0.0f, 1.0f);
-        if (observation.user_status == 2) negativeWeight += 0.12f * user.rejection_sensitivity;
-        positiveWeight = std::clamp(positiveWeight * user.response_rate, 0.03f, 0.85f);
-        negativeWeight = std::clamp(negativeWeight * (0.6f + 0.4f * user.response_rate), 0.03f, 0.80f);
-        const float normalizer = positiveWeight + negativeWeight;
-        if (normalizer > 0.92f) {
-            positiveWeight *= 0.92f / normalizer;
-            negativeWeight *= 0.92f / normalizer;
-        }
-        (void)satisfaction;
-        return 0.16f * (positiveWeight - negativeWeight);
+        const auto probabilities = userFeedbackProbabilities(
+            action, observation, energy, stress, user);
+        return 0.16f * (probabilities.positive - probabilities.negative);
     }
 
     struct OneStepOracleResult
@@ -328,7 +360,7 @@ namespace
                                      (1.0f - successProbability) * expectedBaseReward;
             }
             const float expectedReward = expectedBaseReward - effort +
-                expectedUserFeedbackReward(action, observation, energy, stress, satisfaction, user);
+                expectedUserFeedbackReward(action, observation, energy, stress, user);
             result.q_values[action] = expectedReward;
             if (expectedReward > result.best_value) {
                 result.best_value = expectedReward;
@@ -429,29 +461,22 @@ namespace
 
         // A latent simulated user supplies noisy positive/neutral/negative feedback.
         // Traits influence probabilities, not observations or policy state.
-        const float profileResponse = user.response_rate;
-        float positiveWeight = 0.18f + 0.34f * std::clamp((fit + 1.0f) * 0.5f, 0.0f, 1.0f)
-                             + 0.18f * user.praise_responsiveness;
-        if (observation.play_available) positiveWeight += 0.12f * user.playfulness;
-        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
-            positiveWeight -= 0.18f * user.noise_sensitivity;
-        float negativeWeight = 0.08f + 0.22f * user.rejection_sensitivity
-                             + 0.20f * std::clamp(-fit, 0.0f, 1.0f);
-        if (observation.user_status == 2) negativeWeight += 0.12f * user.rejection_sensitivity;
-        positiveWeight = std::clamp(positiveWeight * profileResponse, 0.03f, 0.85f);
-        negativeWeight = std::clamp(negativeWeight * (0.6f + 0.4f * profileResponse), 0.03f, 0.80f);
-        const float normalizer = positiveWeight + negativeWeight;
-        if (normalizer > 0.92f) {
-            positiveWeight *= 0.92f / normalizer;
-            negativeWeight *= 0.92f / normalizer;
+        const auto feedbackProbabilities = userFeedbackProbabilities(
+            action, observation, energyBefore, stressBefore, user);
+        std::discrete_distribution<int> feedback({
+            feedbackProbabilities.negative,
+            feedbackProbabilities.neutral,
+            feedbackProbabilities.positive,
+            feedbackProbabilities.ignored
+        });
+        result.user_feedback = feedback(rng) - 1; // -1 negative, 0 neutral, +1 positive, +2 ignored
+        const float stochasticFeedbackReward =
+            result.user_feedback == 2 ? 0.0f : 0.16f * static_cast<float>(result.user_feedback);
+        if (result.user_feedback != 2) {
+            result.user_satisfaction_after = std::clamp(
+                result.user_satisfaction_after + 0.04f * static_cast<float>(result.user_feedback),
+                0.0f, 1.0f);
         }
-        const float neutralWeight = std::max(0.08f, 1.0f - positiveWeight - negativeWeight);
-        std::discrete_distribution<int> feedback({negativeWeight, neutralWeight, positiveWeight});
-        result.user_feedback = feedback(rng) - 1; // -1 negative, 0 neutral, +1 positive
-        const float stochasticFeedbackReward = 0.16f * static_cast<float>(result.user_feedback);
-        result.user_satisfaction_after = std::clamp(
-            result.user_satisfaction_after + 0.04f * static_cast<float>(result.user_feedback),
-            0.0f, 1.0f);
         result.reward = std::clamp(
             rewardFor(action, observation, fetchSucceeded, energyBefore, stressBefore,
                       satisfactionBefore) - effort + stochasticFeedbackReward,
@@ -842,8 +867,8 @@ namespace
             row["reward_components"] = {
                 {"context_fit", transition.context_fit},
                 {"effort_cost", transition.effort_cost},
-                {"stochastic_user_feedback", 0.16f * static_cast<float>(transition.user_feedback)},
-                {"user_feedback_class", transition.user_feedback}
+                {"stochastic_user_feedback", transition.user_feedback == 2 ? 0.0f : 0.16f * static_cast<float>(transition.user_feedback)},
+                {"user_feedback_class", transition.user_feedback == 2 ? "ignored" : transition.user_feedback < 0 ? "negative" : transition.user_feedback > 0 ? "positive" : "neutral"}
             };
             row["terminated"] = terminated;
             row["truncated"] = truncated;
