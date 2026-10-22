@@ -90,7 +90,16 @@ private:
     void stopService() {
         if (childInput >= 0) { close(childInput); childInput = -1; }
         if (childOutput >= 0) { close(childOutput); childOutput = -1; }
-        if (child > 0) { int status = 0; waitpid(child, &status, 0); child = -1; }
+        if (child > 0) {
+            int status = 0;
+            // A timed-out/unresponsive service must not make shutdown wait
+            // forever. Reap it normally if it has exited, otherwise terminate it.
+            if (waitpid(child, &status, WNOHANG) == 0) {
+                kill(child, SIGKILL);
+                waitpid(child, &status, 0);
+            }
+            child = -1;
+        }
     }
     std::string exchange(const std::string& line) {
         if (childInput < 0 || childOutput < 0) return {};
@@ -132,6 +141,8 @@ private:
                 requests.pop();
             }
             std::string response;
+            // Retry service startup for later requests after a transient failure.
+            if (!running) running = startService();
             if (running) response = exchange(requestItem.jsonLine);
             if (response.empty()) {
                 if (running) { stopService(); running = false; }
