@@ -374,6 +374,47 @@ namespace
         return result;
     }
 
+    std::vector<EnvironmentObservation> makeEpisodeObservations(
+        std::mt19937 &rng, int steps, bool heldOut)
+    {
+        std::vector<EnvironmentObservation> observations;
+        observations.reserve(static_cast<std::size_t>(steps));
+        if (heldOut) {
+            // These joint combinations are deliberately absent from the training
+            // catalogue. They test transfer to unseen combinations, not just new seeds.
+            for (int step = 0; step < steps; ++step) {
+                switch (step % 4) {
+                    case 0:
+                        observations.push_back({1, 3, 1, 1, 0.70f, false, false});
+                        break; // target unavailable while task is active
+                    case 1:
+                        observations.push_back({1, 2, 2, 1, 0.62f, true, false});
+                        break; // far task, negative user signal, and food coexist
+                    case 2:
+                        observations.push_back({2, 0, 1, 1, 0.92f, true, true});
+                        break; // disturbance, task, food, and play affordances coexist
+                    default:
+                        observations.push_back({0, 0, 2, 1, 0.40f, false, true});
+                        break; // negative social context with pending task and play
+                }
+            }
+            return observations;
+        }
+
+        // Shuffle the scenario catalogue per episode. When an episode exceeds the
+        // catalogue length, reshuffle each block instead of repeating one fixed order.
+        std::vector<int> scenarioIds(14);
+        for (int i = 0; i < 14; ++i) scenarioIds[static_cast<std::size_t>(i)] = i;
+        while (observations.size() < static_cast<std::size_t>(steps)) {
+            std::shuffle(scenarioIds.begin(), scenarioIds.end(), rng);
+            for (int id : scenarioIds) {
+                observations.push_back(makeObservation(rng, id));
+                if (observations.size() >= static_cast<std::size_t>(steps)) break;
+            }
+        }
+        return observations;
+    }
+
     // Compatibility wrapper for deterministic transition tests.
     EnvironmentStep applyEnvironmentAction(const std::string &action,
                                            const EnvironmentObservation &observation,
@@ -597,7 +638,8 @@ namespace
                               float epsilon,
                               std::ofstream &stepLog,
                               const std::string &agentName,
-                              int episodeIndex)
+                              int episodeIndex,
+                              const SimulatedUserProfile &user)
     {
         agent.reset();
         agent.setLearningEnabled(learning);
@@ -627,7 +669,7 @@ namespace
                                        static_cast<unsigned int>(step) * 104729u);
             const EnvironmentStep transition =
                 applyEnvironmentAction(action, observation, environmentEnergy,
-                                       environmentStress, userSatisfaction, transitionRng);
+                                       environmentStress, userSatisfaction, user, transitionRng);
             environmentEnergy = transition.energy_after;
             environmentStress = transition.stress_after;
             userSatisfaction = transition.user_satisfaction_after;
@@ -694,6 +736,12 @@ namespace
             row["encoded_state"] = stateKeyBeforeAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
             row["reward"] = transition.reward;
+            row["reward_components"] = {
+                {"context_fit", transition.context_fit},
+                {"effort_cost", transition.effort_cost},
+                {"stochastic_user_feedback", 0.16f * static_cast<float>(transition.user_feedback)},
+                {"user_feedback_class", transition.user_feedback}
+            };
             row["terminated"] = terminated;
             row["truncated"] = truncated;
             row["completed"] = transition.completed;
@@ -803,7 +851,8 @@ bool runTrainingExperiment(const std::string &mode,
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v4_graded_context_fit";
-    summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request", "fetch_at_feeding_time"};
+    summary["scenario_sampling"] = mode == "train" ? "per-episode shuffled 14-scenario catalogue" : "held-out joint state combinations absent from training catalogue";
+    summary["stochastic_user_model"] = "hidden per-episode response traits; probabilistic positive/neutral/negative feedback; paired user profile for both agents";
     summary["note"] = "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
@@ -817,12 +866,9 @@ bool runTrainingExperiment(const std::string &mode,
 
     for (int episode = 0; episode < episodes; ++episode)
     {
-        std::vector<EnvironmentObservation> observations;
-        observations.reserve(static_cast<std::size_t>(steps));
-        for (int step = 0; step < steps; ++step)
-        {
-            observations.push_back(makeObservation(environmentRng, step));
-        }
+        const std::vector<EnvironmentObservation> observations =
+            makeEpisodeObservations(environmentRng, steps, mode != "train");
+        const SimulatedUserProfile userProfile = sampleUserProfile(environmentRng);
 
         const float epsilon = mode == "train"
                                   ? std::max(0.05f, 0.30f * (1.0f - static_cast<float>(episode) / static_cast<float>(episodes)))
@@ -830,9 +876,9 @@ bool runTrainingExperiment(const std::string &mode,
         const bool learning = mode == "train";
 
         const EpisodeMetrics baselineMetrics = runEpisode(
-            baseline, observations, learning, epsilon, baselineLog, "baseline", episode);
+            baseline, observations, learning, epsilon, baselineLog, "baseline", episode, userProfile);
         const EpisodeMetrics proposedMetrics = runEpisode(
-            proposed, observations, learning, epsilon, proposedLog, "proposed", episode);
+            proposed, observations, learning, epsilon, proposedLog, "proposed", episode, userProfile);
 
         baselineRewardSum += baselineMetrics.total_reward;
         proposedRewardSum += proposedMetrics.total_reward;
