@@ -557,7 +557,7 @@ void CompanionUI::executeInteraction(const std::string& label,
         {"action", latestBaselineAction}, {"action_id", baselineOutcome.action_id},
         {"reward", baselineOutcome.reward}, {"state_before_outcome", baselineStateBeforeOutcome},
         {"state_after_outcome", baseline.getCurrentState().encode()},
-        {"energy_after", baselineTransition.energy}, {"stress_after", baselineTransition.stress},
+        {"energy_before", baselineEnergy}, {"energy_after", baselineTransition.energy}, {"stress_after", baselineTransition.stress},
         {"satisfaction_after", baselineTransition.satisfaction},
         {"terminated", baselineOutcome.terminated}, {"truncated", baselineOutcome.truncated},
         {"completed", baselineTransition.completed}, {"learning_update_enabled", true}
@@ -581,7 +581,8 @@ void CompanionUI::executeInteraction(const std::string& label,
             {"engagement", proposed.getAffectiveState().engagement},
             {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
         }},
-        {"energy_after", proposedTransition.energy}, {"stress_after", proposedTransition.stress},
+        {"energy_before", proposedEnergy}, {"energy_after", proposedTransition.energy},
+        {"stress_after", proposedTransition.stress},
         {"satisfaction_after", proposedTransition.satisfaction},
         {"terminated", proposedOutcome.terminated}, {"truncated", proposedOutcome.truncated},
         {"completed", proposedTransition.completed}, {"learning_update_enabled", true}
@@ -614,8 +615,8 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
                 lowered.find("do not") != std::string::npos;
             observation = EnvironmentObservation{
                 parsed.value("goal_state", 0), parsed.value("target_proximity", 1),
-                parsed.value("task_status", 0), negativeFeedback ? 2 : parsed.value("user_status", 0),
-                parsed.value("signal_strength", 0.45f),
+                negativeFeedback ? 2 : parsed.value("user_status", 0),
+                parsed.value("task_status", 0), parsed.value("signal_strength", 0.45f),
                 parsed.value("food_available", false), parsed.value("play_available", false)};
             observation.food_available = observation.food_available ||
                 lowered.find("food") != std::string::npos || lowered.find("feed") != std::string::npos;
