@@ -419,6 +419,16 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["processing_status"] = "completed";
         row["condition_code"] = std::string(1, selectedAgentCode);
         row["input_summary"] = label;
+        const auto& worldAfterAction = environment.state();
+        row["environment"] = {
+            {"ball_available", worldAfterAction.ballAvailable},
+            {"food_available", worldAfterAction.foodAvailable},
+            {"disturbance_active", worldAfterAction.disturbanceActive},
+            {"dog_has_ball", worldAfterAction.dogHasBall},
+            {"dog_resting", worldAfterAction.dogResting},
+            {"completed_fetches", worldAfterAction.completedFetches},
+            {"interaction_count", worldAfterAction.interactions}
+        };
         row["observation"] = {
             {"goal_state", observation.goal_state},
             {"target_proximity", observation.target_proximity},
