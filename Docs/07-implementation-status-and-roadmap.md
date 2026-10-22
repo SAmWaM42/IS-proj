@@ -12,7 +12,7 @@ The authoritative project baseline remains [Docs/project-context.md](Docs/projec
 
 ### Phase 3 / Stage 0 — Transition end semantics and experiment trace identity
 
-**Status:** Implemented on `feat/phase-3-transition-semantics`; local build and self-test verification pending.
+**Status:** Transition-semantics changes were built and self-tested on the parent branch. The later end-to-end/runtime and training changes on `feat/end-to-end-companion-loop` still require local build and test verification.
 
 Implemented in this increment:
 - separated true termination from time-limit truncation in `ActionResult`
@@ -25,7 +25,24 @@ Implemented in this increment:
 
 Tracking document: [Docs/21-phase-3-transition-semantics.md](21-phase-3-transition-semantics.md)
 
-**Remaining Stage 0 work:** typed scenario builders and observation-invariant checks; audit reward/completion consistency for far fetch and contradictory fields; an independent deterministic reward oracle; state/action visit counts; and version validation for persisted policy checkpoints. Do not treat Stage 0 as complete until those items are addressed and the branch passes local build/self-tests.
+**Remaining Stage 0 work:** typed scenario builders and comprehensive observation-invariant checks; broader reward/completion consistency checks for contradictory fields; full state/action visit counts; and version validation for persisted policy checkpoints. An exact one-step diagnostic oracle, action counts, stochastic feedback checks, and held-out joint-context generation have since been added on `feat/end-to-end-companion-loop`, but are not yet locally verified. Do not treat Stage 0 as complete until the branch passes local build/self-tests.
+
+### End-to-end runtime and training/evaluation path
+
+**Status:** Source changes committed on `feat/end-to-end-companion-loop`; local build, self-tests, multi-seed evaluation, and SFML walkthrough pending.
+
+Implemented in source:
+- interactive controls for Greet, Fetch, Feed, Play, Praise, Scold, Explore, Rest, Repeat Last, and text input
+- simultaneous baseline/proposed rendering with action-driven animation
+- action-dependent interactive reward, energy/stress/satisfaction updates, Q-learning updates, and JSONL outcome records
+- persistence of both policy tables and proposed-agent memory/affect sidecars
+- randomised per-episode scenario order and a hidden stochastic simulated-user profile shared within paired episodes
+- held-out joint observation combinations for `--validate`/`--compare`
+- per-step one-step-oracle Q-values, oracle agreement, reward diagnostics, and a ten-seed evaluation harness with mean/sample-SD and learning curves
+
+Tracking document: [Docs/22-end-to-end-companion-loop-and-evaluation.md](22-end-to-end-companion-loop-and-evaluation.md)
+
+**Verification gate:** Build and run `--self-test`, then a short train/validate smoke test, the ten-seed harness, and an interactive persistence/repeat walkthrough. The oracle agreement is exact only for a separate one-step diagnostic MDP, not for the full multi-step world. Synthetic metrics do not establish perceived believability.
 
 ### Stage −1 — Shared action architecture and complexity reduction
 
