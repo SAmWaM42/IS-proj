@@ -85,6 +85,23 @@ namespace
         return observation;
     }
 
+    struct SimulatedUserProfile
+    {
+        // Latent response traits are environment-owned and never encoded in agent state.
+        float praise_responsiveness = 0.5f;
+        float playfulness = 0.5f;
+        float noise_sensitivity = 0.5f;
+        float rejection_sensitivity = 0.5f;
+        float response_rate = 0.75f;
+    };
+
+    SimulatedUserProfile sampleUserProfile(std::mt19937 &rng)
+    {
+        std::uniform_real_distribution<float> trait(0.0f, 1.0f);
+        return {trait(rng), trait(rng), trait(rng), trait(rng),
+                0.45f + 0.55f * trait(rng)};
+    }
+
     struct EnvironmentStep
     {
         EnvironmentObservation next_observation;
@@ -93,6 +110,9 @@ namespace
         float stress_after = 0.2f;
         float user_satisfaction_after = 0.5f;
         bool completed = false;
+        int user_feedback = 0;
+        float context_fit = 0.0f;
+        float effort_cost = 0.0f;
     };
 
     struct ActionProfile
@@ -238,6 +258,7 @@ namespace
                                            float energy,
                                            float stress,
                                            float userSatisfaction,
+                                           const SimulatedUserProfile &user,
                                            std::mt19937 &rng)
     {
         EnvironmentStep result;
@@ -316,12 +337,40 @@ namespace
         result.energy_after = std::clamp(energy, 0.0f, 1.0f);
         result.stress_after = stress;
         result.user_satisfaction_after = userSatisfaction;
-        result.reward = std::clamp(
-            rewardFor(action, observation, fetchSucceeded, energyBefore, stressBefore,
-                      satisfactionBefore) - effort,
-            -1.0f, 1.0f);
+        result.context_fit = fit;
+        result.effort_cost = effort;
         result.completed = action == "FETCH" && fetchSucceeded &&
                            observation.task_status == 1 && observation.target_proximity < 3;
+
+        // A latent simulated user supplies noisy positive/neutral/negative feedback.
+        // Traits influence probabilities, not observations or policy state.
+        const float profileResponse = user.response_rate;
+        float positiveWeight = 0.18f + 0.34f * std::clamp((fit + 1.0f) * 0.5f, 0.0f, 1.0f)
+                             + 0.18f * user.praise_responsiveness;
+        if (observation.play_available) positiveWeight += 0.12f * user.playfulness;
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+            positiveWeight -= 0.18f * user.noise_sensitivity;
+        float negativeWeight = 0.08f + 0.22f * user.rejection_sensitivity
+                             + 0.20f * std::clamp(-fit, 0.0f, 1.0f);
+        if (observation.user_status == 2) negativeWeight += 0.12f * user.rejection_sensitivity;
+        positiveWeight = std::clamp(positiveWeight * profileResponse, 0.03f, 0.85f);
+        negativeWeight = std::clamp(negativeWeight * (0.6f + 0.4f * profileResponse), 0.03f, 0.80f);
+        const float normalizer = positiveWeight + negativeWeight;
+        if (normalizer > 0.92f) {
+            positiveWeight *= 0.92f / normalizer;
+            negativeWeight *= 0.92f / normalizer;
+        }
+        const float neutralWeight = std::max(0.08f, 1.0f - positiveWeight - negativeWeight);
+        std::discrete_distribution<int> feedback({negativeWeight, neutralWeight, positiveWeight});
+        result.user_feedback = feedback(rng) - 1; // -1 negative, 0 neutral, +1 positive
+        const float stochasticFeedbackReward = 0.16f * static_cast<float>(result.user_feedback);
+        result.user_satisfaction_after = std::clamp(
+            result.user_satisfaction_after + 0.04f * static_cast<float>(result.user_feedback),
+            0.0f, 1.0f);
+        result.reward = std::clamp(
+            rewardFor(action, observation, fetchSucceeded, energyBefore, stressBefore,
+                      satisfactionBefore) - effort + stochasticFeedbackReward,
+            -1.0f, 1.0f);
         return result;
     }
 
@@ -329,9 +378,23 @@ namespace
     EnvironmentStep applyEnvironmentAction(const std::string &action,
                                            const EnvironmentObservation &observation,
                                            float energy,
+                                           float stress,
+                                           float userSatisfaction,
                                            std::mt19937 &rng)
     {
-        return applyEnvironmentAction(action, observation, energy, 0.2f, 0.5f, rng);
+        const SimulatedUserProfile neutralUser{};
+        return applyEnvironmentAction(action, observation, energy, stress,
+                                      userSatisfaction, neutralUser, rng);
+    }
+
+    EnvironmentStep applyEnvironmentAction(const std::string &action,
+                                           const EnvironmentObservation &observation,
+                                           float energy,
+                                           std::mt19937 &rng)
+    {
+        const SimulatedUserProfile neutralUser{};
+        return applyEnvironmentAction(action, observation, energy, 0.2f, 0.5f,
+                                      neutralUser, rng);
     }
 
     EnvironmentObservation mergeTaskTransition(const EnvironmentObservation &current,
