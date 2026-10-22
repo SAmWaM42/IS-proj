@@ -457,23 +457,40 @@ void CompanionUI::executeInteraction(const std::string& label,
     const std::size_t memoryCountBefore = proposed.getMemoryRecords().size();
     const int interactionId = interactionCount + 1;
     lastActionInteractionId = interactionId;
+    const std::string previousStimulus = latestStimulus;
     latestObservation = observation;
     latestStimulus = label;
 
-    // Both policies receive the same observation. Each action is executed against
-    // a paired world clone, using the same random seed for stochastic outcomes.
-    latestBaselineAction = baseline.selectAction(observation);
-    latestProposedAction = proposed.selectAction(observation);
+    auto isFetchRequest = [](const std::string& value) {
+        std::string lower = value;
+        std::transform(lower.begin(), lower.end(), lower.begin(),
+            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        return lower.find("fetch") != std::string::npos || lower.find("ball") != std::string::npos;
+    };
+    const bool continuingFetch = isFetchRequest(previousStimulus) && isFetchRequest(label);
+    EnvironmentObservation baselineObservation = observation;
+    EnvironmentObservation proposedObservation = observation;
+    // A repeated fetch command continues a still-active task in each paired world.
+    // A completed task or a different user command starts from the new observation.
+    if (continuingFetch && baselineWorldObservation.goal_state == 1 &&
+        baselineWorldObservation.task_status == 1)
+        baselineObservation = baselineWorldObservation;
+    if (continuingFetch && proposedWorldObservation.goal_state == 1 &&
+        proposedWorldObservation.task_status == 1)
+        proposedObservation = proposedWorldObservation;
+
+    latestBaselineAction = baseline.selectAction(baselineObservation);
+    latestProposedAction = proposed.selectAction(proposedObservation);
     const std::size_t baselineStateBeforeOutcome = baseline.getCurrentState().encode();
     const std::size_t proposedStateBeforeOutcome = proposed.getCurrentState().encode();
 
     std::mt19937 baselineRng(static_cast<unsigned int>(interactionId * 7919));
     std::mt19937 proposedRng(static_cast<unsigned int>(interactionId * 7919));
     const RuntimeTransition baselineTransition = stepInteractiveWorld(
-        latestBaselineAction, observation, baselineEnergy, baselineStress,
+        latestBaselineAction, baselineObservation, baselineEnergy, baselineStress,
         baselineSatisfaction, feedbackRewardValue, baselineRng);
     const RuntimeTransition proposedTransition = stepInteractiveWorld(
-        latestProposedAction, observation, proposedEnergy, proposedStress,
+        latestProposedAction, proposedObservation, proposedEnergy, proposedStress,
         proposedSatisfaction, feedbackRewardValue, proposedRng);
 
     ActionOutcome baselineOutcome;
@@ -492,8 +509,8 @@ void CompanionUI::executeInteraction(const std::string& label,
     proposedOutcome.outcome_tag = proposedTransition.completed ? "goal_completed" : "interaction_outcome";
     proposedOutcome.energy_after = proposedTransition.energy;
 
-    baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome, baselineTransition.next);
-    proposed.applyOutcome(observation, latestProposedAction, proposedOutcome, proposedTransition.next);
+    baseline.applyOutcome(baselineObservation, latestBaselineAction, baselineOutcome, baselineTransition.next);
+    proposed.applyOutcome(proposedObservation, latestProposedAction, proposedOutcome, proposedTransition.next);
 
     baselineWorldObservation = baselineTransition.next;
     proposedWorldObservation = proposedTransition.next;
@@ -554,6 +571,14 @@ void CompanionUI::executeInteraction(const std::string& label,
         {"play_available", observation.play_available}
     };
     row["baseline"] = {
+        {"observation", {
+            {"goal_state", baselineObservation.goal_state},
+            {"target_proximity", baselineObservation.target_proximity},
+            {"user_status", baselineObservation.user_status},
+            {"task_status", baselineObservation.task_status},
+            {"food_available", baselineObservation.food_available},
+            {"play_available", baselineObservation.play_available}
+        }},
         {"action", latestBaselineAction}, {"action_id", baselineOutcome.action_id},
         {"reward", baselineOutcome.reward}, {"state_before_outcome", baselineStateBeforeOutcome},
         {"state_after_outcome", baseline.getCurrentState().encode()},
@@ -563,6 +588,14 @@ void CompanionUI::executeInteraction(const std::string& label,
         {"completed", baselineTransition.completed}, {"learning_update_enabled", true}
     };
     row["proposed"] = {
+        {"observation", {
+            {"goal_state", proposedObservation.goal_state},
+            {"target_proximity", proposedObservation.target_proximity},
+            {"user_status", proposedObservation.user_status},
+            {"task_status", proposedObservation.task_status},
+            {"food_available", proposedObservation.food_available},
+            {"play_available", proposedObservation.play_available}
+        }},
         {"action", latestProposedAction}, {"action_id", proposedOutcome.action_id},
         {"reward", proposedOutcome.reward}, {"state_before_outcome", proposedStateBeforeOutcome},
         {"state_after_outcome", proposed.getCurrentState().encode()},
