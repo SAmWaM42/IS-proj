@@ -459,21 +459,28 @@ namespace
         observations.reserve(static_cast<std::size_t>(steps));
         if (heldOut) {
             // These joint combinations are deliberately absent from the training
-            // catalogue. They test transfer to unseen combinations, not just new seeds.
-            for (int step = 0; step < steps; ++step) {
-                switch (step % 4) {
-                    case 0:
-                        observations.push_back({1, 3, 1, 1, 0.70f, false, false});
-                        break; // target unavailable while task is active
-                    case 1:
-                        observations.push_back({1, 2, 2, 1, 0.62f, true, false});
-                        break; // far task, negative user signal, and food coexist
-                    case 2:
-                        observations.push_back({2, 0, 1, 1, 0.92f, true, true});
-                        break; // disturbance, task, food, and play affordances coexist
-                    default:
-                        observations.push_back({0, 0, 2, 1, 0.40f, false, true});
-                        break; // negative social context with pending task and play
+            // catalogue. Shuffle them per block to avoid evaluation-order artefacts.
+            std::vector<int> heldOutIds{0, 1, 2, 3};
+            std::uniform_real_distribution<float> signalJitter(-0.025f, 0.025f);
+            while (observations.size() < static_cast<std::size_t>(steps)) {
+                std::shuffle(heldOutIds.begin(), heldOutIds.end(), rng);
+                for (int id : heldOutIds) {
+                    const float jitter = signalJitter(rng);
+                    switch (id) {
+                        case 0:
+                            observations.push_back({1, 3, 1, 1, std::clamp(0.70f + jitter, 0.0f, 1.0f), false, false});
+                            break; // target unavailable while task is active
+                        case 1:
+                            observations.push_back({1, 2, 2, 1, std::clamp(0.62f + jitter, 0.0f, 1.0f), true, false});
+                            break; // far task, negative user signal, and food coexist
+                        case 2:
+                            observations.push_back({2, 0, 1, 1, std::clamp(0.92f + jitter, 0.0f, 1.0f), true, true});
+                            break; // disturbance, task, food, and play affordances coexist
+                        default:
+                            observations.push_back({0, 0, 2, 1, std::clamp(0.40f + jitter, 0.0f, 1.0f), false, true});
+                            break; // negative social context with pending task and play
+                    }
+                    if (observations.size() >= static_cast<std::size_t>(steps)) break;
                 }
             }
             return observations;
