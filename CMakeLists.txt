@@ -15,6 +15,8 @@ add_executable(IS-2
    Components/Simulation/backyard-environment.cpp
 )
 
+target_compile_definitions(IS-2 PRIVATE IS2_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+
 target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}
    ${CMAKE_SOURCE_DIR}/Inc
