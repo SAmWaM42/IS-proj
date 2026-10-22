@@ -484,13 +484,15 @@ void CompanionUI::executeInteraction(const std::string& label,
     const std::size_t baselineStateBeforeOutcome = baseline.getCurrentState().encode();
     const std::size_t proposedStateBeforeOutcome = proposed.getCurrentState().encode();
 
+    const float baselineEnergyBefore = baselineEnergy;
+    const float proposedEnergyBefore = proposedEnergy;
     std::mt19937 baselineRng(static_cast<unsigned int>(interactionId * 7919));
     std::mt19937 proposedRng(static_cast<unsigned int>(interactionId * 7919));
     const RuntimeTransition baselineTransition = stepInteractiveWorld(
-        latestBaselineAction, baselineObservation, baselineEnergy, baselineStress,
+        latestBaselineAction, baselineObservation, baselineEnergyBefore, baselineStress,
         baselineSatisfaction, feedbackRewardValue, baselineRng);
     const RuntimeTransition proposedTransition = stepInteractiveWorld(
-        latestProposedAction, proposedObservation, proposedEnergy, proposedStress,
+        latestProposedAction, proposedObservation, proposedEnergyBefore, proposedStress,
         proposedSatisfaction, feedbackRewardValue, proposedRng);
 
     ActionOutcome baselineOutcome;
@@ -582,7 +584,7 @@ void CompanionUI::executeInteraction(const std::string& label,
         {"action", latestBaselineAction}, {"action_id", baselineOutcome.action_id},
         {"reward", baselineOutcome.reward}, {"state_before_outcome", baselineStateBeforeOutcome},
         {"state_after_outcome", baseline.getCurrentState().encode()},
-        {"energy_before", baselineEnergy}, {"energy_after", baselineTransition.energy}, {"stress_after", baselineTransition.stress},
+        {"energy_before", baselineEnergyBefore}, {"energy_after", baselineTransition.energy}, {"stress_after", baselineTransition.stress},
         {"satisfaction_after", baselineTransition.satisfaction},
         {"terminated", baselineOutcome.terminated}, {"truncated", baselineOutcome.truncated},
         {"completed", baselineTransition.completed}, {"learning_update_enabled", true}
@@ -614,7 +616,7 @@ void CompanionUI::executeInteraction(const std::string& label,
             {"engagement", proposed.getAffectiveState().engagement},
             {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
         }},
-        {"energy_before", proposedEnergy}, {"energy_after", proposedTransition.energy},
+        {"energy_before", proposedEnergyBefore}, {"energy_after", proposedTransition.energy},
         {"stress_after", proposedTransition.stress},
         {"satisfaction_after", proposedTransition.satisfaction},
         {"terminated", proposedOutcome.terminated}, {"truncated", proposedOutcome.truncated},
