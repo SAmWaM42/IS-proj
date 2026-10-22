@@ -22,6 +22,8 @@
 #include <condition_variable>
 #include <queue>
 #include <future>
+#include <poll.h>
+#include <signal.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -63,8 +65,14 @@ private:
     int childOutput = -1;
 
     bool startService() {
-        int toChild[2], fromChild[2];
-        if (pipe(toChild) != 0 || pipe(fromChild) != 0) return false;
+        int toChild[2] = {-1, -1};
+        int fromChild[2] = {-1, -1};
+        if (pipe(toChild) != 0) return false;
+        if (pipe(fromChild) != 0) {
+            close(toChild[0]);
+            close(toChild[1]);
+            return false;
+        }
         child = fork();
         if (child == 0) {
             dup2(toChild[0], STDIN_FILENO);
@@ -86,6 +94,10 @@ private:
     }
     std::string exchange(const std::string& line) {
         if (childInput < 0 || childOutput < 0) return {};
+        // A dead child must not terminate the UI through SIGPIPE.
+        // Ignore SIGPIPE in the process; write() then returns EPIPE and
+        // the normal service-unavailable fallback is used.
+        std::signal(SIGPIPE, SIG_IGN);
         const std::string payload = line + "\n";
         std::size_t written = 0;
         while (written < payload.size()) {
@@ -95,12 +107,18 @@ private:
         }
         std::string response;
         char ch = 0;
-        while (read(childOutput, &ch, 1) == 1) {
-            if (ch == '\n') break;
+        while (response.size() <= 65536) {
+            pollfd descriptor{};
+            descriptor.fd = childOutput;
+            descriptor.events = POLLIN | POLLHUP;
+            const int ready = poll(&descriptor, 1, 3000);
+            if (ready <= 0 || (descriptor.revents & POLLNVAL)) return {};
+            const ssize_t count = read(childOutput, &ch, 1);
+            if (count != 1) return {};
+            if (ch == '\n') return response;
             response.push_back(ch);
-            if (response.size() > 65536) return {};
         }
-        return response;
+        return {};
     }
     void run() {
         bool running = startService();
@@ -126,7 +144,14 @@ private:
 };
 
 PersistentNlpClient& nlpClient() {
+    // Resolve from the configured source directory rather than the process
+    // working directory (desktop launchers often use a different cwd).
+#ifdef IS2_SOURCE_DIR
+    static PersistentNlpClient client(
+        (std::filesystem::path(IS2_SOURCE_DIR) / "Components/NLP/nlp_intent_service.py").string());
+#else
     static PersistentNlpClient client("Components/NLP/nlp_intent_service.py");
+#endif
     return client;
 }
 std::string callNlp(const std::string& input) {
