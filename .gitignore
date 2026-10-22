@@ -19,3 +19,7 @@ build/
 .DS_Store
 # Participant study data is local research data; do not commit it.
 artifacts/study/
+
+# Python bytecode and interpreter caches
+__pycache__/
+*.py[cod]
