@@ -28,9 +28,9 @@ Both agents share the same environment and action definitions during the first e
 
 ## Current status
 
-Development status: Baseline + headless synthetic experiment CLI + participant study prototype
+Development status: Interactive SFML MVP + headless evaluation tools + participant-study prototype
 
-The project is currently in a stable staged prototype phase. The original baseline learning loop remains validated, and the implementation has progressed beyond the purely tabular baseline to include bounded memory/affect integration, persistence, and a minimal SFML-backed runtime environment.
+The project has reached a demonstrable minimum viable prototype for the current sprint. The interactive SFML simulation builds and runs locally, supports A/B companion selection, preset and typed interactions, animated scene feedback, session logging, and an optional researcher/debug view. The underlying project also retains the headless training, validation, comparison, memory/affect, and persistence work. This is an engineering milestone, not yet evidence that the proposed agent is perceived as more believable.
 
 Verified milestones:
 
@@ -44,10 +44,13 @@ Verified milestones:
 - The headless `--compare` workflow compares the trained baseline and proposed policies using shared scenario inputs.
 - A headless synthetic training/evaluation runner is available through `--train`, `--validate`, and `--compare`; it writes mode-specific per-step JSONL logs and episode summaries.
 - A keyboard-driven participant-study prototype is available through `--study`, with randomized A/B condition order, fixed shared scenarios, participant feedback, and a separate questionnaire.
+- The interactive SFML MVP is available through `--sim`; `--sim-researcher` enables the separate researcher/debug screens. The participant-facing mode hides internal action labels and memory/affect diagnostics.
+- The simulation UI now includes a backyard scene, companion sprite animation, preset interaction controls, typed input via the persistent NLP service (with keyword fallback), an activity log for researcher mode, and session/interaction JSON logging.
+- The interactive UI and its missing method definitions have been restored to the current branch; the project owner confirmed that the local build and launch work for the sprint demonstration.
 - Terminal transitions no longer bootstrap from next-state Q-values, and policy exploration uses a per-agent seed derived from the experiment configuration.
 - A machine-readable validation report is stored in [Docs/test-results.json](Docs/test-results.json).
 
-The current implementation deliberately keeps the policy layer stable and explainable while the runtime, memory, and affect pipeline is exercised under controlled conditions. This keeps the project testable while still enabling comparison and simulation-level observation.
+The current implementation deliberately keeps the policy layer stable and explainable while the runtime, memory, and affect pipeline are exercised under controlled conditions. The UI is suitable as a sprint demonstration MVP; the full study protocol, experimental validity, and believability outcomes still require separate validation.
 
 ---
 
@@ -296,18 +299,17 @@ The current baseline validation passes successfully.
 
 The repository has moved past the initial baseline-only stage and is now focused on the comparison and runtime validation layer.
 
-The immediate work is:
+The immediate work after the sprint demonstration is:
 
-1. Continue validating the shared environment contract for both agents.
-2. Expand the baseline/proposed comparison harness into a more formal training and evaluation pass.
-3. Keep the simulation environment deliberately minimal but behaviourally meaningful.
-4. Preserve the baseline as the control condition while testing the memory/affect-aware variant under the same stimuli and reward semantics.
-5. Maintain persistence continuity across runtime sessions and rest-state aggregation without broadening the Q-learning policy.
+1. Run and record a clean build, self-test, CTest suite, and NLP smoke test from the current merged revision.
+2. Review the interaction JSONL and session outputs to confirm the UI produces usable, reproducible research traces.
+3. Audit baseline/proposed fairness, especially which environment variables are observable to both agents and how contextual fallbacks affect action selection.
+4. Verify memory retrieval scoring and that query relevance influences the memory summary, not only record ordering.
+5. Define and pilot the believability questionnaire and controlled comparison procedure before collecting participant data.
+6. Document limitations and preserve the participant-facing separation from researcher diagnostics.
 
 ---
 
 ## Summary
 
-This project is best understood as a staged research prototype for a learning-based companion agent. The current implementation is intentionally conservative: the baseline learning loop is validated first, the memory and affect contracts are defined next, and only then are those features integrated into the decision-making pipeline.
-
-This staged approach keeps the project explainable, testable, and aligned with the project’s research objectives.
+This project is a staged research prototype for a learning-based simulated companion agent. The current sprint MVP provides a working interactive demonstration around the baseline/proposed-agent comparison, while the memory, affect, NLP, logging, and headless evaluation components provide the basis for further controlled testing. A working demonstration should not be interpreted as validation of perceived believability; that remains an empirical research question.
