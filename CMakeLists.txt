@@ -12,6 +12,7 @@ add_executable(IS-2
    Components/Training/training.cpp
    Components/Study/study.cpp
    Components/Simulation/companion-ui.cpp
+   Components/Simulation/backyard-environment.cpp
 )
 
 target_include_directories(IS-2 PRIVATE
