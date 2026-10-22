@@ -35,7 +35,7 @@ def run(binary, mode, episodes, steps, seed, out_dir):
     ]
     print("+", " ".join(command), flush=True)
     subprocess.run(command, check=True)
-    return read_json(out_dir / f"{mode}_summary.json")
+    return read_json(out_dir / f"{mode.lstrip(chr(45))}_summary.json")
 
 
 def main():
