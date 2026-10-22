@@ -2,6 +2,7 @@
   "action_space_version": 1,
   "baseline": {
     "completion_rate": 0.995,
+    "diagnostic_one_step_oracle_agreement_rate": 0.536625,
     "episodes": [
       {
         "action_counts": {
@@ -9686,6 +9687,7 @@
       }
     }
   },
+  "diagnostic_one_step_oracle_scope": "Exact Q* for a separate one-step diagnostic MDP with terminal next state. Agreement is only a local action-ranking diagnostic, not optimality for the multi-step training environment.",
   "environment_seed": 48,
   "episodes": 200,
   "hyperparameters": {
@@ -9697,10 +9699,11 @@
   },
   "max_steps_per_episode": 40,
   "mode": "train",
-  "note": "Training shuffles a scenario catalogue per episode and uses a hidden stochastic user profile with positive, neutral, negative, and ignored responses. Rewards combine graded context fit, drive relief, successful task completion, effort, satisfaction-weighted disappointment, and stochastic feedback; non-compliance alone is not treated as automatically wrong. The held-out generator uses joint observation combinations absent from training. Stimulus alignment and one-step oracle agreement are synthetic engineering diagnostics, not perceived believability.",
-  "one_step_oracle_scope": "Exact Q* for a separate one-step diagnostic MDP with terminal next state; agreement is not claimed to be optimality for the multi-step training environment.",
+  "note": "Training shuffles a scenario catalogue per episode and uses a hidden stochastic user profile with positive, neutral, negative, and ignored responses. Rewards combine graded context fit, drive relief, successful task completion, effort, satisfaction-weighted disappointment, and stochastic feedback; non-compliance alone is not treated as automatically wrong. The held-out stress generator uses 12 joint observation combinations absent from training; validate-distribution samples the shuffled training catalogue using an independent evaluation seed. Stimulus alignment and diagnostic one-step oracle agreement are synthetic engineering diagnostics, not perceived believability.",
+  "one_step_oracle_scope": "Exact Q* for a separate one-step diagnostic MDP with terminal next state. Agreement is only a local action-ranking diagnostic, not optimality for the multi-step training environment.",
   "proposed": {
     "completion_rate": 1.0,
+    "diagnostic_one_step_oracle_agreement_rate": 0.406625,
     "episodes": [
       {
         "action_counts": {
