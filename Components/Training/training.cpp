@@ -989,7 +989,7 @@ bool runTrainingExperiment(const std::string &mode,
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v5_stochastic_user_feedback";
     summary["scenario_sampling"] = mode == "train" ? "per-episode shuffled 14-scenario catalogue" : "held-out joint state combinations absent from training catalogue";
-    summary["stochastic_user_model"] = "hidden per-episode response traits; probabilistic positive/neutral/negative feedback; paired user profile for both agents";
+    summary["stochastic_user_model"] = "hidden per-run response traits; probabilistic positive/neutral/negative/ignored feedback; paired user profile for both agents";
     summary["note"] = "Training shuffles a scenario catalogue per episode and uses a hidden stochastic user profile with positive, neutral, negative, and ignored responses. Rewards combine graded context fit, drive relief, successful task completion, effort, satisfaction-weighted disappointment, and stochastic feedback; non-compliance alone is not treated as automatically wrong. The held-out generator uses joint observation combinations absent from training. Stimulus alignment and one-step oracle agreement are synthetic engineering diagnostics, not perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
