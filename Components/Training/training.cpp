@@ -1105,10 +1105,40 @@ bool runTrainingSelfTests()
     const bool taskPriorityPassed = testTaskPriorityReward();
     const bool completionContextPassed = testSuccessfulFetchAdvancesContext();
     const bool stableActionIdsPassed = testStableActionIds();
+    bool stochasticFeedbackPassed = false;
+    {
+        const EnvironmentObservation social{0, 1, 0, 0, 0.45f};
+        bool negative = false, neutral = false, positive = false;
+        for (unsigned int seed = 1; seed <= 120; ++seed) {
+            std::mt19937 rng(seed);
+            const EnvironmentStep transition = applyEnvironmentAction("WANDER", social, 0.8f, rng);
+            negative = negative || transition.user_feedback < 0;
+            neutral = neutral || transition.user_feedback == 0;
+            positive = positive || transition.user_feedback > 0;
+        }
+        stochasticFeedbackPassed = negative && neutral && positive;
+    }
+    bool heldOutPassed = false;
+    {
+        std::mt19937 rng(2026);
+        const auto heldOut = makeEpisodeObservations(rng, 4, true);
+        bool unavailableTask = false, taskWithDisturbance = false, foodAndPlay = false;
+        for (const auto& observation : heldOut) {
+            unavailableTask = unavailableTask ||
+                (observation.goal_state == 1 && observation.task_status == 1 && observation.target_proximity == 3);
+            taskWithDisturbance = taskWithDisturbance ||
+                (observation.goal_state == 2 && observation.task_status == 1);
+            foodAndPlay = foodAndPlay || (observation.food_available && observation.play_available);
+        }
+        heldOutPassed = unavailableTask && taskWithDisturbance && foodAndPlay;
+    }
     std::cout << "Stable action identifiers: " << (stableActionIdsPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Action-dependent environment transitions: " << (transitionsPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed && stableActionIdsPassed;
+    std::cout << "Stochastic user feedback includes all response classes: " << (stochasticFeedbackPassed ? "PASS" : "FAIL") << '\n';
+    std::cout << "Held-out generator includes unseen joint contexts: " << (heldOutPassed ? "PASS" : "FAIL") << '\n';
+    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed &&
+           stableActionIdsPassed && stochasticFeedbackPassed && heldOutPassed;
 }
