@@ -39,6 +39,10 @@ target_compile_options(IS-2 PRIVATE
 )
 
 enable_testing()
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(NAME nlp_service_smoke_test
+   COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/nlp_service_smoke_test.py
+)
 
 add_executable(backyard_environment_test
    tests/backyard_environment_test.cpp
