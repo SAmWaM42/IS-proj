@@ -61,7 +61,8 @@ def main():
     root.mkdir(parents=True, exist_ok=True)
 
     train_summaries = []
-    eval_summaries = []
+    held_out_summaries = []
+    distribution_summaries = []
     seeds = list(range(args.first_seed, args.first_seed + args.seeds))
 
     for seed in seeds:
@@ -73,27 +74,34 @@ def main():
         # Evaluation loads the saved policies, disables Q-table updates and exploration while allowing proposed-agent memory/affect to adapt online, and
         # uses the held-out state-combination generator and a separate RNG seed.
         evaluation_seed = seed + 100000
-        evaluation = run(binary, "--validate", args.eval_episodes, args.steps,
-                         evaluation_seed, seed_dir)
+        held_out = run(binary, "--validate", args.eval_episodes, args.steps,
+                       evaluation_seed, seed_dir)
+        # Evaluate the same saved policies on fresh scenarios sampled from the
+        # training distribution. This is separate from held-out stress testing.
+        distribution = run(binary, "--validate-distribution", args.eval_episodes,
+                           args.steps, evaluation_seed + 100000, seed_dir)
         train_summaries.append(train)
-        eval_summaries.append(evaluation)
+        held_out_summaries.append(held_out)
+        distribution_summaries.append(distribution)
 
     agents = ("baseline", "proposed")
     metrics = (
         "mean_reward_per_step",
         "completion_rate",
-        "one_step_oracle_agreement_rate",
+        "diagnostic_one_step_oracle_agreement_rate",
     )
     aggregate = {
         "schema_version": 1,
         "seeds": seeds,
         "training_episodes_per_seed": args.episodes,
-        "held_out_evaluation_episodes_per_seed": args.eval_episodes,
+        "held_out_stress_evaluation_episodes_per_seed": args.eval_episodes,
+        "in_distribution_evaluation_episodes_per_seed": args.eval_episodes,
         "steps_per_episode": args.steps,
         "evaluation_description": (
-            "Policies are trained independently per seed, then evaluated without Q-table updates "
-            "or exploration on held-out joint observation combinations; proposed-agent memory "
-            "and affect still adapt online."
+            "Each seed trains policies independently. Both evaluation strata freeze Q-table "
+            "updates and exploration while proposed-agent memory/affect continue adapting online. "
+            "held_out_stress uses unseen joint observation combinations; in_distribution samples "
+            "the shuffled training scenario catalogue with independent evaluation seeds."
         ),
         "results": {},
     }
@@ -101,9 +109,17 @@ def main():
     for agent in agents:
         aggregate["results"][agent] = {}
         for metric in metrics:
+            if metric == "diagnostic_one_step_oracle_agreement_rate":
+                def get_metric(summary):
+                    return summary[agent].get(
+                        metric, summary[agent].get("one_step_oracle_agreement_rate", 0.0))
+            else:
+                def get_metric(summary):
+                    return summary[agent].get(metric, 0.0)
             aggregate["results"][agent][metric] = {
-                "training": mean_sd(summary[agent].get(metric, 0.0) for summary in train_summaries),
-                "held_out": mean_sd(summary[agent].get(metric, 0.0) for summary in eval_summaries),
+                "training": mean_sd(get_metric(summary) for summary in train_summaries),
+                "held_out_stress": mean_sd(get_metric(summary) for summary in held_out_summaries),
+                "in_distribution": mean_sd(get_metric(summary) for summary in distribution_summaries),
             }
 
     # Per-episode reward curves aligned by episode index across independent seeds.
@@ -121,17 +137,17 @@ def main():
         learning_curves["agents"][agent] = curve
 
     validation_paragraph = (
-        "Validation uses paired baseline/proposed runs with the same held-out scenario "
-        "combinations and a fixed latent simulated-user profile within each run, shared by "
-        "both agents. Evaluation freezes Q-table updates/exploration while allowing proposed-agent "
-        "memory and affect to adapt online. Mean reward per step summarises the synthetic interaction objective while "
-        "completion rate checks task outcomes; learning curves show whether training "
-        "performance changes over episodes. Policy agreement is measured against the "
-        "exact one-step Q* oracle for a separate diagnostic MDP whose next state is "
-        "terminal; it is not claimed to be the optimal policy for the full multi-step "
-        "environment. These synthetic metrics validate implementation and policy "
-        "learning only. They do not establish perceived believability, which requires "
-        "separate participant ratings and behavioural analysis."
+        "Evaluation reports two distinct strata across independent seeds. Held-out stress "
+        "evaluation uses joint observation combinations absent from the training catalogue; "
+        "in-distribution evaluation samples the training scenario catalogue using independent "
+        "evaluation seeds. Both freeze Q-table updates and exploration, while allowing proposed-agent "
+        "memory and affect to adapt online. Mean reward per step summarises the synthetic interaction "
+        "objective; completion rate checks task outcomes; learning curves show changes during training. "
+        "The diagnostic_one_step_oracle_agreement_rate is agreement with the exact Q* oracle for a "
+        "separate one-step diagnostic MDP whose next state is terminal. It is not optimal-policy "
+        "agreement for the full multi-step environment. These synthetic metrics validate implementation "
+        "and policy learning only, not perceived believability, which requires separate participant "
+        "ratings and behavioural analysis."
     )
     aggregate["justified_validation_approach"] = validation_paragraph
 
@@ -145,8 +161,9 @@ def main():
     for agent in agents:
         print(agent)
         for metric in metrics:
-            row = aggregate["results"][agent][metric]["held_out"]
-            print(f"  {metric}: {row['mean']:.4f} ± {row['sample_sd']:.4f} (n={row['n']})")
+            for stratum in ("held_out_stress", "in_distribution"):
+                row = aggregate["results"][agent][metric][stratum]
+                print(f"  {stratum} {metric}: {row['mean']:.4f} ± {row['sample_sd']:.4f} (n={row['n']})")
     print(f"\nWrote {summary_path}")
     print(f"Wrote {curve_path}")
     print(f"Wrote {root / 'validation-approach.txt'}")
