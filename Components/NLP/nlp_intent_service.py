@@ -30,7 +30,7 @@ def classify(tokens, raw):
     words = {t.text.lower() for t in tokens if not t.is_punct}
     # Negative feedback takes priority over other terms, to avoid interpreting
     # "don't fetch that" as a positive fetch request.
-    if lemmas & {"stop", "annoy", "bad", "wrong", "hate", "dislike"} or "don't" in raw.lower() or "do not" in raw.lower():
+    if lemmas & {"stop", "annoy", "bad", "wrong", "hate", "dislike", "scold"} or "don't" in raw.lower() or "do not" in raw.lower():
         return "negative_feedback"
     if lemmas & {"feed", "food", "eat", "bowl"}:
         return "feeding"
@@ -75,7 +75,7 @@ def handle_line(line):
         # Keep this fallback deliberately transparent: the UI labels its source.
         print("spaCy unavailable; using keyword fallback: " + str(exc), file=sys.stderr)
         words = set(re.findall(r"[a-z']+", raw.lower()))
-        if words & {"stop", "annoying", "bad", "wrong", "hate", "don't"}:
+        if words & {"stop", "annoying", "bad", "wrong", "hate", "scold", "don't"}:
             intent = "negative_feedback"
         elif words & {"feed", "food", "eat", "bowl"}:
             intent = "feeding"
