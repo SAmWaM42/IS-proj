@@ -1,8 +1,10 @@
 #include "memory.h"
 
 #include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <sstream>
+#include <set>
 #include <stdexcept>
 #include <utility>
 
@@ -72,13 +74,29 @@ std::vector<record> rankRelevantRecords(const std::vector<record>& entries, cons
         float score = calculateMemoryRecordWeight(entry);
 
         if (!query.empty()) {
-            const std::string combined =
-                entry.raw_fact.subject + " " + entry.raw_fact.relation + " " + entry.raw_fact.object + " " + query;
-            const std::string lower = combined;
-            const std::string queryLower = query;
-            if (lower.find(queryLower) != std::string::npos) {
-                score += 0.15f;
+            std::string combined =
+                entry.raw_fact.subject + " " + entry.raw_fact.relation + " " + entry.raw_fact.object;
+            std::string queryLower = query;
+            const auto toLower = [](std::string& value) {
+                std::transform(value.begin(), value.end(), value.begin(),
+                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+            };
+            toLower(combined);
+            toLower(queryLower);
+
+            std::istringstream terms(queryLower);
+            std::set<std::string> uniqueTerms;
+            std::string term;
+            while (terms >> term) {
+                term.erase(std::remove_if(term.begin(), term.end(),
+                    [](unsigned char ch) { return !std::isalnum(ch); }), term.end());
+                if (term.size() >= 3) uniqueTerms.insert(term);
             }
+            int matchedTerms = 0;
+            for (const auto& queryTerm : uniqueTerms) {
+                if (combined.find(queryTerm) != std::string::npos) ++matchedTerms;
+            }
+            score += std::min(0.25f, 0.08f * static_cast<float>(matchedTerms));
         }
 
         ranked.emplace_back(score, entry);
