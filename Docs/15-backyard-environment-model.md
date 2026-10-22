@@ -15,6 +15,11 @@ backyard-environment.h/.cpp. It is deliberately separate from drawing.
 - EAT consumes available food.
 - DROP and RETURN_BALL make the ball available again.
 - A new stimulus clears the previous transient disturbance, then applies the new stimulus.
+- Mentioning a ball or fetch request does not respawn a ball already collected; an explicit throw/offer does.
+- The environment can be reset to its initial state for repeatable scenarios.
+
+## Deterministic regression scenarios
+The regression test covers fetch and repeated fetch, explicit ball re-offer, loud-noise detection regardless of letter case, disturbance reset, rest, and feeding. These tests validate world transitions independently of SFML rendering. The interaction event log records both agents' chosen actions alongside the selected-condition world state; comparative runs should use the same scenario order and starting conditions.
 
 The simulation draws the ball, food bowl, disturbance marker, and fetch count from
 this state. The selected A/B condition alone changes the displayed world, while
