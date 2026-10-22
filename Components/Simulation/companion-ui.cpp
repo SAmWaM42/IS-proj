@@ -680,7 +680,7 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
     }
     if (lowered.find("fetch") != std::string::npos || lowered.find("ball") != std::string::npos ||
         lowered.find("bring") != std::string::npos || lowered.find("retrieve") != std::string::npos) {
-        observation = EnvironmentObservation{1, 1, 1, 0, 0.85f}; reward = 0.65f; return "request";
+        observation = EnvironmentObservation{1, 1, 1, 1, 0.85f}; reward = 0.0f; return "request";
     }
     if (lowered.find("noise") != std::string::npos || lowered.find("scared") != std::string::npos ||
         lowered.find("loud") != std::string::npos) {
