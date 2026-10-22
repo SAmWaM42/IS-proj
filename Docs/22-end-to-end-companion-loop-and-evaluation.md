@@ -28,16 +28,14 @@ The environment contains action-dependent transitions: fetch may succeed or fail
 
 Each experiment run samples one latent simulated-user profile. Its praise responsiveness, playfulness, noise sensitivity, rejection sensitivity and response rate affect stochastic positive/neutral/negative/ignored feedback. The profile is hidden from the policy observation and shared by the baseline/proposed agents for paired comparisons. Per-step logs include the sampled feedback class and reward diagnostics. The profile is held stable across episodes in a run so the proposed agent's persistent memory is not mixing unrelated synthetic users.
 
-### Held-out evaluation
+### Evaluation strata
 
-\`--validate\` and \`--compare\` load saved policies, disable Q-table updates and exploration, use a separate environment seed, and sample a held-out generator. Proposed-agent memory and affect still update from evaluation outcomes, because that online adaptation is part of the behaviour under test. The held-out generator deliberately includes joint observation combinations absent from the training catalogue, including:
+Both evaluation modes load trained policies, disable Q-table updates and exploration, and use independent environment seeds. Proposed-agent memory and affect continue to update online because adaptation is part of the behaviour under test.
 
-- an active task with an unavailable target;
-- a far task with negative user status and food available;
-- a disturbance with an active task and both food/play affordances;
-- a negative social context with a pending task and play available.
+- `--validate` uses a broader stress-test catalogue of 12 joint observation combinations absent from the training catalogue. These combine conditions such as unavailable targets, negative user feedback, tasks, disturbances, food and play affordances. This tests behaviour in selected unusual combinations; it is not comprehensive state-space coverage.
+- `--validate-distribution` samples scenarios from the same 14-scenario catalogue used during training, but uses an independent evaluation RNG seed. This provides a second evaluation stratum to help distinguish general task difficulty from failures specific to unusual held-out combinations.
 
-This is a small held-out combination suite, not a claim of comprehensive coverage of all possible states. The self-tests check that these combinations are emitted.
+The multi-seed script reports these strata separately. Neither demonstrates generalisation across all states: in-distribution evaluation samples a bounded catalogue, and stress evaluation focuses on selected combinations. The self-tests check that the stress generator emits its required conditions.
 
 ## Metrics and oracle scope
 
