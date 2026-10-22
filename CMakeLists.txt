@@ -58,3 +58,19 @@ target_compile_options(tokenizer_probe PRIVATE
    -Wall
    -Wextra
 )
+
+add_executable(paired_agent_scenarios_test
+   tests/paired_agent_scenarios_test.cpp
+   Components/State-Action/state-action.cpp
+   Components/Memory/memory.cpp
+   Components/Simulation/backyard-environment.cpp
+)
+target_include_directories(paired_agent_scenarios_test PRIVATE
+   ${CMAKE_SOURCE_DIR}
+   ${CMAKE_SOURCE_DIR}/Inc
+   ${CMAKE_SOURCE_DIR}/Components/Memory
+   ${CMAKE_SOURCE_DIR}/Components/State-Action
+   ${CMAKE_SOURCE_DIR}/Components/Simulation
+)
+target_compile_options(paired_agent_scenarios_test PRIVATE -Wall -Wextra)
+add_test(NAME paired_agent_scenarios_test COMMAND paired_agent_scenarios_test)
