@@ -115,6 +115,7 @@ namespace
         int user_feedback = 0;
         float context_fit = 0.0f;
         float effort_cost = 0.0f;
+        float deterministic_reward = 0.0f;
     };
 
     struct ActionProfile
@@ -477,10 +478,11 @@ namespace
                 result.user_satisfaction_after + 0.04f * static_cast<float>(result.user_feedback),
                 0.0f, 1.0f);
         }
+        result.deterministic_reward = rewardFor(
+            action, observation, fetchSucceeded, energyBefore, stressBefore,
+            satisfactionBefore) - effort;
         result.reward = std::clamp(
-            rewardFor(action, observation, fetchSucceeded, energyBefore, stressBefore,
-                      satisfactionBefore) - effort + stochasticFeedbackReward,
-            -1.0f, 1.0f);
+            result.deterministic_reward + stochasticFeedbackReward, -1.0f, 1.0f);
         return result;
     }
 
@@ -865,8 +867,9 @@ namespace
             row["one_step_oracle_q_values"] = oracle.q_values;
             row["one_step_oracle_agreement"] = oracleAgreement;
             row["reward_components"] = {
-                {"context_fit", transition.context_fit},
-                {"effort_cost", transition.effort_cost},
+                {"context_fit_diagnostic", transition.context_fit},
+                {"effort_cost_diagnostic", transition.effort_cost},
+                {"deterministic_reward_before_stochastic_feedback", transition.deterministic_reward},
                 {"stochastic_user_feedback", transition.user_feedback == 2 ? 0.0f : 0.16f * static_cast<float>(transition.user_feedback)},
                 {"user_feedback_class", transition.user_feedback == 2 ? "ignored" : transition.user_feedback < 0 ? "negative" : transition.user_feedback > 0 ? "positive" : "neutral"}
             };
@@ -1143,15 +1146,16 @@ bool runTrainingSelfTests()
     bool stochasticFeedbackPassed = false;
     {
         const EnvironmentObservation social{0, 1, 0, 0, 0.45f};
-        bool negative = false, neutral = false, positive = false;
+        bool negative = false, neutral = false, positive = false, ignored = false;
         for (unsigned int seed = 1; seed <= 120; ++seed) {
             std::mt19937 rng(seed);
             const EnvironmentStep transition = applyEnvironmentAction("WANDER", social, 0.8f, rng);
             negative = negative || transition.user_feedback < 0;
             neutral = neutral || transition.user_feedback == 0;
-            positive = positive || transition.user_feedback > 0;
+            positive = positive || transition.user_feedback == 1;
+            ignored = ignored || transition.user_feedback == 2;
         }
-        stochasticFeedbackPassed = negative && neutral && positive;
+        stochasticFeedbackPassed = negative && neutral && positive && ignored;
     }
     bool heldOutPassed = false;
     {
@@ -1172,7 +1176,7 @@ bool runTrainingSelfTests()
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    std::cout << "Stochastic user feedback includes all response classes: " << (stochasticFeedbackPassed ? "PASS" : "FAIL") << '\n';
+    std::cout << "Stochastic user feedback includes negative, neutral, positive and ignored responses: " << (stochasticFeedbackPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Held-out generator includes unseen joint contexts: " << (heldOutPassed ? "PASS" : "FAIL") << '\n';
     return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed &&
            stableActionIdsPassed && stochasticFeedbackPassed && heldOutPassed;
