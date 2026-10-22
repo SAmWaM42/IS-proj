@@ -492,28 +492,30 @@ namespace
         std::vector<EnvironmentObservation> observations;
         observations.reserve(static_cast<std::size_t>(steps));
         if (heldOut) {
-            // These joint combinations are deliberately absent from the training
-            // catalogue. Shuffle them per block to avoid evaluation-order artefacts.
-            std::vector<int> heldOutIds{0, 1, 2, 3};
+            // A broader stress-test catalogue of unseen joint observation combinations.
+            // Shuffle the complete catalogue each block so all contexts are covered
+            // without a fixed ordering when steps is a multiple of the catalogue size.
+            std::vector<EnvironmentObservation> heldOutCatalog{
+                {1, 3, 1, 1, 0.70f, false, false}, // task active but target unavailable
+                {1, 2, 2, 1, 0.62f, true, false},  // far task, rejection and food
+                {2, 0, 1, 1, 0.92f, true, true},   // disturbance with task and both affordances
+                {0, 0, 2, 1, 0.40f, false, true},  // negative social context and pending task
+                {0, 2, 0, 0, 0.58f, true, false},  // social context with food available
+                {2, 1, 2, 0, 0.86f, false, true},  // disturbance with play available
+                {1, 0, 2, 1, 0.76f, false, true},  // near task with rejection and play
+                {2, 3, 0, 1, 0.35f, true, true},   // low-signal context with task and both affordances
+                {0, 1, 1, 1, 0.66f, true, true},   // social context with pending task and both affordances
+                {1, 1, 0, 1, 0.48f, true, true},   // near task with neutral status and both affordances
+                {2, 2, 2, 1, 0.77f, true, false},  // negative signal with far context and food
+                {0, 0, 0, 0, 0.25f, false, false}  // low-signal social context
+            };
             std::uniform_real_distribution<float> signalJitter(-0.025f, 0.025f);
             while (observations.size() < static_cast<std::size_t>(steps)) {
-                std::shuffle(heldOutIds.begin(), heldOutIds.end(), rng);
-                for (int id : heldOutIds) {
-                    const float jitter = signalJitter(rng);
-                    switch (id) {
-                        case 0:
-                            observations.push_back({1, 3, 1, 1, std::clamp(0.70f + jitter, 0.0f, 1.0f), false, false});
-                            break; // target unavailable while task is active
-                        case 1:
-                            observations.push_back({1, 2, 2, 1, std::clamp(0.62f + jitter, 0.0f, 1.0f), true, false});
-                            break; // far task, negative user signal, and food coexist
-                        case 2:
-                            observations.push_back({2, 0, 1, 1, std::clamp(0.92f + jitter, 0.0f, 1.0f), true, true});
-                            break; // disturbance, task, food, and play affordances coexist
-                        default:
-                            observations.push_back({0, 0, 2, 1, std::clamp(0.40f + jitter, 0.0f, 1.0f), false, true});
-                            break; // negative social context with pending task and play
-                    }
+                std::shuffle(heldOutCatalog.begin(), heldOutCatalog.end(), rng);
+                for (auto observation : heldOutCatalog) {
+                    observation.signal_strength = std::clamp(
+                        observation.signal_strength + signalJitter(rng), 0.0f, 1.0f);
+                    observations.push_back(observation);
                     if (observations.size() >= static_cast<std::size_t>(steps)) break;
                 }
             }
@@ -917,7 +919,7 @@ bool runTrainingExperiment(const std::string &mode,
                            unsigned int seed,
                            const std::string &outputDirectory)
 {
-    if (mode != "train" && mode != "validate" && mode != "compare")
+    if (mode != "train" && mode != "validate" && mode != "validate-distribution" && mode != "compare")
     {
         std::cerr << "Unsupported experiment mode: " << mode << '\n';
         return false;
@@ -988,7 +990,7 @@ bool runTrainingExperiment(const std::string &mode,
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v5_stochastic_user_feedback";
-    summary["scenario_sampling"] = mode == "train" ? "per-episode shuffled 14-scenario catalogue" : "held-out joint state combinations absent from training catalogue";
+    summary["scenario_sampling"] = mode == "train" || mode == "validate-distribution" ? "per-episode shuffled 14-scenario catalogue" : "12 held-out joint state combinations absent from training catalogue";
     summary["stochastic_user_model"] = "hidden per-run response traits; probabilistic positive/neutral/negative/ignored feedback; paired user profile for both agents";
     summary["note"] = "Training shuffles a scenario catalogue per episode and uses a hidden stochastic user profile with positive, neutral, negative, and ignored responses. Rewards combine graded context fit, drive relief, successful task completion, effort, satisfaction-weighted disappointment, and stochastic feedback; non-compliance alone is not treated as automatically wrong. The held-out generator uses joint observation combinations absent from training. Stimulus alignment and one-step oracle agreement are synthetic engineering diagnostics, not perceived believability.";
 
@@ -1007,7 +1009,7 @@ bool runTrainingExperiment(const std::string &mode,
     for (int episode = 0; episode < episodes; ++episode)
     {
         const std::vector<EnvironmentObservation> observations =
-            makeEpisodeObservations(environmentRng, steps, mode != "train");
+            makeEpisodeObservations(environmentRng, steps, mode == "validate");
 
         const float epsilon = mode == "train"
                                   ? std::max(0.05f, 0.30f * (1.0f - static_cast<float>(episode) / static_cast<float>(episodes)))
@@ -1104,9 +1106,11 @@ bool runTrainingExperiment(const std::string &mode,
     const int proposedOracleAgreements = [&] { int n = 0; for (const auto &episode : proposedEpisodes) n += episode.value("one_step_oracle_agreements", 0); return n; }();
     summary["baseline"]["one_step_oracle_agreement_rate"] = baselineOracleChecks > 0
         ? static_cast<double>(baselineOracleAgreements) / baselineOracleChecks : 0.0;
+    summary["baseline"]["diagnostic_one_step_oracle_agreement_rate"] = summary["baseline"]["one_step_oracle_agreement_rate"];
     summary["proposed"]["one_step_oracle_agreement_rate"] = proposedOracleChecks > 0
         ? static_cast<double>(proposedOracleAgreements) / proposedOracleChecks : 0.0;
-    summary["one_step_oracle_scope"] = "Exact Q* for a separate one-step diagnostic MDP with terminal next state; agreement is not claimed to be optimality for the multi-step training environment.";
+    summary["proposed"]["diagnostic_one_step_oracle_agreement_rate"] = summary["proposed"]["one_step_oracle_agreement_rate"];
+    summary["diagnostic_one_step_oracle_scope"] = "Exact Q* for a separate one-step diagnostic MDP with terminal next state. Agreement is only a local action-ranking diagnostic, not optimality for the multi-step training environment.";\n    summary["one_step_oracle_scope"] = summary["diagnostic_one_step_oracle_scope"];
     summary["baseline"]["mean_steps_per_episode"] = baselineStepSum / episodes;
     summary["baseline"]["mean_reward"] = baselineRewardSum / episodes; // Backwards-compatible alias.
     summary["baseline"]["completion_rate"] = static_cast<double>(baselineCompletions) / episodes;
@@ -1160,7 +1164,7 @@ bool runTrainingSelfTests()
     bool heldOutPassed = false;
     {
         std::mt19937 rng(2026);
-        const auto heldOut = makeEpisodeObservations(rng, 4, true);
+        const auto heldOut = makeEpisodeObservations(rng, 12, true);
         bool unavailableTask = false, taskWithDisturbance = false, foodAndPlay = false;
         for (const auto& observation : heldOut) {
             unavailableTask = unavailableTask ||
