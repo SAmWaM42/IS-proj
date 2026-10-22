@@ -467,6 +467,29 @@ void CompanionUI::executeInteraction(const std::string& label,
                            {"state_before_outcome", baselineStateBeforeOutcome},
                            {"state_after_outcome", baseline.getCurrentState().encode()},
                            {"learning_update_enabled", false}};
+        const auto& decisionTrace = proposed.getLastDecisionTrace();
+        nlohmann::json qValues = nlohmann::json::object();
+        for (const auto& item : decisionTrace.valid_action_q_values) {
+            qValues[item.first] = item.second;
+        }
+        row["proposed_decision_trace"] = {
+            {"encoded_state", decisionTrace.encoded_state},
+            {"contextual_fallback", decisionTrace.contextual_fallback},
+            {"policy_action_before_overrides", decisionTrace.policy_action},
+            {"general_preference_override", decisionTrace.general_preference_override},
+            {"rejection_override_applied", decisionTrace.rejection_override_applied},
+            {"final_action", decisionTrace.final_action},
+            {"valid_action_q_values", qValues},
+            {"memory_record_count", decisionTrace.memory_record_count},
+            {"affect", {
+                {"valence", static_cast<int>(decisionTrace.affect.valence)},
+                {"energy", static_cast<int>(decisionTrace.affect.energy)},
+                {"stress", decisionTrace.affect.stress},
+                {"affinity", decisionTrace.affect.affinity},
+                {"arousal", decisionTrace.affect.arousal},
+                {"engagement", decisionTrace.affect.engagement}
+            }}
+        };
         row["proposed"] = {
             {"action", latestProposedAction}, {"reward", proposedOutcome.reward},
             {"state_before_outcome", proposedStateBeforeOutcome},
