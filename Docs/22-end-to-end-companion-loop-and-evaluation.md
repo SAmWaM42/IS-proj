@@ -1,7 +1,7 @@
 # End-to-End Companion Loop and Evaluation
 
 **Branch:** \`feat/end-to-end-companion-loop\`  
-**Status:** Source changes committed; local build, UI walkthrough, and multi-seed run still require verification.  
+**Status:** Evaluation coverage and reporting changes committed; local build, self-tests, refreshed multi-seed run, and UI walkthrough still require verification.  
 **Purpose:** Turn the existing scaffolding into one demonstrable interactive path and a reproducible synthetic training/evaluation workflow.
 
 ## Interactive runtime path
@@ -49,7 +49,7 @@ The experiment summary records:
 - reward components/diagnostics, including stochastic user-feedback class;
 - transition/schema versions, seeds, and hyperparameters.
 
-**Oracle limitation:** The exact oracle is for a separate one-step diagnostic MDP whose next state is terminal. In that diagnostic, each Q*(s,a) is the analytically expected immediate reward under the reward and stochastic-feedback model. Policy agreement is therefore a useful local action-ranking diagnostic, but it is not the optimal policy for the full multi-step environment. Multi-step reward and learning curves must be reported separately.
+**Oracle limitation:** The exact oracle is for a separate one-step diagnostic MDP whose next state is terminal. In that diagnostic, each Q*(s,a) is the analytically expected immediate reward under the reward and stochastic-feedback model. The metric is named `diagnostic_one_step_oracle_agreement_rate` to emphasize that it is only a local action-ranking diagnostic. It is not policy agreement with the exact optimal Q-table for the full multi-step environment, and it must not be interpreted as evidence of full-environment optimality. Multi-step reward and learning curves must be reported separately.
 
 Run the multi-seed harness after building:
 
@@ -57,11 +57,11 @@ Run the multi-seed harness after building:
 python3 scripts/evaluate_multiseed.py --binary ./build/IS-2 --seeds 10 --episodes 200 --eval-episodes 40 --steps 40 --out artifacts/multiseed-evaluation
 \`\`\`
 
-It trains fresh policies for each of ten seeds, evaluates on held-out combinations without Q-learning updates or exploration, and reports the mean and sample standard deviation across seeds. It also writes aligned per-episode learning curves and a validation-approach paragraph.
+It trains fresh policies for each of ten seeds, then evaluates each saved policy in both the held-out stress suite and the in-distribution scenario catalogue without Q-table updates or exploration. It reports means and sample standard deviations across seeds separately for each stratum. It also writes aligned per-episode training learning curves and a validation-approach paragraph.
 
 ## Justified validation approach
 
-Validation combines mean reward per step, task completion rate, learning curves, and policy agreement with an exact one-step Q* diagnostic. Mean reward per step summarises the synthetic interaction objective without allowing longer episodes to dominate; completion rate checks whether the agent actually completes tasks; learning curves show whether performance changes with training; and oracle agreement checks whether the learned action ranking matches the exact immediate-reward optimum in the bounded diagnostic. The multi-step held-out evaluation checks transfer to unseen combinations of observable context, while paired user profiles and seeds reduce avoidable comparison noise. The synthetic reward is a controllable engineering signal built from action-context fit, task outcomes, effort, drive relief, and noisy simulated-user feedback. It does not measure human-perceived believability, establish a realistic psychological model, or replace participant ratings and behavioural analysis.
+Validation combines mean reward per step, task completion rate, learning curves, and policy agreement with an exact one-step Q* diagnostic. Mean reward per step summarises the synthetic interaction objective without allowing longer episodes to dominate; completion rate checks whether the agent actually completes tasks; learning curves show whether performance changes with training; and oracle agreement checks whether the learned action ranking matches the exact immediate-reward optimum in the bounded diagnostic. The two evaluation strata distinguish selected unseen combinations from fresh samples of the bounded training scenario distribution, while paired user profiles and seeds reduce avoidable comparison noise. The synthetic reward is a controllable engineering signal built from action-context fit, task outcomes, effort, drive relief, and noisy simulated-user feedback. It does not measure human-perceived believability, establish a realistic psychological model, or replace participant ratings and behavioural analysis.
 
 ## Verification status
 
