@@ -841,7 +841,7 @@ namespace
             }
 
             nlohmann::json row;
-            row["schema_version"] = 2;
+            row["schema_version"] = 3;
             row["agent"] = agentName;
             row["episode"] = episodeIndex;
             row["step_index"] = step;
@@ -967,7 +967,7 @@ bool runTrainingExperiment(const std::string &mode,
     const unsigned int environmentSeed = mode == "train" ? seed : seed + 1000003u;
     std::mt19937 environmentRng(environmentSeed);
     nlohmann::json summary;
-    summary["schema_version"] = 2;
+    summary["schema_version"] = 3;
     summary["state_encoding_version"] = "mixed_radix_memory_affect_affordance_v2";
     summary["action_space_version"] = 1;
     summary["q_table_format_version"] = 1;
@@ -987,10 +987,10 @@ bool runTrainingExperiment(const std::string &mode,
     summary["environment_seed"] = environmentSeed;
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
-    summary["reward_model"] = "synthetic_v4_graded_context_fit";
+    summary["reward_model"] = "synthetic_v5_stochastic_user_feedback";
     summary["scenario_sampling"] = mode == "train" ? "per-episode shuffled 14-scenario catalogue" : "held-out joint state combinations absent from training catalogue";
     summary["stochastic_user_model"] = "hidden per-episode response traits; probabilistic positive/neutral/negative feedback; paired user profile for both agents";
-    summary["note"] = "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.";
+    summary["note"] = "Training shuffles a scenario catalogue per episode and uses a hidden stochastic user profile with positive, neutral, negative, and ignored responses. Rewards combine graded context fit, drive relief, successful task completion, effort, satisfaction-weighted disappointment, and stochastic feedback; non-compliance alone is not treated as automatically wrong. The held-out generator uses joint observation combinations absent from training. Stimulus alignment and one-step oracle agreement are synthetic engineering diagnostics, not perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
     nlohmann::json proposedEpisodes = nlohmann::json::array();
