@@ -631,7 +631,7 @@ void CompanionUI::executeInteraction(const std::string& label,
 
 std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward) {
     observation = EnvironmentObservation{0, 1, 0, 0, 0.45f};
-    reward = 0.25f;
+    reward = 0.0f;
     std::string lowered = text;
     std::transform(lowered.begin(), lowered.end(), lowered.begin(),
                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
@@ -657,7 +657,16 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
                 lowered.find("food") != std::string::npos || lowered.find("feed") != std::string::npos;
             observation.play_available = observation.play_available ||
                 lowered.find("play") != std::string::npos || lowered.find("toy") != std::string::npos;
-            reward = parsed.value("reward", 0.25f);
+            // Commands do not carry a preset reward. Only explicit praise or
+            // rejection is treated as direct user feedback; action quality and
+            // world consequences are computed by the interaction transition.
+            reward = negativeFeedback ? -1.0f : 0.0f;
+            if (!negativeFeedback &&
+                (intent == "praise" || lowered.find("praise") != std::string::npos ||
+                 lowered.find("good") != std::string::npos ||
+                 lowered.find("well done") != std::string::npos ||
+                 lowered.find("thank") != std::string::npos))
+                reward = 1.0f;
             nlpMethod = parsed.value("method", std::string("unknown"));
             return intent;
         }
@@ -680,15 +689,15 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
     if (lowered.find("feed") != std::string::npos || lowered.find("food") != std::string::npos ||
         lowered.find("eat") != std::string::npos) {
         observation = EnvironmentObservation{2, 0, 1, 0, 0.30f, true, false};
-        reward = 0.5f; return "feeding";
+        reward = 0.0f; return "feeding";
     }
     if (lowered.find("play") != std::string::npos || lowered.find("toy") != std::string::npos) {
         observation = EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true};
-        reward = 0.5f; return "play";
+        reward = 0.0f; return "play";
     }
     if (lowered.find("rest") != std::string::npos || lowered.find("tired") != std::string::npos ||
         lowered.find("quiet") != std::string::npos) {
-        observation = EnvironmentObservation{2, 2, 0, 0, 0.20f}; reward = 0.25f; return "rest";
+        observation = EnvironmentObservation{2, 2, 0, 0, 0.20f}; reward = 0.0f; return "rest";
     }
     if (lowered.find("good") != std::string::npos || lowered.find("praise") != std::string::npos ||
         lowered.find("well done") != std::string::npos) {
