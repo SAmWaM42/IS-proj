@@ -8,6 +8,7 @@
 #include <SFML/Graphics.hpp>
 
 #include "Components/State-Action/state-action.h"
+#include "Components/Simulation/backyard-environment.h"
 
 class CompanionUI {
 public:
@@ -40,6 +41,7 @@ private:
     Screen screen = Screen::AgentSelection;
     BaselineAgent baseline;
     ProposedAgent proposed;
+    BackyardEnvironment environment;
     EnvironmentObservation latestObservation;
     std::string latestBaselineAction = "IDLE";
     std::string latestProposedAction = "IDLE";
