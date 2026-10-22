@@ -724,7 +724,8 @@ namespace
                               std::ofstream &stepLog,
                               const std::string &agentName,
                               int episodeIndex,
-                              const SimulatedUserProfile &user)
+                              const SimulatedUserProfile &user,
+                              unsigned int environmentSeed)
     {
         agent.reset();
         agent.setLearningEnabled(learning);
@@ -755,8 +756,9 @@ namespace
             if (oracleAgreement) ++metrics.oracle_agreements;
             // Same seed per episode/step gives both agents paired environmental noise,
             // independent of how many stochastic actions either policy selected.
-            std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
-                                       static_cast<unsigned int>(step) * 104729u);
+            std::mt19937 transitionRng(environmentSeed ^
+                (static_cast<unsigned int>(episodeIndex + 1) * 7919u) ^
+                (static_cast<unsigned int>(step) * 104729u));
             const EnvironmentStep transition =
                 applyEnvironmentAction(action, observation, environmentEnergy,
                                        environmentStress, userSatisfaction, user, transitionRng);
@@ -975,9 +977,9 @@ bool runTrainingExperiment(const std::string &mode,
         const bool learning = mode == "train";
 
         const EpisodeMetrics baselineMetrics = runEpisode(
-            baseline, observations, learning, epsilon, baselineLog, "baseline", episode, userProfile);
+            baseline, observations, learning, epsilon, baselineLog, "baseline", episode, userProfile, environmentSeed);
         const EpisodeMetrics proposedMetrics = runEpisode(
-            proposed, observations, learning, epsilon, proposedLog, "proposed", episode, userProfile);
+            proposed, observations, learning, epsilon, proposedLog, "proposed", episode, userProfile, environmentSeed);
 
         baselineRewardSum += baselineMetrics.total_reward;
         proposedRewardSum += proposedMetrics.total_reward;
