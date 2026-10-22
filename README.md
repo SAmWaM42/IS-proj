@@ -60,6 +60,7 @@ Build the project with the existing CMake setup, then run:
 ./build/IS-2 --train --episodes 1000 --steps 40 --seed 42 --out artifacts/training
 ./build/IS-2 --validate --episodes 200 --steps 40 --seed 43 --out artifacts/training
 ./build/IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training
+python3 tests/test_nlp_intent_service.py
 ```
 
 Training saves `baseline.qtable` and `proposed.qtable`. Validation and comparison load those checkpoints, disable exploration and Q-table updates, and use a held-out scenario generator plus an evaluation seed offset from the supplied seed. Proposed-agent memory and affect continue updating from evaluation outcomes, since online adaptation is part of the behaviour being evaluated. Step logs are written to `<mode>_baseline_steps.jsonl` and `<mode>_proposed_steps.jsonl`, preventing later runs from overwriting earlier mode logs; a mode-specific JSON summary is also written.
