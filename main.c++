@@ -26,7 +26,8 @@ void printUsage(const char* executable) {
         << "Usage:\n"
         << "  " << executable << " --self-test\n"
         << "  " << executable << " --train [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
-        << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]  (held-out stress suite)\n"\n        << "  " << executable << " --validate-distribution [--episodes N] [--steps N] [--seed N] [--out DIR]  (training-distribution scenarios)\n"
+        << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]  (held-out stress suite)\n"
+        << "  " << executable << " --validate-distribution [--episodes N] [--steps N] [--seed N] [--out DIR]  (training-distribution scenarios)\n"
         << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
         << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
         << "Run --train before either validation mode, --compare, or --study. Evaluation disables Q-table updates and exploration.\n";
