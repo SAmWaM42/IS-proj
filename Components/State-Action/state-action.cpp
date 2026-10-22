@@ -939,6 +939,10 @@ void QLearning::setEpsilon(float epsilonValue) {
     epsilon = epsilonValue;
 }
 
+double QLearning::getQValue(const state& stateRef, const std::string& action) const {
+    return q_table.getQValue(stateRef.encode(), action);
+}
+
 void QLearning::loadQTable(const std::string& path) {
     q_table.load(path);
 }
@@ -1508,13 +1512,25 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
     const std::string fallback = contextualAction(observation, &affective_state, &memory_records);
-    std::string selected = q_policy.chooseAction(
-        current_state, fallback, validActionsForObservation(observation));
+    const auto validActions = validActionsForObservation(observation);
+    std::string selected = q_policy.chooseAction(current_state, fallback, validActions);
+    last_decision_trace = ActionDecisionTrace{};
+    last_decision_trace.encoded_state = current_state.encode();
+    last_decision_trace.contextual_fallback = fallback;
+    last_decision_trace.policy_action = selected;
+    last_decision_trace.memory_record_count = memory_records.size();
+    last_decision_trace.affect = affective_state;
+    for (const auto& action : validActions) {
+        last_decision_trace.valid_action_q_values.emplace_back(action, q_policy.getQValue(current_state, action));
+    }
     // General semantic preferences influence only matching contexts. More
     // specific action preferences below take precedence when both apply.
     const std::string generalPreferenceAction =
         generalPreferenceActionOverride(observation, &memory_records, &affective_state);
-    if (!generalPreferenceAction.empty()) selected = generalPreferenceAction;
+    if (!generalPreferenceAction.empty()) {
+        selected = generalPreferenceAction;
+        last_decision_trace.general_preference_override = generalPreferenceAction;
+    }
 
     // Explicit, sufficiently confident preferences take precedence over a
     // learned action when the current scenario directly matches the preference.
@@ -1542,9 +1558,11 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     }
     if (wasActionRejected(selected, memory_records)) {
         selected = alternativeAfterRejection(selected, observation);
+        last_decision_trace.rejection_override_applied = true;
     }
     selected = validActionOrFallback(selected, fallback, observation);
     session_context.current_action = selected;
+    last_decision_trace.final_action = selected;
     return session_context.current_action;
 }
 
@@ -1715,6 +1733,10 @@ const std::vector<record>& ProposedAgent::getMemoryRecords() const {
 
 const AffectiveState& ProposedAgent::getAffectiveState() const {
     return affective_state;
+}
+
+const ActionDecisionTrace& ProposedAgent::getLastDecisionTrace() const {
+    return last_decision_trace;
 }
 
 void ProposedAgent::clearMemory() {
