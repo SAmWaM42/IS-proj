@@ -444,6 +444,7 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["processing_status"] = "completed";
         row["condition_code"] = std::string(1, selectedAgentCode);
         row["input_summary"] = label;
+        row["nlp_method"] = nlpMethod;
         const auto& worldAfterAction = environment.state();
         row["environment"] = {
             {"ball_available", worldAfterAction.ballAvailable},
