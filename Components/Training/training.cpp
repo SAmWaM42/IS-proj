@@ -972,12 +972,14 @@ bool runTrainingExperiment(const std::string &mode,
     double proposedStepSum = 0.0;
     int baselineCompletions = 0;
     int proposedCompletions = 0;
+    // One latent user profile per experiment run lets the agents learn a stable
+    // interaction history instead of mixing unrelated users across episodes.
+    const SimulatedUserProfile userProfile = sampleUserProfile(environmentRng);
 
     for (int episode = 0; episode < episodes; ++episode)
     {
         const std::vector<EnvironmentObservation> observations =
             makeEpisodeObservations(environmentRng, steps, mode != "train");
-        const SimulatedUserProfile userProfile = sampleUserProfile(environmentRng);
 
         const float epsilon = mode == "train"
                                   ? std::max(0.05f, 0.30f * (1.0f - static_cast<float>(episode) / static_cast<float>(episodes)))
