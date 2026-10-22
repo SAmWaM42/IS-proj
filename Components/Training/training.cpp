@@ -253,6 +253,82 @@ namespace
                           incongruencePenalty - 0.05f, -1.0f, 1.0f);
     }
 
+    float expectedUserFeedbackReward(const std::string &action,
+                                     const EnvironmentObservation &observation,
+                                     float energy,
+                                     float stress,
+                                     float satisfaction,
+                                     const SimulatedUserProfile &user)
+    {
+        const float fit = actionContextFit(action, observation, energy, stress);
+        float positiveWeight = 0.18f + 0.34f * std::clamp((fit + 1.0f) * 0.5f, 0.0f, 1.0f)
+                             + 0.18f * user.praise_responsiveness;
+        if (observation.play_available) positiveWeight += 0.12f * user.playfulness;
+        if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+            positiveWeight -= 0.18f * user.noise_sensitivity;
+        float negativeWeight = 0.08f + 0.22f * user.rejection_sensitivity
+                             + 0.20f * std::clamp(-fit, 0.0f, 1.0f);
+        if (observation.user_status == 2) negativeWeight += 0.12f * user.rejection_sensitivity;
+        positiveWeight = std::clamp(positiveWeight * user.response_rate, 0.03f, 0.85f);
+        negativeWeight = std::clamp(negativeWeight * (0.6f + 0.4f * user.response_rate), 0.03f, 0.80f);
+        const float normalizer = positiveWeight + negativeWeight;
+        if (normalizer > 0.92f) {
+            positiveWeight *= 0.92f / normalizer;
+            negativeWeight *= 0.92f / normalizer;
+        }
+        (void)satisfaction;
+        return 0.16f * (positiveWeight - negativeWeight);
+    }
+
+    std::pair<std::string, float> exactOneStepOracle(
+        const EnvironmentObservation &observation,
+        float energy,
+        float stress,
+        float satisfaction,
+        const SimulatedUserProfile &user)
+    {
+        // Exact Q* for a separate one-step diagnostic MDP: the next state is
+        // terminal, so each Q*(s,a) is the analytically expected immediate reward.
+        // This is not presented as the optimal policy for the multi-step world.
+        const auto actions = validActionsForObservation(observation);
+        std::string bestAction = actions.front();
+        float bestValue = -std::numeric_limits<float>::infinity();
+        for (const auto &action : actions) {
+            float effort = 0.012f;
+            if (action == "FETCH" && observation.task_status == 1 && observation.target_proximity < 3) {
+                const int proximity = std::clamp(observation.target_proximity, 0, 2);
+                const float distanceCost[] = {0.035f, 0.085f, 0.16f};
+                effort = distanceCost[proximity] * (1.0f + 0.8f * (1.0f - energy));
+            } else if (action == "APPROACH_FOLLOW" && observation.target_proximity > 0 &&
+                       observation.target_proximity < 3 && observation.user_status != 2) {
+                effort = 0.045f * (1.0f + 0.8f * (1.0f - energy));
+            } else if (action == "SLEEP_LAY" ||
+                       (action == "EAT" && observation.food_available)) {
+                effort = 0.0f;
+            } else if (action == "PLAY" && observation.play_available) {
+                effort = 0.055f * (1.0f + 0.8f * (1.0f - energy));
+            }
+
+            float expectedBaseReward = rewardFor(action, observation, false, energy, stress, satisfaction);
+            if (action == "FETCH" && observation.task_status == 1 && observation.target_proximity < 3) {
+                const int proximity = std::clamp(observation.target_proximity, 0, 2);
+                const float baseProbability[] = {0.96f, 0.78f, 0.52f};
+                const float successProbability = std::clamp(
+                    baseProbability[proximity] * (0.55f + 0.45f * energy), 0.0f, 1.0f);
+                const float successReward = rewardFor(action, observation, true, energy, stress, satisfaction);
+                expectedBaseReward = successProbability * successReward +
+                                     (1.0f - successProbability) * expectedBaseReward;
+            }
+            const float expectedReward = expectedBaseReward - effort +
+                expectedUserFeedbackReward(action, observation, energy, stress, satisfaction, user);
+            if (expectedReward > bestValue) {
+                bestValue = expectedReward;
+                bestAction = action;
+            }
+        }
+        return {bestAction, bestValue};
+    }
+
     EnvironmentStep applyEnvironmentAction(const std::string &action,
                                            const EnvironmentObservation &observation,
                                            float energy,
