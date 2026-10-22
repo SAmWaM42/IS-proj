@@ -22,6 +22,8 @@ namespace
         bool completed = false;
         int stimulus_checks = 0;
         int stimulus_aligned_actions = 0;
+        int oracle_checks = 0;
+        int oracle_agreements = 0;
         std::map<std::string, int> stimulus_checks_by_type;
         std::map<std::string, int> stimulus_aligned_by_type;
         std::map<std::string, int> action_counts;
@@ -739,6 +741,11 @@ namespace
 
             const float energyBefore = environmentEnergy;
             const float stressBefore = environmentStress;
+            const auto oracle = exactOneStepOracle(
+                observation, energyBefore, stressBefore, userSatisfaction, user);
+            ++metrics.oracle_checks;
+            const bool oracleAgreement = action == oracle.first;
+            if (oracleAgreement) ++metrics.oracle_agreements;
             // Same seed per episode/step gives both agents paired environmental noise,
             // independent of how many stochastic actions either policy selected.
             std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
@@ -812,6 +819,9 @@ namespace
             row["encoded_state"] = stateKeyBeforeAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
             row["reward"] = transition.reward;
+            row["one_step_oracle_action"] = oracle.first;
+            row["one_step_oracle_expected_reward"] = oracle.second;
+            row["one_step_oracle_agreement"] = oracleAgreement;
             row["reward_components"] = {
                 {"context_fit", transition.context_fit},
                 {"effort_cost", transition.effort_cost},
@@ -834,8 +844,14 @@ namespace
     {
         nlohmann::json result;
         result["total_reward"] = metrics.total_reward;
+        result["mean_reward_per_step"] = metrics.steps > 0
+            ? static_cast<double>(metrics.total_reward) / metrics.steps : 0.0;
         result["steps"] = metrics.steps;
         result["completed"] = metrics.completed;
+        result["one_step_oracle_checks"] = metrics.oracle_checks;
+        result["one_step_oracle_agreements"] = metrics.oracle_agreements;
+        result["one_step_oracle_agreement_rate"] = metrics.oracle_checks > 0
+            ? static_cast<double>(metrics.oracle_agreements) / metrics.oracle_checks : 0.0;
         result["action_counts"] = metrics.action_counts;
         result["unique_states_visited"] = metrics.visited_states.size();
         result["stimulus_checks"] = metrics.stimulus_checks;
@@ -1035,6 +1051,15 @@ bool runTrainingExperiment(const std::string &mode,
 
     summary["baseline"]["mean_total_reward_per_episode"] = baselineRewardSum / episodes;
     summary["baseline"]["mean_reward_per_step"] = baselineStepSum > 0.0 ? baselineRewardSum / baselineStepSum : 0.0;
+    const int baselineOracleChecks = [&] { int n = 0; for (const auto &episode : baselineEpisodes) n += episode.value("one_step_oracle_checks", 0); return n; }();
+    const int baselineOracleAgreements = [&] { int n = 0; for (const auto &episode : baselineEpisodes) n += episode.value("one_step_oracle_agreements", 0); return n; }();
+    const int proposedOracleChecks = [&] { int n = 0; for (const auto &episode : proposedEpisodes) n += episode.value("one_step_oracle_checks", 0); return n; }();
+    const int proposedOracleAgreements = [&] { int n = 0; for (const auto &episode : proposedEpisodes) n += episode.value("one_step_oracle_agreements", 0); return n; }();
+    summary["baseline"]["one_step_oracle_agreement_rate"] = baselineOracleChecks > 0
+        ? static_cast<double>(baselineOracleAgreements) / baselineOracleChecks : 0.0;
+    summary["proposed"]["one_step_oracle_agreement_rate"] = proposedOracleChecks > 0
+        ? static_cast<double>(proposedOracleAgreements) / proposedOracleChecks : 0.0;
+    summary["one_step_oracle_scope"] = "Exact Q* for a separate one-step diagnostic MDP with terminal next state; agreement is not claimed to be optimality for the multi-step training environment.";
     summary["baseline"]["mean_steps_per_episode"] = baselineStepSum / episodes;
     summary["baseline"]["mean_reward"] = baselineRewardSum / episodes; // Backwards-compatible alias.
     summary["baseline"]["completion_rate"] = static_cast<double>(baselineCompletions) / episodes;
