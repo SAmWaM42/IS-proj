@@ -36,6 +36,16 @@ target_compile_options(IS-2 PRIVATE
    -Wextra
 )
 
+enable_testing()
+
+add_executable(backyard_environment_test
+   tests/backyard_environment_test.cpp
+   Components/Simulation/backyard-environment.cpp
+)
+target_include_directories(backyard_environment_test PRIVATE ${CMAKE_SOURCE_DIR})
+target_compile_options(backyard_environment_test PRIVATE -Wall -Wextra)
+add_test(NAME backyard_environment_test COMMAND backyard_environment_test)
+
 add_executable(tokenizer_probe
    tests/tokenizer_probe.cpp
 )
