@@ -1,4 +1,5 @@
 #include "companion-ui.h"
+#include "backyard-environment.h"
 
 #include <algorithm>
 #include <array>
@@ -367,6 +368,11 @@ void CompanionUI::executeInteraction(const std::string& label,
     latestStimulus = label;
     latestBaselineAction = baseline.selectAction(observation);
     latestProposedAction = proposed.selectAction(observation);
+    // Only the selected blind condition changes the visible world; both policies
+    // still receive the same observation and are logged for analysis.
+    environment.beginInteraction();
+    environment.applyStimulus(label);
+    environment.applyAction(selectedAgentIsProposed ? latestProposedAction : latestBaselineAction);
     const std::size_t baselineStateBeforeOutcome = baseline.getCurrentState().encode();
     const std::size_t proposedStateBeforeOutcome = proposed.getCurrentState().encode();
     nlohmann::json memoryCandidates = nlohmann::json::array();
@@ -871,6 +877,39 @@ void CompanionUI::drawSimulationScreen() {
     scene.setOutlineThickness(1);
     window.draw(scene);
     drawBackdrop(30, 135, 1218, sceneHeight);
+
+    // Draw objects from world state, not inferred from the current animation.
+    const auto& world = environment.state();
+    if (world.ballAvailable) {
+        sf::CircleShape ball(11);
+        ball.setPosition({430.0f, 430.0f});
+        ball.setFillColor(sf::Color(235, 165, 55));
+        ball.setOutlineColor(sf::Color(120, 83, 35));
+        ball.setOutlineThickness(2.0f);
+        window.draw(ball);
+        drawText("BALL", 416, 451, 11, kInk);
+    } else if (world.dogHasBall) {
+        sf::CircleShape ball(7);
+        ball.setPosition({agentX + 26.0f, agentY + 28.0f});
+        ball.setFillColor(sf::Color(235, 165, 55));
+        ball.setOutlineColor(sf::Color(120, 83, 35));
+        ball.setOutlineThickness(1.0f);
+        window.draw(ball);
+    }
+    if (world.foodAvailable) {
+        sf::CircleShape bowl(16);
+        bowl.setPosition({1080.0f, 450.0f});
+        bowl.setFillColor(sf::Color(105, 151, 194));
+        bowl.setOutlineColor(sf::Color(55, 91, 127));
+        bowl.setOutlineThickness(2.0f);
+        window.draw(bowl);
+        drawText("FOOD", 1080, 485, 11, kInk);
+    }
+    if (world.disturbanceActive) {
+        drawText("!!", agentX + 22.0f, agentY - 22.0f, 24, sf::Color(170, 55, 45));
+        drawText("Disturbance", 1050, 165, 14, sf::Color(170, 55, 45));
+    }
+    drawText("Fetches completed: " + std::to_string(world.completedFetches), 850, 510, 13, kInk);
 
     sf::CircleShape person(18);
     person.setPosition({userX, userY + 30});
