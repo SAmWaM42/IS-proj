@@ -119,6 +119,8 @@ public:
     void reset();
     void setExplorationRate(float epsilon);
     void setLearningEnabled(bool enabled);
+    // Advance time-dependent affect without inventing a user interaction or reward.
+    void advanceTime(float elapsedSeconds);
     std::string selectAction(const EnvironmentObservation& observation);
     void applyOutcome(const EnvironmentObservation& observation,
                       const std::string& action,
