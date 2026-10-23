@@ -54,6 +54,8 @@ struct AffectiveState
     float affinity = 0.5f;
 
     void updateFromFeedback(float reward, bool positive_feedback, bool explicit_negative);
+    // Advance transient affect toward resting baselines; energy is environment-owned.
+    void decay(float elapsedSeconds);
 };
 
 enum class MemorySource
