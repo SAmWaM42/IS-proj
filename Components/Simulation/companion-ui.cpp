@@ -626,6 +626,7 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
 void CompanionUI::updateAnimation(float elapsedSeconds) {
     elapsedSeconds = std::min(elapsedSeconds, 0.1f);   // avoid jumps after the window is dragged
     sceneTime += elapsedSeconds;
+    proposed.advanceTime(elapsedSeconds);
     if (throwTimer > 0.0f) throwTimer = std::max(0.0f, throwTimer - elapsedSeconds);
 
     if (ballFlying) {
@@ -669,8 +670,39 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
     if (!behaviourActive && !interactionBuffer.empty()) {
         const auto next = interactionBuffer.front();
         interactionBuffer.pop_front();
+        autonomousDecisionTimer = 0.0f;
         executeInteraction(next.label, next.observation, next.reward, next.preference,
                            next.preferencePositive, next.sceneEvent);
+    } else if (!behaviourActive && interactionBuffer.empty()) {
+        // The environment continues to evolve when the user is idle. Refresh
+        // observable affordances and let both policies choose from that context;
+        // only the selected A/B condition is rendered. No synthetic user reward
+        // or memory event is recorded for this autonomous decision.
+        autonomousDecisionTimer += elapsedSeconds;
+        if (autonomousDecisionTimer >= autonomousDecisionInterval &&
+            screen == Screen::Simulation) {
+            autonomousDecisionTimer = 0.0f;
+            EnvironmentObservation ambient = latestObservation;
+            ambient.goal_state = 2;       // no new user request: ambient context
+            ambient.user_status = 0;
+            ambient.task_status = 0;
+            ambient.signal_strength = 0.0f;
+            ambient.food_available = foodPresent;
+            ambient.play_available = !ballCarried && !ballFlying;
+            const float targetDistance = std::fabs(agentX - ballX);
+            ambient.target_proximity = targetDistance < 120.0f ? 0 :
+                                       targetDistance < 300.0f ? 1 : 2;
+
+            latestBaselineAction = baseline.selectAction(ambient);
+            latestProposedAction = proposed.selectAction(ambient);
+            latestObservation = ambient;
+            latestStimulus = "The companion responds to its surroundings.";
+            startBehaviour(selectedAgentIsProposed ? latestProposedAction : latestBaselineAction, "");
+            if (researcherMode) {
+                appendLog("Autonomous environment-driven action: " +
+                          (selectedAgentIsProposed ? latestProposedAction : latestBaselineAction));
+            }
+        }
     }
 }
 
