@@ -30,6 +30,31 @@ void AffectiveState::updateFromFeedback(float reward, bool positive_feedback, bo
              reward < 0.0f ? AffectEnergy::LOW : AffectEnergy::MODERATE;
 }
 
+void AffectiveState::decay(float elapsedSeconds) {
+    if (!std::isfinite(elapsedSeconds) || elapsedSeconds <= 0.0f) return;
+
+    // Exponential relaxation toward variable-specific resting values. These
+    // rates are initial engineering defaults, not empirically calibrated values.
+    const float dt = std::min(elapsedSeconds, 60.0f);
+    const auto relax = [dt](float value, float baseline, float rate) {
+        const float fraction = 1.0f - std::exp(-rate * dt);
+        return std::clamp(value + (baseline - value) * fraction, 0.0f, 1.0f);
+    };
+
+    arousal = relax(arousal, 0.25f, 0.12f);
+    stress = relax(stress, 0.15f, 0.04f);
+    engagement = relax(engagement, 0.35f, 0.015f);
+    affinity = relax(affinity, 0.50f, 0.002f);
+
+    // Valence represents the current affective tone, not a stored event.
+    // Neutralise it once transient arousal and stress have substantially settled.
+    if (arousal < 0.32f && stress < 0.22f) {
+        valence = AffectValence::NEUTRAL;
+    }
+    // AffectEnergy intentionally does not decay here: it tracks environment
+    // energy and must change through exertion, feeding, or rest.
+}
+
 void MemoryRecord::update_record() {
     observation_count += 1;
     confidence = std::clamp(confidence + 0.1f, 0.0f, 1.0f);
