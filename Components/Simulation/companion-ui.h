@@ -81,6 +81,8 @@ private:
     int animationFrame = 0;
     float frameTimer = 0.0f;
     float sceneTime = 0.0f;
+    float autonomousDecisionTimer = 0.0f;
+    float autonomousDecisionInterval = 5.0f;
     float ballX = 600.0f, ballLandX = 600.0f, ballStartX = 0.0f, ballHeight = 0.0f, ballFlightTime = 0.0f;
     bool ballCarried = false, ballFlying = false;
     float throwTimer = 0.0f;
