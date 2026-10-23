@@ -1,6 +1,7 @@
 #include "memory.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <fstream>
 #include <sstream>
