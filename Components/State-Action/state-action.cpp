@@ -1520,6 +1520,11 @@ void ProposedAgent::setLearningEnabled(bool enabled) {
     learning_enabled = enabled;
 }
 
+void ProposedAgent::advanceTime(float elapsedSeconds) {
+    affective_state.decay(elapsedSeconds);
+    runtime_context.affective_state = affective_state;
+}
+
 std::string ProposedAgent::selectAction(const EnvironmentObservation& observation) {
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
@@ -2059,6 +2064,31 @@ bool testMemoryQueryRankingMatchesOnlyRelevantRecords() {
     return ranked.front().raw_fact.object == "fetch";
 }
 
+bool testAffectiveDecayUsesVariableSpecificRatesAndPreservesEnergy() {
+    AffectiveState affect;
+    affect.valence = AffectValence::NEGATIVE;
+    affect.energy = AffectEnergy::LOW;
+    affect.arousal = 1.0f;
+    affect.engagement = 1.0f;
+    affect.stress = 1.0f;
+    affect.affinity = 1.0f;
+
+    affect.decay(10.0f);
+    if (!(affect.arousal < 1.0f && affect.stress < 1.0f &&
+          affect.engagement < 1.0f && affect.affinity < 1.0f)) return false;
+    if (!(affect.arousal < affect.engagement && affect.engagement < affect.affinity)) return false;
+    if (affect.energy != AffectEnergy::LOW) return false;
+
+    const float beforeInvalidStep = affect.stress;
+    affect.decay(-1.0f);
+    if (!nearlyEqual(affect.stress, beforeInvalidStep)) return false;
+
+    affect.arousal = 0.25f;
+    affect.stress = 0.15f;
+    affect.decay(1.0f);
+    return affect.valence == AffectValence::NEUTRAL;
+}
+
 bool runBaselineValidation() {
     std::vector<TestResultRecord> results;
     results.push_back({"Basic Q update", "PASS", testBasicQUpdate(), "baseline"});
@@ -2078,6 +2108,7 @@ bool runBaselineValidation() {
     results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
     results.push_back({"Environment energy visible only to proposed agent", "PASS", testEnvironmentEnergyVisibleOnlyToProposedAgent(), "fairness"});
     results.push_back({"Negative feedback updates all affect dimensions", "PASS", testNegativeFeedbackUpdatesAffectDimensions(), "affect"});
+    results.push_back({"Affective decay uses variable-specific rates and preserves environment energy", "PASS", testAffectiveDecayUsesVariableSpecificRatesAndPreservesEnergy(), "affect"});
     results.push_back({"Outcome uses explicit next observation", "PASS", testOutcomeUsesExplicitNextObservation(), "training"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});
