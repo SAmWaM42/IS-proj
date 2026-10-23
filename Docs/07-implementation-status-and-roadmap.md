@@ -1,279 +1,257 @@
 # Implementation Status and Roadmap
 
-Status: current working record for the repository
+**Last reviewed:** 2026-10-23  
+**Branch reviewed:** `Dev`  
+**Purpose:** Working status register for implemented features, outstanding work, refinements, tests, and their source/specification paths.
 
-## Authority and scope
+This is an implementation tracker, not evidence that every current source edit compiles or that the research design is validated. For architecture and design decisions, see [Docs/project-context.md](project-context.md). Feature-specific design contracts are linked below.
 
-This document records the implementation status of the current project state and maps each completed or pending work item to the relevant specification.
+## Status key
 
-The authoritative project baseline remains [Docs/project-context.md](Docs/project-context.md). This document is a working record of implementation progress and not a replacement for the project-context document.
+- **Implemented — locally confirmed:** feature is in the source and has been confirmed working in the local application.
+- **Implemented — tests recorded:** implementation and tests are documented, but the checked-in results may predate newer edits.
+- **Implemented — verification required:** source changes exist, but a fresh build/test is still required.
+- **Pending:** not yet completed or not yet demonstrated end-to-end.
+- **Research gate:** software exists, but research validity, ethics, or participant-data collection is not established by implementation alone.
 
-## Current in-progress work
+## 1. Current project snapshot
 
-### Stage −1 — Shared action architecture and complexity reduction
+The project is a simulated companion-animal research prototype comparing a baseline tabular Q-learning agent with a proposed agent that incorporates semantic memory and affective state. The interactive SFML interface is a **working sprint-demo MVP**; it must not be described as proof that participants perceive the proposed agent as more believable.
 
-**Status:** Source edits committed; compile and test verification pending.
+### Confirmed at the latest review
 
-Implemented changes:
-- centralised the 14 actions and shared observable-context validity rules
-- masked invalid actions during selection and next-state Q-value bootstrapping for both agents
-- added food/play affordances to observations and encoded them into policy state
-- expanded synthetic training and participant-study contexts for food, play, and negative feedback
-- centralised UI action labels and action-to-animation grouping
-- removed the disconnected legacy backyard simulation, placeholder environment scaffolding, unused action hierarchy, duplicate comparison harness, unused Q-learning helpers, and no-op training-data loader
-- began the approved environment-transition extension: far fetch is reachable, approach changes proximity, fetch effort/success depend on distance and hidden environment energy, rest/eating restore energy, and the proposed agent alone observes energy in its policy state
-- added a far-fetch follow-up scenario and a self-test for action-dependent approach/rest transitions
+- The owner confirmed the local SFML UI builds and launches for the sprint demonstration.
+- `./build/IS-2 --sim` opens the participant-facing simulation mode.
+- `./build/IS-2 --sim-researcher` opens researcher/debug mode.
+- The UI includes A/B companion selection, a backyard scene, companion animation, preset interactions, typed interaction input, and session/interaction logging.
+- Typed input is routed through the persistent Python NLP service when available, with keyword fallback.
+- Session summaries and Q-table copies are written under `artifacts/simulation/`.
+- The participant-facing mode hides internal action labels and memory/affect diagnostics; researcher mode exposes them.
+- A questionnaire URL can be configured through `ANIMAL_AGENT_STUDY_FORM_URL`; the URL should not be hard-coded into source control.
+- The current shared-action architecture and action-dependent environment-transition edits are committed on `Dev`, but those latest edits still require a fresh build and test run.
+
+### Important boundaries
 
-Tracking document: [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md)
+- NLP is bounded intent classification, not general dialogue generation.
+- Preset rewards are development signals, not validated measures of user feedback or believability.
+- Synthetic training/comparison scores are engineering diagnostics, not participant believability results.
+- The `--study` workflow is a prototype. Do not collect real participant data until the supervisor/institutional ethics process, approved consent, and questionnaire/protocol requirements are satisfied.
+- `Docs/test-results.json` records 30/30 PASS at **2026-10-22T08:06:21Z**. That report predates the latest Stage −1 edits and must not be treated as a fresh pass for the current revision.
+
+## 2. Implemented features and source paths
 
-**Remaining gate:** Pull the latest `Dev`, build, run `--self-test`, and inspect a short `--train` run for action-dependent distance changes, energy logs, successful/failed fetch outcomes, and no selection of genuinely impossible actions. The GitHub edits have not been compiled in this session.
+### 2.1 Baseline tabular Q-learning
 
-## Completed work
+**Status:** Implemented; baseline tests are recorded.
 
-### 1. Baseline learning loop validation
+Capabilities:
+- Tabular Q-value lookup/update and handling of unseen states.
+- Q-table persistence and terminal-state handling.
+- Baseline remains the control condition and excludes memory/affect inputs.
+- Exploration can be seeded for reproducible runs; evaluation mode disables exploration and policy updates.
 
-Completed and validated.
+Paths:
+- Implementation: [Components/State-Action/state-action.h](../Components/State-Action/state-action.h), [Components/State-Action/state-action.cpp](../Components/State-Action/state-action.cpp)
+- Design: [Docs/03-baseline-learning-loop.md](03-baseline-learning-loop.md)
+- Tests/spec: [Docs/04-baseline-learning-tests.md](04-baseline-learning-tests.md)
 
-Summary:
-- established a minimal tabular Q-learning baseline
-- validated Q updates, unseen state handling, persistence, and terminal-state handling
-- preserved the baseline as the stable control condition for later staged extensions
+### 2.2 Memory and affect state
 
-Relevant spec:
-- [Docs/03-baseline-learning-loop.md](Docs/03-baseline-learning-loop.md)
-- [Docs/04-baseline-learning-tests.md](Docs/04-baseline-learning-tests.md)
+**Status:** Implemented in the agent/state pipeline; end-to-end runtime behavior still merits focused verification.
 
-Implementation files:
-- [Components/State-Action/state-action.h](Components/State-Action/state-action.h)
-- [Components/State-Action/state-action.cpp](Components/State-Action/state-action.cpp)
+Capabilities:
+- Structured semantic memory records and affect-state contracts.
+- Bounded `memory_bias` and `affect_trend` inputs for state construction.
+- Memory records can be ranked and summarised before being represented as a bounded state signal.
+- Proposed-agent memory and affect persistence/rest aggregation are implemented in the persistence layer.
+- Memory can preserve explicit semantic preferences and prior interaction outcomes; negative feedback can influence subsequent proposed-agent behavior.
 
-### 2. Memory and affect scaffolding
+Paths:
+- Implementation: [Components/Memory/memory.h](../Components/Memory/memory.h), [Components/Memory/memory.cpp](../Components/Memory/memory.cpp)
+- State encoding: [Components/State-Action/state-action.h](../Components/State-Action/state-action.h), [Components/State-Action/state-action.cpp](../Components/State-Action/state-action.cpp)
+- Specs: [Docs/05-memory-affect-scaffolding.md](05-memory-affect-scaffolding.md), [Docs/06-memory-affect-state-integration.md](06-memory-affect-state-integration.md), [Docs/08-live-memory-retrieval-and-ranking.md](08-live-memory-retrieval-and-ranking.md), [Docs/09-persistence-and-rest-aggregation.md](09-persistence-and-rest-aggregation.md)
+- Runtime contracts to review: [Docs/10-runtime-state-lifecycle.md](10-runtime-state-lifecycle.md), [Docs/11-live-memory-activation-and-ranking.md](11-live-memory-activation-and-ranking.md), [Docs/12-runtime-affect-and-rest-state-orchestration.md](12-runtime-affect-and-rest-state-orchestration.md), [Docs/13-runtime-persistence-and-continuity-contract.md](13-runtime-persistence-and-continuity-contract.md)
 
-Completed.
+### 2.3 Shared actions, observations, and environment transitions
 
-Summary:
-- defined explicit memory and affect data contracts
-- kept memory and affect separate from the baseline policy logic
-- ensured the project architecture remained modular and reviewable
+**Status:** Implemented in source; **fresh build and regression verification required**.
 
-Relevant spec:
-- [Docs/05-memory-affect-scaffolding.md](Docs/05-memory-affect-scaffolding.md)
+Capabilities added in the latest Stage −1 work:
+- One canonical 14-action vocabulary shared by baseline/proposed agents, scenarios, and UI action labels/animation grouping.
+- Shared observable-context validity rules and invalid-action masking during action selection and next-state Q-value bootstrapping.
+- Food/play affordances included in observations and policy state.
+- Training and study scenarios include food, play, and negative-feedback contexts.
+- Initial action-dependent environment transitions: approach changes proximity; fetch effort/success depend on distance and environment energy; rest/eating restore energy; far-fetch follow-up scenario added.
+- Removed disconnected/unused legacy simulation and scaffolding identified in the Stage −1 specification.
 
-Implementation files:
-- [Components/Memory/memory.h](Components/Memory/memory.h)
-- [Components/Memory/memory.cpp](Components/Memory/memory.cpp)
+Paths:
+- Action contract: [Components/State-Action/action-space.h](../Components/State-Action/action-space.h)
+- State and learning implementation: [Components/State-Action/state-action.h](../Components/State-Action/state-action.h), [Components/State-Action/state-action.cpp](../Components/State-Action/state-action.cpp)
+- Tracking spec: [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md)
+- Environment/comparison contracts: [Docs/14-pre-simulation-environment-contract.md](14-pre-simulation-environment-contract.md), [Docs/15-proposed-agent-comparison-spec.md](15-proposed-agent-comparison-spec.md), [Docs/16-baseline-agent-comparison-spec.md](16-baseline-agent-comparison-spec.md)
 
-### 3. Bounded memory/affect state integration
+**Fairness issue to resolve:** the latest implementation gives the proposed policy access to environment energy while the baseline does not. Decide whether energy is an explicitly intended treatment difference or make the observation available consistently to both agents. Document the decision and test it before interpreting comparison results.
 
-Completed and validated.
+### 2.4 Headless training, validation, and comparison
 
-Summary:
-- added bounded `memory_bias` and `affect_trend` fields to the state model
-- added `makeStateWithContext(...)` and `makeStateFromMemoryRecords(...)`
-- extended the mixed-radix encoder with these bounded state signals
-- included the low-energy exponential penalty in affective trend calculation
-- validated that changing the live memory signal or affective trend changes state identity without changing the Q-learning policy
+**Status:** Implemented; run again after the latest action/environment changes.
 
-Relevant spec:
-- [Docs/06-memory-affect-state-integration.md](Docs/06-memory-affect-state-integration.md)
+Commands:
+```sh
+./build/IS-2 --self-test
+./build/IS-2 --train --episodes 1000 --steps 40 --seed 42 --out artifacts/training
+./build/IS-2 --validate --episodes 200 --steps 40 --seed 43 --out artifacts/training
+./build/IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training
+```
 
-Implementation files:
-- [Components/State-Action/state-action.h](Components/State-Action/state-action.h)
-- [Components/State-Action/state-action.cpp](Components/State-Action/state-action.cpp)
-- [Components/Memory/memory.h](Components/Memory/memory.h)
-- [Components/Memory/memory.cpp](Components/Memory/memory.cpp)
+The runner saves baseline/proposed Q-table checkpoints and mode-specific step logs/episode summaries. Retrain both policies after state/action encoding changes before validation or comparison. The current synthetic observations/reward setup is an engineering test harness; it is not evidence of long-horizon planning or perceived believability.
 
-## Pending work
+Paths:
+- Entrypoint/options and self-tests: `main.c++`
+- Build setup: `CMakeLists.txt`
+- Comparison design: [Docs/15-proposed-agent-comparison-spec.md](15-proposed-agent-comparison-spec.md), [Docs/16-baseline-agent-comparison-spec.md](16-baseline-agent-comparison-spec.md), [Docs/16-paired-agent-scenario-tests.md](16-paired-agent-scenario-tests.md)
+- Training/evaluation notes: [Docs/17-training-validation-implementation.md](17-training-validation-implementation.md)
+- Historical test report: [Docs/test-results.json](test-results.json)
 
-### 1. Live memory retrieval and ranking
+### 2.5 SFML interactive simulation MVP
 
-Status: completed and validated.
+**Status:** Implemented and locally confirmed by the project owner for sprint demonstration. Run regression checks after pulling the latest `Dev`.
 
-Intent:
-- move from abstract memory summaries to a retrieval layer that selects and ranks relevant records from stored memory
-- keep the memory summary bounded and deterministic when passing into state construction
+Launch:
+```sh
+./build/IS-2 --sim
+./build/IS-2 --sim-researcher
+```
 
-Expected work items:
-- define retrieval ranking rules for confidence, relevance, recency, and scope
-- add a dedicated retrieval or memory-selection function
-- connect the selection result to the bounded memory summary function
-- add acceptance tests demonstrating retrieval-driven state changes
+Features:
+- Participant-facing mode and separate researcher/debug mode.
+- A/B companion selection, backyard scene, companion sprite animation, preset interactions, scene-object hover descriptions, and typed text interaction.
+- Persistent NLP service with spaCy/model support and labelled keyword fallback.
+- Session/interaction logging and session Q-table copies under `artifacts/simulation/`.
+- Optional questionnaire button driven by `ANIMAL_AGENT_STUDY_FORM_URL`.
+
+Paths:
+- UI: [Components/Simulation/companion-ui.h](../Components/Simulation/companion-ui.h), [Components/Simulation/companion-ui.cpp](../Components/Simulation/companion-ui.cpp)
+- NLP adapter: [Components/NLP/nlp_intent_service.py](../Components/NLP/nlp_intent_service.py)
+- Build: [CMakeLists.txt](../CMakeLists.txt)
+- Usage/limitations: [README.md](../README.md), [Docs/18-sfml-companion-ui.md](18-sfml-companion-ui.md)
 
-Spec status:
-- completed in [Docs/08-live-memory-retrieval-and-ranking.md](Docs/08-live-memory-retrieval-and-ranking.md)
+### 2.6 Persistence and generated artifacts
 
-### 2. Persistence layer and rest-state aggregation
+**Status:** Persistence features implemented; restart continuity and generated files should be rechecked after runtime changes.
 
-Status: completed and validated.
+The persistence subsystem covers Q-tables, memory records, affective state, session context, interaction history, and low-confidence aggregated facts. The interactive UI writes session summaries and Q-table copies to `artifacts/simulation/`; do not assume this is equivalent to restoring the complete episodic memory and affect state in the next UI launch.
 
-Intent:
-- define persistence for Q-table, memory records, affective-state data, session context, and interaction history
-- support rest-state aggregation of interaction logs into low-confidence candidate memory facts
-- preserve continuity across restarts without broadening the policy layer
+Paths:
+- Memory persistence: [Components/Memory/memory.h](../Components/Memory/memory.h), [Components/Memory/memory.cpp](../Components/Memory/memory.cpp)
+- Persistence design: [Docs/09-persistence-and-rest-aggregation.md](09-persistence-and-rest-aggregation.md), [Docs/13-runtime-persistence-and-continuity-contract.md](13-runtime-persistence-and-continuity-contract.md)
+- Example state files: `Docs/affect_state.json`, `Docs/aggregated_facts.json`, `Docs/interaction_history.json`, `Docs/memory_records.json`, `Docs/session_context.json`
+- Runtime output: `artifacts/simulation/`, `artifacts/training/`, `artifacts/study/` (study output may contain restricted research data)
 
-Expected work items:
-- define JSON or text structure for each persisted domain
-- define save/load semantics and ordering
-- define rest-state trigger and aggregation logic
-- define how low-confidence aggregated facts are reinforced later
-- validate persistence without disturbing the baseline Q-learning loop
+## 3. Pending work and refinements
 
-Spec status:
-- implemented in [Docs/09-persistence-and-rest-aggregation.md](Docs/09-persistence-and-rest-aggregation.md)
+Prioritised order reflects the next useful engineering gates, not a claim that the items are already implemented.
 
-### 3. Runtime state lifecycle and observation normalisation
+### P0 — Build and regression-check the latest `Dev` revision
 
-Status: pending specification review
+- [ ] Pull latest `Dev` and configure/build with CMake.
+- [ ] Run `./build/IS-2 --self-test`.
+- [ ] Run the configured CTest suite, if present in the build.
+- [ ] Run a short seeded training job and inspect its logs.
+- [ ] Run a fresh NLP smoke test with the intended virtual environment.
+- [ ] Re-open `--sim` and `--sim-researcher` and check the interaction/logging path.
 
-Intent:
-- define the runtime handoff from interaction and observation events into a consistent bounded state
-- keep the state builder deterministic and compatible with the baseline state contract
+### P1 — Validate Stage −1 environment and action changes
 
-Expected work items:
-- normalise incoming interaction records into a runtime observation model
-- preserve the baseline state key when memory/affect inputs are empty
-- gate memory and affect features behind bounded runtime values
+- [ ] Verify every canonical action is accepted/rejected in the intended contexts.
+- [ ] Verify impossible actions are not selected and do not contribute to next-state Q-value bootstrapping.
+- [ ] Verify approach/far-fetch changes distance, and fetch logs show successful and failed outcomes under the intended distance/energy conditions.
+- [ ] Verify rest/eating restore energy and do not bypass task/action constraints.
+- [ ] Verify food/play availability is encoded consistently in observations and state.
+- [ ] Resolve and document baseline/proposed energy-observation fairness.
+- [ ] Confirm terminal transitions do not bootstrap from next-state Q-values.
 
-Spec status:
-- draft in [Docs/10-runtime-state-lifecycle.md](Docs/10-runtime-state-lifecycle.md)
+Tracking: [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md).
 
-### 4. Live memory activation and ranking
+### P1 — Audit memory retrieval and action-decision traces
 
-Status: pending specification review
+- [ ] Check whether query relevance changes the final memory summary, not merely record ordering.
+- [ ] Keep retrieval score, baseline record weight, query relevance, and summary weight conceptually distinct.
+- [ ] Confirm the active runtime path uses the intended retrieval/persistence methods rather than relying on stubs or unused helpers.
+- [ ] Log the reason/source for each final action: policy selection, contextual fallback, memory preference, rejection override, or invalid-action recovery.
+- [ ] Measure fallback frequency so fallback behavior does not conceal poor policy performance.
+- [ ] Test valence transitions and confirm the affect trend has the intended behavioral semantics.
 
-Intent:
-- define the runtime retrieval layer that ranks prospective memory records before summarisation
-- ensure the retrieved memory signal is compact and safe for state construction
+Relevant paths: [Components/Memory/memory.cpp](../Components/Memory/memory.cpp), [Components/State-Action/state-action.cpp](../Components/State-Action/state-action.cpp), [Docs/08-live-memory-retrieval-and-ranking.md](08-live-memory-retrieval-and-ranking.md), [Docs/11-live-memory-activation-and-ranking.md](11-live-memory-activation-and-ranking.md).
 
-Expected work items:
-- score records using confidence, relevance, recency, and context match
-- filter noise and low-support memory entries
-- pass only a compact summary into the state builder
+### P2 — Runtime continuity and persistence
 
-Spec status:
-- draft in [Docs/11-live-memory-activation-and-ranking.md](Docs/11-live-memory-activation-and-ranking.md)
+- [ ] Verify a full save/load round trip for Q-table, memory, affect, session context, interaction history, and aggregated facts.
+- [ ] Verify a restarted runtime can retrieve prior semantic preferences and does not accidentally promote low-confidence candidates to confirmed facts.
+- [ ] Separate UI session-summary persistence from complete agent-state restoration.
+- [ ] Test malformed/missing persistence files and ensure safe defaults/recoverable errors.
 
-### 5. Runtime affect and rest-state orchestration
+Relevant specs: [Docs/09-persistence-and-rest-aggregation.md](09-persistence-and-rest-aggregation.md), [Docs/10-runtime-state-lifecycle.md](10-runtime-state-lifecycle.md), [Docs/13-runtime-persistence-and-continuity-contract.md](13-runtime-persistence-and-continuity-contract.md).
 
-Status: pending specification review
+### P2 — NLP/UI robustness
 
-Intent:
-- connect affective trend updates and rest-state candidate generation to the runtime lifecycle
-- keep affective and rest-state updates bounded and non-policy-breaking
+- [ ] Confirm the NLP view reports spaCy/model processing when the configured environment has `spacy` and `en_core_web_sm`.
+- [ ] Temporarily disable the model/service and confirm the fallback is labelled and still usable.
+- [ ] Verify the service lifecycle, failure handling, and typed interaction latency.
+- [ ] Verify sprite-sheet/frame assumptions and action-to-animation mapping against the actual bundled assets.
+- [ ] Check all controls at the current window size and verify session files are written on normal close.
+- [ ] Keep participant-facing UI free of internal action/memory/affect diagnostics.
 
-Expected work items:
-- update affective variables from runtime events and outcomes
-- apply the low-energy exponential weighting rule
-- aggregate repeated low-confidence observations only during rest states
+Relevant paths: [Components/Simulation/companion-ui.cpp](../Components/Simulation/companion-ui.cpp), [Components/NLP/nlp_intent_service.py](../Components/NLP/nlp_intent_service.py), [Docs/18-sfml-companion-ui.md](18-sfml-companion-ui.md).
 
-Spec status:
-- draft in [Docs/12-runtime-affect-and-rest-state-orchestration.md](Docs/12-runtime-affect-and-rest-state-orchestration.md)
+### P3 — Research protocol and believability evaluation
 
-### 6. Runtime persistence and continuity contract
+- [ ] Define the believability construct and the questionnaire items/scale before data collection.
+- [ ] Pilot the interaction scenarios and verify both conditions receive matched scenarios and equivalent instructions.
+- [ ] Ensure the only intended experimental differences are documented; avoid accidentally giving one agent extra environment information.
+- [ ] Validate logs and analysis fields, including missing/no-response handling and condition-key protection.
+- [ ] Obtain required supervisor/institutional ethics approval, approved consent, and questionnaire/protocol review before recruiting participants or collecting real data.
+- [ ] Report perceived believability as an empirical outcome; do not infer it from synthetic reward or action counts.
 
-Status: pending specification review
+Relevant paths: [Docs/08-research-validity-memory-affect-and-logging-spec.md](08-research-validity-memory-affect-and-logging-spec.md), [Docs/09-research-validity-implementation-progress.md](09-research-validity-implementation-progress.md), [Docs/16-paired-agent-scenario-tests.md](16-paired-agent-scenario-tests.md), [README.md](../README.md).
 
-Intent:
-- define a runtime save/load contract for the learning state, memory, affect, session, and low-confidence fact domains
-- preserve continuity across restarts without broadening the learning policy
+## 4. Test and verification register
 
-Expected work items:
-- define the persisted schema and ordering for all domains
-- validate restart-safe loading semantics
-- keep aggregated low-confidence facts separate from confirmed memory entries
+| Check | Command / procedure | What it covers | Status at this review |
+| --- | --- | --- | --- |
+| Build | `cmake -S . -B build && cmake --build build --target IS-2` | Compile current sources and link the executable | **Required after latest Stage −1 edits** |
+| Self-test | `./build/IS-2 --self-test` | Q-learning, state/action, memory/affect, persistence, runtime contracts | Historical report says PASS; rerun on current revision |
+| CTest | `ctest --test-dir build --output-on-failure` | Registered CMake tests, if configured | Required to confirm current result |
+| Training smoke test | `./build/IS-2 --train --episodes 10 --steps 20 --seed 42 --out artifacts/training-smoke` | Runtime startup, scenario loop, logs, action/environment transitions | Required |
+| Full training | Command in §2.4 | Generate checkpoints for later evaluation | Rerun after state/action encoding changes |
+| Validation | `./build/IS-2 --validate --episodes 200 --steps 40 --seed 43 --out artifacts/training` | Evaluate trained checkpoints without policy updates/exploration | Run only after retraining |
+| Comparison | `./build/IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training` | Paired synthetic policy diagnostics | Run only after retraining; not a believability measure |
+| NLP smoke test | Activate `.venv`, then submit text in `--sim` and inspect method label/log | spaCy/model path and fallback path | Required after current revision |
+| Participant UI | `./build/IS-2 --sim` | Participant-facing interaction and logging | Locally confirmed by owner; regression check recommended |
+| Researcher UI | `./build/IS-2 --sim-researcher` | Debug screens and comparison diagnostics | Regression check recommended |
+| Study prototype | `./build/IS-2 --study --policy-dir artifacts/training --study-out artifacts/study` | Study flow and data writing | Software prototype only; ethics/research gate remains open |
 
-Spec status:
-- draft in [Docs/13-runtime-persistence-and-continuity-contract.md](Docs/13-runtime-persistence-and-continuity-contract.md)
+Historical machine-readable report: [Docs/test-results.json](test-results.json), generated 2026-10-22. Do not edit its timestamp or treat it as current; regenerate it only through the project's test/report workflow after running the current build and tests.
 
-### 7. Pre-simulation environment contract
+## 5. Implementation map
 
-Status: pending specification review
-
-Intent:
-- define the environment boundary and observation/action types before the actual simulation engine is built
-- prepare a controlled runtime contract for later simulation implementation
-
-Expected work items:
-- define the observation/action types and reward contract
-- establish the agent-environment boundary
-- confirm that state, memory, and affect contracts remain stable before the environment layer is built
-
-Spec status:
-- draft in [Docs/14-pre-simulation-environment-contract.md](Docs/14-pre-simulation-environment-contract.md)
-
-### 8. Baseline and proposed agent comparison setup
-
-Status: pending specification approval
-
-Intent:
-- define the minimum class and harness design needed to compare a baseline Q-learning agent against the proposed memory-and-affect agent in the same configured environment
-- ensure both agents share the same simulation contract and reward semantics before training begins
-
-Expected work items:
-- define the common environment contract and reward structure
-- define the proposed-agent class responsibilities and state members
-- define the baseline-agent class responsibilities and exclusions
-- define an evaluation harness that runs both agents under matching conditions
-- collect comparable metrics for action choice, reward totals, and final state
-
-Spec status:
-- draft in [Docs/15-proposed-agent-comparison-spec.md](Docs/15-proposed-agent-comparison-spec.md)
-- draft in [Docs/16-baseline-agent-comparison-spec.md](Docs/16-baseline-agent-comparison-spec.md)
-
-### 9. Full affect-driven decision policy integration
-
-Status: pending
-
-Intent:
-- extend the learning or decision policy from state summaries into policy-level selection or action preference adjustments
-- only after the state-summary route is proven stable and reviewable
-
-Expected work items:
-- define when affective trend influences action preference
-- decide whether effect is direct or indirect
-- keep the policy bounded and testable
-
-Spec status:
-- no dedicated implementation spec yet; this should remain a later-phase specification
-
-### 10. Environment and simulation integration
-
-Status: pending
-
-Intent:
-- connect the agent state, memory, and affective signal to a simulation environment
-- produce observable behavior and reward updates
-
-Expected work items:
-- environment observation model
-- action execution flow
-- reward generation
-- state reset and terminal-event handling within the broader simulation context
-
-Spec status:
-- reference the higher-level system architecture in [Docs/project-context.md](Docs/project-context.md) and the baseline state contract in [Docs/03-baseline-learning-loop.md](Docs/03-baseline-learning-loop.md)
-
-## Current implementation map
-
-| Stage | Status | Specification |
+| Area | Main source paths | Spec / status record |
 | --- | --- | --- |
-| Baseline Q-learning | Completed | [Docs/03-baseline-learning-loop.md](Docs/03-baseline-learning-loop.md) |
-| Baseline validation | Completed | [Docs/04-baseline-learning-tests.md](Docs/04-baseline-learning-tests.md) |
-| Memory/affect scaffolding | Completed | [Docs/05-memory-affect-scaffolding.md](Docs/05-memory-affect-scaffolding.md) |
-| Bounded memory/affect state integration | Completed | [Docs/06-memory-affect-state-integration.md](Docs/06-memory-affect-state-integration.md) |
-| Live memory-to-state wiring | Completed in the current working tree | [Docs/06-memory-affect-state-integration.md](Docs/06-memory-affect-state-integration.md) |
-| Retrieval and ranking layer | Completed | [Docs/08-live-memory-retrieval-and-ranking.md](Docs/08-live-memory-retrieval-and-ranking.md) |
-| Persistence layer + rest-state aggregation | Completed | [Docs/09-persistence-and-rest-aggregation.md](Docs/09-persistence-and-rest-aggregation.md) |
-| Runtime state lifecycle and observation normalisation | Pending specification review | [Docs/10-runtime-state-lifecycle.md](Docs/10-runtime-state-lifecycle.md) |
-| Live memory activation and ranking | Pending specification review | [Docs/11-live-memory-activation-and-ranking.md](Docs/11-live-memory-activation-and-ranking.md) |
-| Runtime affect and rest-state orchestration | Pending specification review | [Docs/12-runtime-affect-and-rest-state-orchestration.md](Docs/12-runtime-affect-and-rest-state-orchestration.md) |
-| Runtime persistence and continuity contract | Pending specification review | [Docs/13-runtime-persistence-and-continuity-contract.md](Docs/13-runtime-persistence-and-continuity-contract.md) |
-| Pre-simulation environment contract | Pending specification review | [Docs/14-pre-simulation-environment-contract.md](Docs/14-pre-simulation-environment-contract.md) |
-| Full affect-driven policy usage | Pending | not yet specified |
-| Simulation integration | Pending | reference project-context |
+| Q-learning and state encoding | `Components/State-Action/state-action.h/.cpp` | [03](03-baseline-learning-loop.md), [04](04-baseline-learning-tests.md), [06](06-memory-affect-state-integration.md) |
+| Canonical action set | `Components/State-Action/action-space.h` | [20](20-stage-minus-one-action-architecture.md) |
+| Memory and affect | `Components/Memory/memory.h/.cpp` | [05](05-memory-affect-scaffolding.md), [08](08-live-memory-retrieval-and-ranking.md), [09](09-persistence-and-rest-aggregation.md) |
+| Runtime contracts | state/action and memory components | [10](10-runtime-state-lifecycle.md)–[14](14-pre-simulation-environment-contract.md) |
+| Proposed/baseline comparison | `main.c++` and shared state/action components | [15](15-proposed-agent-comparison-spec.md), [16](16-baseline-agent-comparison-spec.md), [16 paired tests](16-paired-agent-scenario-tests.md) |
+| Training and evaluation | `main.c++`, `CMakeLists.txt` | [17](17-training-validation-implementation.md), [19](19-training-and-evaluation-redesign-spec.md) |
+| SFML UI | `Components/Simulation/companion-ui.h/.cpp` | [18](18-sfml-companion-ui.md) |
+| NLP | `Components/NLP/nlp_intent_service.py` | [README](../README.md), [18](18-sfml-companion-ui.md) |
+| Research logging and validity | UI/study output and agent interaction logging | [08 research validity](08-research-validity-memory-affect-and-logging-spec.md), [09 progress](09-research-validity-implementation-progress.md) |
+| Project-wide architecture/context | project architecture and implementation | [Docs/project-context.md](project-context.md) |
 
-## Working principle for future stages
+## 6. Working rules
 
-Future work should remain in small, independently testable increments and should always be validated against the stable baseline before any broader feature extension is attempted.
-
-This preserves the staged approach defined in [Docs/project-context.md](Docs/project-context.md), while the implementation record in this file keeps track of what is already proven and what remains intentionally deferred.
+1. Mark work as complete only when source paths are identified and the relevant check has passed on the current revision.
+2. Keep historical test reports immutable; create a fresh report for a fresh test run.
+3. Keep baseline exclusions explicit so it remains a genuine control.
+4. Keep implementation behavior separate from research claims: a working UI is not a believability result.
+5. Prefer small, independently testable changes and update this file when implementation status changes.
