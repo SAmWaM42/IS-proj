@@ -7,7 +7,7 @@
 ## Scope
 
 This test branch now includes a temporal-training refinement in addition to the runtime prototype:
-- Each non-terminal training transition represents one simulated second before the next decision.
+- Each non-terminal training transition samples a seeded interval uniformly between 0.5 and 5 simulated seconds; baseline and proposed agents receive the same interval sequence within an episode.
 - The proposed agent applies the same exponential affect-decay function after immediate feedback and before constructing the next state for the Q-learning update.
 - The baseline receives the same timed transition call but intentionally ignores affect-only elapsed time.
 - Training step logs record simulated elapsed seconds and the proposed/current state affect dimensions to help diagnose policy collapse.
