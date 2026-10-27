@@ -895,7 +895,7 @@ bool runTrainingSelfTests()
 {
     const bool temporalDecayPassed = testTrainingAppliesElapsedAffectDecay();
     std::cout << "Training transition applies elapsed-time affect decay before next-state construction: "
-              << (temporalDecayPassed ? "PASS" : "FAIL") << '\\n';
+              << (temporalDecayPassed ? "PASS" : "FAIL") << '\n';
     const bool transitionsPassed = testEnvironmentActionTransitions();
     const bool retryPassed = testPersistentFetchRetryAndCompletionCredit();
     const bool taskPriorityPassed = testTaskPriorityReward();
