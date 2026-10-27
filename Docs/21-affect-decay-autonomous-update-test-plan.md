@@ -2,9 +2,16 @@
 
 **Branch:** `test/affect-decay-autonomous-updates`  
 **Base:** `Dev`  
-**Status:** Implementation candidate; local compile/runtime verification pending.
+**Status:** User confirmed the pre-refinement branch builds and runs. The temporal-training refinement is now committed to this branch; a fresh build and test run after these edits is still required.
 
 ## Scope
+
+This test branch now includes a temporal-training refinement in addition to the runtime prototype:
+- Each non-terminal training transition represents one simulated second before the next decision.
+- The proposed agent applies the same exponential affect-decay function after immediate feedback and before constructing the next state for the Q-learning update.
+- The baseline receives the same timed transition call but intentionally ignores affect-only elapsed time.
+- Training step logs record simulated elapsed seconds and the proposed/current state affect dimensions to help diagnose policy collapse.
+- No raw global clock was added to the Q-table. The current affect summary is already part of state encoding; an additional time feature should only be introduced if ablation tests show it adds decision-relevant information.
 
 This branch prototypes two missing behaviours:
 
@@ -39,6 +46,8 @@ Autonomous decisions do **not** fabricate a user reward, interaction-history ent
 
 ## Verification checklist
 
+After pulling the latest branch, run the full build and self-tests; the training self-test now includes a check that elapsed-time decay is applied before the next state is constructed:
+
 Run from a fresh checkout of this branch:
 
 ```sh
@@ -62,7 +71,7 @@ Manual UI verification:
 
 ## Known limitations / review gates
 
-- **Not locally verified in this editing session.** GitHub edits do not establish that the branch compiles or that tests pass.
+- GitHub source edits do not establish that the latest branch compiles or that tests pass. The branch owner confirmed the branch built and ran before the temporal-training refinement; re-run the build and tests below for the new commit.
 - The five-second interval and decay rates need to be reviewed against the intended simulation timescale and, if appropriate, calibrated before participant evaluation.
 - The UI currently derives ambient proximity from the companion's distance to the ball. Review whether this is the correct observable target for all ambient situations.
 - Autonomous actions are rendered, but this prototype does not yet apply a complete, shared environment-transition model to every autonomous action. In particular, energy expenditure/recovery must be handled by the environment contract rather than affect decay.
