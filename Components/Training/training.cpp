@@ -466,6 +466,41 @@ namespace
                sawFarSuccess && sawFarFailure;
     }
 
+    bool testTrainingAppliesElapsedAffectDecay()
+    {
+        const EnvironmentObservation observation{0, 1, 1, 0, 0.45f};
+        EnvironmentConfig config;
+        config.seed = 501;
+        ProposedAgent timedAgent(config);
+        ProposedAgent immediateAgent(config);
+        timedAgent.setLearningEnabled(false);
+        immediateAgent.setLearningEnabled(false);
+        timedAgent.setExplorationRate(0.0f);
+        immediateAgent.setExplorationRate(0.0f);
+
+        const std::string timedAction = timedAgent.selectAction(observation);
+        const std::string immediateAction = immediateAgent.selectAction(observation);
+        if (timedAction != immediateAction) return false;
+
+        ActionOutcome outcome;
+        outcome.reward = -1.0f;
+        outcome.terminal = false;
+        outcome.outcome_tag = "temporal_decay_test";
+        outcome.energy_after = 0.8f;
+        timedAgent.applyOutcome(observation, timedAction, outcome, observation, 1.0f);
+        immediateAgent.applyOutcome(observation, immediateAction, outcome, observation, 0.0f);
+
+        const AffectiveState& timed = timedAgent.getAffectiveState();
+        const AffectiveState& immediate = immediateAgent.getAffectiveState();
+        const state& next = timedAgent.getCurrentState();
+        return timed.stress < immediate.stress &&
+               timed.arousal < immediate.arousal &&
+               timed.engagement > immediate.engagement &&
+               timed.affinity > immediate.affinity &&
+               nearlyEqual(next.affect.stress, timed.stress) &&
+               nearlyEqual(next.affect.arousal, timed.arousal);
+    }
+
     bool testPersistentFetchRetryAndCompletionCredit()
     {
         const EnvironmentObservation farRequest{1, 2, 1, 1, 0.56f};
@@ -858,6 +893,9 @@ bool runTrainingExperiment(const std::string &mode,
 
 bool runTrainingSelfTests()
 {
+    const bool temporalDecayPassed = testTrainingAppliesElapsedAffectDecay();
+    std::cout << "Training transition applies elapsed-time affect decay before next-state construction: "
+              << (temporalDecayPassed ? "PASS" : "FAIL") << '\\n';
     const bool transitionsPassed = testEnvironmentActionTransitions();
     const bool retryPassed = testPersistentFetchRetryAndCompletionCredit();
     const bool taskPriorityPassed = testTaskPriorityReward();
@@ -866,5 +904,6 @@ bool runTrainingSelfTests()
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed;
+    return temporalDecayPassed && transitionsPassed && retryPassed &&
+           taskPriorityPassed && completionContextPassed;
 }
