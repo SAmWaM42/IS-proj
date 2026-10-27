@@ -26,10 +26,11 @@ void printUsage(const char* executable) {
         << "Usage:\n"
         << "  " << executable << " --self-test\n"
         << "  " << executable << " --train [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
-        << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
+        << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]  (held-out stress suite)\n"
+        << "  " << executable << " --validate-distribution [--episodes N] [--steps N] [--seed N] [--out DIR]  (training-distribution scenarios)\n"
         << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
         << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
-        << "Run --train before --validate, --compare, or --study. Evaluation disables policy updates.\n";
+        << "Run --train before either validation mode, --compare, or --study. Evaluation disables Q-table updates and exploration.\n";
 }
 } // namespace
 
@@ -59,7 +60,7 @@ int main(int argc, char** argv) {
             printUsage(argv[0]);
             return 0;
         }
-        if (arg == "--self-test" || arg == "--train" || arg == "--validate" || arg == "--compare" || arg == "--study") {
+        if (arg == "--self-test" || arg == "--train" || arg == "--validate" || arg == "--validate-distribution" || arg == "--compare" || arg == "--study") {
             if (!mode.empty()) {
                 std::cerr << "Choose exactly one experiment mode.\n";
                 return 2;

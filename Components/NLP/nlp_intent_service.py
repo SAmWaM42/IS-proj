@@ -14,11 +14,14 @@ _SPACY_LOAD_ATTEMPTED = False
 
 INTENTS = {
     "greeting": (0, 1, 0, 0.55, 0.65),
-    "request": (1, 1, 1, 0.85, 0.65),
+    "request": (1, 1, 1, 0.85, 0.0),
+    "feeding": (2, 0, 0, 0.30, 0.0),
+    "play": (0, 1, 0, 0.70, 0.0),
+    "explore": (2, 2, 0, 0.40, 0.0),
     "disturbance": (2, 0, 0, 0.95, 0.0),
-    "rest": (2, 2, 0, 0.20, 0.25),
-    "negative_feedback": (0, 1, 2, 0.45, -1.0),
-    "praise": (0, 0, 1, 0.75, 1.0),
+    "rest": (2, 2, 0, 0.20, 0.0),
+    "negative_feedback": (0, 1, 0, 0.45, -1.0),
+    "praise": (0, 0, 0, 0.75, 1.0),
     "unknown": (0, 1, 0, 0.45, 0.25),
 }
 
@@ -27,10 +30,18 @@ def classify(tokens, raw):
     words = {t.text.lower() for t in tokens if not t.is_punct}
     # Negative feedback takes priority over other terms, to avoid interpreting
     # "don't fetch that" as a positive fetch request.
-    if lemmas & {"stop", "annoy", "bad", "wrong", "hate", "dislike"} or "don't" in raw.lower() or "do not" in raw.lower():
+    if lemmas & {"stop", "annoy", "bad", "wrong", "hate", "dislike", "scold"} or "don't" in raw.lower() or "do not" in raw.lower():
         return "negative_feedback"
-    if lemmas & {"fetch", "bring", "get", "retrieve", "ball", "toy", "find"}:
+    if lemmas & {"feed", "food", "eat", "bowl"}:
+        return "feeding"
+    if "play" in lemmas or "game" in lemmas or (
+        "toy" in lemmas and not (lemmas & {"fetch", "bring", "get", "retrieve", "find"})
+    ):
+        return "play"
+    if lemmas & {"fetch", "bring", "get", "retrieve", "ball", "find"}:
         return "request"
+    if lemmas & {"explore", "wander", "sniff"}:
+        return "explore"
     if lemmas & {"noise", "loud", "scare", "scared", "frighten", "bang", "thunder"}:
         return "disturbance"
     if lemmas & {"rest", "sleep", "tired", "quiet", "lie"}:
@@ -64,10 +75,18 @@ def handle_line(line):
         # Keep this fallback deliberately transparent: the UI labels its source.
         print("spaCy unavailable; using keyword fallback: " + str(exc), file=sys.stderr)
         words = set(re.findall(r"[a-z']+", raw.lower()))
-        if words & {"stop", "annoying", "bad", "wrong", "hate", "don't"}:
+        if words & {"stop", "annoying", "bad", "wrong", "hate", "scold", "don't"}:
             intent = "negative_feedback"
-        elif words & {"fetch", "bring", "ball", "toy", "retrieve"}:
+        elif words & {"feed", "food", "eat", "bowl"}:
+            intent = "feeding"
+        elif words & {"play", "game"} or (
+            "toy" in words and not (words & {"fetch", "bring", "get", "retrieve", "find"})
+        ):
+            intent = "play"
+        elif words & {"fetch", "bring", "ball", "retrieve", "get", "find"}:
             intent = "request"
+        elif words & {"explore", "wander", "sniff"}:
+            intent = "explore"
         elif words & {"noise", "loud", "scared", "thunder", "bang"}:
             intent = "disturbance"
         elif words & {"rest", "sleep", "tired", "quiet"}:
@@ -82,7 +101,10 @@ def handle_line(line):
     goal, proximity, task, signal, reward = INTENTS[intent]
     print(json.dumps({
         "intent": intent, "goal_state": goal, "target_proximity": proximity,
+        "user_status": 2 if intent == "negative_feedback" else 1 if intent == "praise" else 0,
         "task_status": task, "signal_strength": signal, "reward": reward,
+        "food_available": intent == "feeding",
+        "play_available": intent == "play",
         "confidence": 0.8 if method == "spacy" else 0.45, "method": method
     }), flush=True)
 

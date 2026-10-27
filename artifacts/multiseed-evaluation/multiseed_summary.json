@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51
+  ],
+  "training_episodes_per_seed": 200,
+  "held_out_stress_evaluation_episodes_per_seed": 40,
+  "in_distribution_evaluation_episodes_per_seed": 40,
+  "steps_per_episode": 40,
+  "evaluation_description": "Each seed trains policies independently. Both evaluation strata freeze Q-table updates and exploration while proposed-agent memory/affect continue adapting online. held_out_stress uses unseen joint observation combinations; in_distribution samples the shuffled training scenario catalogue with independent evaluation seeds.",
+  "results": {
+    "baseline": {
+      "mean_reward_per_step": {
+        "training": {
+          "mean": 0.6743081446230411,
+          "sample_sd": 0.011845815270800707,
+          "n": 10
+        },
+        "held_out_stress": {
+          "mean": 0.35613943338394166,
+          "sample_sd": 0.009655348318335021,
+          "n": 10
+        },
+        "in_distribution": {
+          "mean": 0.802848027586937,
+          "sample_sd": 0.03542069339134073,
+          "n": 10
+        }
+      },
+      "completion_rate": {
+        "training": {
+          "mean": 0.998,
+          "sample_sd": 0.003496029493900508,
+          "n": 10
+        },
+        "held_out_stress": {
+          "mean": 0.9924999999999999,
+          "sample_sd": 0.016873713942763838,
+          "n": 10
+        },
+        "in_distribution": {
+          "mean": 1.0,
+          "sample_sd": 0.0,
+          "n": 10
+        }
+      },
+      "diagnostic_one_step_oracle_agreement_rate": {
+        "training": {
+          "mean": 0.54255,
+          "sample_sd": 0.05182932058422358,
+          "n": 10
+        },
+        "held_out_stress": {
+          "mean": 0.1010625,
+          "sample_sd": 0.005480790317098437,
+          "n": 10
+        },
+        "in_distribution": {
+          "mean": 0.6131875,
+          "sample_sd": 0.09988685004794176,
+          "n": 10
+        }
+      }
+    },
+    "proposed": {
+      "mean_reward_per_step": {
+        "training": {
+          "mean": 0.564287410235405,
+          "sample_sd": 0.03522139897275761,
+          "n": 10
+        },
+        "held_out_stress": {
+          "mean": 0.32979467023722825,
+          "sample_sd": 0.042418562573728454,
+          "n": 10
+        },
+        "in_distribution": {
+          "mean": 0.6914729107618331,
+          "sample_sd": 0.04056744966548168,
+          "n": 10
+        }
+      },
+      "completion_rate": {
+        "training": {
+          "mean": 0.9995,
+          "sample_sd": 0.001581138830084191,
+          "n": 10
+        },
+        "held_out_stress": {
+          "mean": 0.96,
+          "sample_sd": 0.031622776601683784,
+          "n": 10
+        },
+        "in_distribution": {
+          "mean": 1.0,
+          "sample_sd": 0.0,
+          "n": 10
+        }
+      },
+      "diagnostic_one_step_oracle_agreement_rate": {
+        "training": {
+          "mean": 0.426875,
+          "sample_sd": 0.10150278800221314,
+          "n": 10
+        },
+        "held_out_stress": {
+          "mean": 0.08775,
+          "sample_sd": 0.019991751771390343,
+          "n": 10
+        },
+        "in_distribution": {
+          "mean": 0.4945,
+          "sample_sd": 0.12461809715642784,
+          "n": 10
+        }
+      }
+    }
+  },
+  "justified_validation_approach": "Evaluation reports two distinct strata across independent seeds. Held-out stress evaluation uses joint observation combinations absent from the training catalogue; in-distribution evaluation samples the training scenario catalogue using independent evaluation seeds. Both freeze Q-table updates and exploration, while allowing proposed-agent memory and affect to adapt online. Mean reward per step summarises the synthetic interaction objective; completion rate checks task outcomes; learning curves show changes during training. The diagnostic_one_step_oracle_agreement_rate is agreement with the exact Q* oracle for a separate one-step diagnostic MDP whose next state is terminal. It is not optimal-policy agreement for the full multi-step environment. These synthetic metrics validate implementation and policy learning only, not perceived believability, which requires separate participant ratings and behavioural analysis."
+}

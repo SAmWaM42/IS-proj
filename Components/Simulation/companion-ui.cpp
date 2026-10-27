@@ -182,6 +182,100 @@ std::string levelText(float value) {
     return "High";
 }
 float clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
+
+struct RuntimeTransition {
+    EnvironmentObservation next;
+    float reward = 0.0f;
+    float energy = 0.8f;
+    float stress = 0.2f;
+    float satisfaction = 0.5f;
+    bool completed = false;
+};
+
+RuntimeTransition stepInteractiveWorld(const std::string& action,
+                                       const EnvironmentObservation& observation,
+                                       float energyBefore,
+                                       float stressBefore,
+                                       float satisfactionBefore,
+                                       float userFeedback,
+                                       std::mt19937& rng) {
+    RuntimeTransition result;
+    result.next = observation;
+    float energy = clamp01(energyBefore);
+    float stress = clamp01(stressBefore);
+    float satisfaction = clamp01(satisfactionBefore);
+    float effort = 0.012f;
+    float fit = -0.10f;
+
+    if (observation.goal_state == 1 && observation.task_status == 1) {
+        if (action == "FETCH") fit = 0.75f;
+        else if (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2) fit = 0.30f;
+        else fit = -0.25f;
+    } else if (observation.food_available) {
+        fit = action == "EAT" ? 0.85f : (action == "SNIFF" ? 0.20f : -0.12f);
+    } else if (observation.play_available) {
+        fit = action == "PLAY" ? 0.85f : (action == "APPROACH_FOLLOW" ? 0.30f : -0.12f);
+    } else if (observation.goal_state == 2 && observation.signal_strength >= 0.80f) {
+        fit = (action == "HIDE_AVOID" || action == "WHINE" || action == "BARK") ? 0.70f : -0.22f;
+    } else if (observation.user_status == 2) {
+        fit = (action == "HIDE_AVOID" || action == "ACT_CONFUSED" || action == "WHINE") ? 0.55f : -0.30f;
+    } else if (observation.goal_state == 0) {
+        fit = (action == "GREETING" || action == "NUZZLE" || action == "APPROACH_FOLLOW" || action == "PLAY") ? 0.65f : -0.08f;
+    } else if (action == "SLEEP_LAY" || action == "WANDER" || action == "SNIFF") {
+        fit = 0.25f;
+    }
+
+    if (action == "FETCH" && observation.task_status == 1 && observation.target_proximity < 3) {
+        const float baseProbability[] = {0.96f, 0.78f, 0.52f};
+        const int proximity = std::clamp(observation.target_proximity, 0, 2);
+        std::bernoulli_distribution success(baseProbability[proximity] * (0.55f + 0.45f * energy));
+        result.completed = success(rng);
+        effort = (proximity == 0 ? 0.035f : proximity == 1 ? 0.085f : 0.16f) *
+                 (1.0f + 0.8f * (1.0f - energy));
+        if (result.completed) result.next.task_status = 0;
+        else satisfaction -= 0.06f;
+    } else if (action == "APPROACH_FOLLOW" && observation.target_proximity > 0 &&
+               observation.target_proximity < 3 && observation.user_status != 2) {
+        effort = 0.045f * (1.0f + 0.8f * (1.0f - energy));
+        result.next.target_proximity = std::max(0, observation.target_proximity - 1);
+    } else if (action == "SLEEP_LAY") {
+        energy = std::min(1.0f, energy + 0.28f);
+        stress = std::max(0.0f, stress - 0.28f);
+        effort = 0.0f;
+    } else if (action == "EAT" && observation.food_available) {
+        energy = std::min(1.0f, energy + 0.24f);
+        result.next.food_available = false;
+        effort = 0.0f;
+    } else if (action == "PLAY" && observation.play_available) {
+        effort = 0.055f * (1.0f + 0.8f * (1.0f - energy));
+        result.next.play_available = false;
+        if (stress < 0.75f) stress = std::max(0.0f, stress - 0.08f);
+    } else {
+        energy = std::max(0.0f, energy - effort * 1.5f);
+    }
+
+    if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
+        stress = std::min(1.0f, stress + 0.16f);
+    if (observation.user_status == 2)
+        stress = std::min(1.0f, stress + 0.10f);
+    if (result.completed) stress = std::max(0.0f, stress - 0.04f);
+
+    // User feedback is an observed external signal; action fit and world
+    // consequences remain separate so rewards are not a fixed button lookup.
+    const float feedbackTerm = 0.20f * std::clamp(userFeedback, -1.0f, 1.0f);
+    const float completionTerm = result.completed ? 0.62f : 0.0f;
+    const float driveTerm = action == "EAT" && observation.food_available ? 0.18f * (1.0f - energyBefore) :
+                            action == "SLEEP_LAY" ? 0.18f * stressBefore : 0.0f;
+    result.reward = std::clamp(fit + feedbackTerm + completionTerm + driveTerm - effort, -1.0f, 1.0f);
+    if (result.completed) satisfaction = std::min(1.0f, satisfaction + 0.10f);
+    else if (fit < 0.0f) satisfaction = std::max(0.0f, satisfaction - 0.025f);
+    else satisfaction = std::min(1.0f, satisfaction + 0.025f);
+
+    result.energy = clamp01(energy);
+    result.stress = clamp01(stress);
+    result.satisfaction = clamp01(satisfaction);
+    return result;
+}
 std::string utcTimestamp() {
     const auto now = std::chrono::system_clock::now();
     const std::time_t value = std::chrono::system_clock::to_time_t(now);
@@ -200,8 +294,8 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
       outputDirectory(outputDirectoryValue),
       baseline(EnvironmentConfig{}),
       proposed(EnvironmentConfig{}) {
-    baseline.setLearningEnabled(false);
-    proposed.setLearningEnabled(false);
+    baseline.setLearningEnabled(true);
+    proposed.setLearningEnabled(true);
     baseline.setExplorationRate(0.0f);
     proposed.setExplorationRate(0.0f);
     const auto runTicks = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -292,14 +386,15 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
             const std::size_t count = std::max<std::size_t>(1, frames->size());
             animationFrame = (animationFrame + 1) % static_cast<int>(count);
         }
-        if (visibleAction == "FETCH" || visibleAction == "WANDER" ||
-            visibleAction == "APPROACH_FOLLOW" || visibleAction == "SNIFF" ||
-            visibleAction == "HIDE_AVOID" || visibleAction == "PLAY") {
-            const float direction =
-                (visibleAction == "WANDER" || visibleAction == "HIDE_AVOID") ? -1.0f : 1.0f;
-            agentX += direction * elapsedSeconds * 70.0f;
-            agentX = std::clamp(agentX, 320.0f, 950.0f);
-        }
+        auto moveAgent = [&](const std::string& action, float& x) {
+            if (action == "FETCH" || action == "WANDER" || action == "APPROACH_FOLLOW" ||
+                action == "SNIFF" || action == "HIDE_AVOID" || action == "PLAY") {
+                const float direction = (action == "WANDER" || action == "HIDE_AVOID") ? -1.0f : 1.0f;
+                x = std::clamp(x + direction * elapsedSeconds * 70.0f, 320.0f, 950.0f);
+            }
+        };
+        moveAgent(latestBaselineAction, baselineAgentX);
+        moveAgent(latestProposedAction, proposedAgentX);
         if (actionDisplayTimer <= 0.0f) {
             animationActive = false;
             animationFrame = 0;
@@ -312,8 +407,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
     }
 }
 
-void CompanionUI::drawCompanion(float x, float y) {
-    const std::string& visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
+void CompanionUI::drawCompanion(float x, float y, const std::string& visibleAction) {
     const auto* frames = &framesForAction(
         visibleAction, idleFrames, walkFrames, sleepFrames, barkFrames, sitFrames, layFrames);
     if (!frames->empty()) {
@@ -363,17 +457,93 @@ void CompanionUI::executeInteraction(const std::string& label,
     const std::size_t memoryCountBefore = proposed.getMemoryRecords().size();
     const int interactionId = interactionCount + 1;
     lastActionInteractionId = interactionId;
+    const std::string previousStimulus = latestStimulus;
     latestObservation = observation;
     latestStimulus = label;
-    latestBaselineAction = baseline.selectAction(observation);
-    latestProposedAction = proposed.selectAction(observation);
+
+    auto isFetchRequest = [](const std::string& value) {
+        std::string lower = value;
+        std::transform(lower.begin(), lower.end(), lower.begin(),
+            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        return lower.find("fetch") != std::string::npos || lower.find("ball") != std::string::npos;
+    };
+    const bool continuingFetch = isFetchRequest(previousStimulus) && isFetchRequest(label);
+    EnvironmentObservation baselineObservation = observation;
+    EnvironmentObservation proposedObservation = observation;
+    // A repeated fetch command continues a still-active task in each paired world.
+    // A completed task or a different user command starts from the new observation.
+    if (continuingFetch && baselineWorldObservation.goal_state == 1 &&
+        baselineWorldObservation.task_status == 1)
+        baselineObservation = baselineWorldObservation;
+    if (continuingFetch && proposedWorldObservation.goal_state == 1 &&
+        proposedWorldObservation.task_status == 1)
+        proposedObservation = proposedWorldObservation;
+
+    latestBaselineAction = baseline.selectAction(baselineObservation);
+    latestProposedAction = proposed.selectAction(proposedObservation);
     const std::size_t baselineStateBeforeOutcome = baseline.getCurrentState().encode();
     const std::size_t proposedStateBeforeOutcome = proposed.getCurrentState().encode();
+
+    const float baselineEnergyBefore = baselineEnergy;
+    const float proposedEnergyBefore = proposedEnergy;
+    std::mt19937 baselineRng(static_cast<unsigned int>(interactionId * 7919));
+    std::mt19937 proposedRng(static_cast<unsigned int>(interactionId * 7919));
+    const RuntimeTransition baselineTransition = stepInteractiveWorld(
+        latestBaselineAction, baselineObservation, baselineEnergyBefore, baselineStress,
+        baselineSatisfaction, feedbackRewardValue, baselineRng);
+    const RuntimeTransition proposedTransition = stepInteractiveWorld(
+        latestProposedAction, proposedObservation, proposedEnergyBefore, proposedStress,
+        proposedSatisfaction, feedbackRewardValue, proposedRng);
+
+    ActionOutcome baselineOutcome;
+    baselineOutcome.action_id = companionActionId(latestBaselineAction);
+    baselineOutcome.reward = baselineTransition.reward;
+    baselineOutcome.terminated = false;
+    baselineOutcome.truncated = false;
+    baselineOutcome.outcome_tag = baselineTransition.completed ? "goal_completed" : "interaction_outcome";
+    baselineOutcome.energy_after = baselineTransition.energy;
+
+    ActionOutcome proposedOutcome;
+    proposedOutcome.action_id = companionActionId(latestProposedAction);
+    proposedOutcome.reward = proposedTransition.reward;
+    proposedOutcome.terminated = false;
+    proposedOutcome.truncated = false;
+    proposedOutcome.outcome_tag = proposedTransition.completed ? "goal_completed" : "interaction_outcome";
+    proposedOutcome.energy_after = proposedTransition.energy;
+
+    baseline.applyOutcome(baselineObservation, latestBaselineAction, baselineOutcome, baselineTransition.next);
+    proposed.applyOutcome(proposedObservation, latestProposedAction, proposedOutcome, proposedTransition.next);
+
+    baselineWorldObservation = baselineTransition.next;
+    proposedWorldObservation = proposedTransition.next;
+    baselineEnergy = baselineTransition.energy;
+    proposedEnergy = proposedTransition.energy;
+    baselineStress = baselineTransition.stress;
+    proposedStress = proposedTransition.stress;
+    baselineSatisfaction = baselineTransition.satisfaction;
+    proposedSatisfaction = proposedTransition.satisfaction;
+
+    animationActive = true;
+    animationClock = 0.0f;
+    animationFrame = 0;
+    actionDisplayTimer = 0.85f;
+    baselineRewards.push_back(baselineOutcome.reward);
+    proposedRewards.push_back(proposedOutcome.reward);
+    ++interactionCount;
+    appendLog("You: " + label);
+    appendLog("Baseline: " + describeAction(latestBaselineAction) +
+              " (reward " + std::to_string(baselineOutcome.reward) + ")");
+    appendLog("Proposed: " + describeAction(latestProposedAction) +
+              " (reward " + std::to_string(proposedOutcome.reward) + ")");
+
     nlohmann::json memoryCandidates = nlohmann::json::array();
     for (const auto& memory : proposed.getMemoryRecords()) {
         if (memory.raw_fact.subject == latestProposedAction ||
-            memory.raw_fact.relation == "prefers_action" || memory.raw_fact.relation == "dislikes_action" ||
-            memory.raw_fact.relation == "likes" || memory.raw_fact.relation == "dislikes") {
+            memory.raw_fact.relation == "prefers_action" ||
+            memory.raw_fact.relation == "dislikes_action" ||
+            memory.raw_fact.relation == "likes" ||
+            memory.raw_fact.relation == "dislikes" ||
+            memory.raw_fact.relation == "response_to_action") {
             memoryCandidates.push_back({
                 {"subject", memory.raw_fact.subject},
                 {"relation", memory.raw_fact.relation},
@@ -383,82 +553,85 @@ void CompanionUI::executeInteraction(const std::string& label,
             });
         }
     }
-    animationActive = true;
-    animationClock = 0.0f;
-    animationFrame = 0;
-    actionDisplayTimer = 0.85f;
 
-    ActionOutcome baselineOutcome;
-    baselineOutcome.action_id = companionActionId(latestBaselineAction);
-    baselineOutcome.reward = feedbackRewardValue;
-    baselineOutcome.terminated = true;
-    baselineOutcome.outcome_tag = "simulation_" + (feedbackRewardValue > 0 ? std::string("positive") :
-                                                    feedbackRewardValue < 0 ? std::string("negative") : std::string("neutral"));
-    ActionOutcome proposedOutcome = baselineOutcome;
-    proposedOutcome.action_id = companionActionId(latestProposedAction);
-    baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome);
-    proposed.applyOutcome(observation, latestProposedAction, proposedOutcome);
-
-    baselineRewards.push_back(feedbackRewardValue);
-    proposedRewards.push_back(feedbackRewardValue);
-    ++interactionCount;
-    appendLog("You: " + label);
-    appendLog("Baseline: " + describeAction(latestBaselineAction));
-    appendLog("Proposed: " + describeAction(latestProposedAction));
-    {
-        nlohmann::json row;
-        row["schema_version"] = 1;
-        row["run_id"] = runId;
-        row["interaction_id"] = interactionId;
-        row["sequence_index"] = interactionId - 1;
-        row["timestamp"] = utcTimestamp();
-        row["processing_status"] = "completed";
-        row["condition_code"] = std::string(1, selectedAgentCode);
-        row["input_summary"] = label;
-        row["observation"] = {
-            {"goal_state", observation.goal_state},
-            {"target_proximity", observation.target_proximity},
-            {"user_status", observation.user_status},
-            {"task_status", observation.task_status},
-            {"signal_strength", observation.signal_strength},
-            {"food_available", observation.food_available},
-            {"play_available", observation.play_available}
-        };
-        row["baseline"] = {{"action", latestBaselineAction}, {"action_id", baselineOutcome.action_id}, {"reward", baselineOutcome.reward},
-                           {"state_before_outcome", baselineStateBeforeOutcome},
-                           {"state_after_outcome", baseline.getCurrentState().encode()},
-                           {"learning_update_enabled", false}};
-        row["proposed"] = {
-            {"action", latestProposedAction}, {"action_id", proposedOutcome.action_id}, {"reward", proposedOutcome.reward},
-            {"state_before_outcome", proposedStateBeforeOutcome},
-            {"state_after_outcome", proposed.getCurrentState().encode()},
-            {"memory_candidates", memoryCandidates},
-            {"learning_update_enabled", false},
-            {"memory_count_before", memoryCountBefore},
-            {"memory_count_after", proposed.getMemoryRecords().size()},
-            {"affect_before", {
-                {"affinity", affectBefore.affinity}, {"stress", affectBefore.stress},
-                {"arousal", affectBefore.arousal}, {"engagement", affectBefore.engagement},
-                {"valence", static_cast<int>(affectBefore.valence)}
-            }},
-            {"affect_after", {
-                {"affinity", proposed.getAffectiveState().affinity},
-                {"stress", proposed.getAffectiveState().stress},
-                {"arousal", proposed.getAffectiveState().arousal},
-                {"engagement", proposed.getAffectiveState().engagement},
-                {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
-            }}
-        };
-        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
-        if (log) log << row.dump() << '\n';
-        else appendLog("WARNING: interaction event log could not be written.");
-    }
+    nlohmann::json row;
+    row["schema_version"] = 3;
+    row["run_id"] = runId;
+    row["interaction_id"] = interactionId;
+    row["sequence_index"] = interactionId - 1;
+    row["timestamp"] = utcTimestamp();
+    row["processing_status"] = "completed";
+    row["condition_code"] = std::string(1, selectedAgentCode);
+    row["input_summary"] = label;
+    row["observation"] = {
+        {"goal_state", observation.goal_state},
+        {"target_proximity", observation.target_proximity},
+        {"user_status", observation.user_status},
+        {"task_status", observation.task_status},
+        {"signal_strength", observation.signal_strength},
+        {"food_available", observation.food_available},
+        {"play_available", observation.play_available}
+    };
+    row["baseline"] = {
+        {"observation", {
+            {"goal_state", baselineObservation.goal_state},
+            {"target_proximity", baselineObservation.target_proximity},
+            {"user_status", baselineObservation.user_status},
+            {"task_status", baselineObservation.task_status},
+            {"food_available", baselineObservation.food_available},
+            {"play_available", baselineObservation.play_available}
+        }},
+        {"action", latestBaselineAction}, {"action_id", baselineOutcome.action_id},
+        {"reward", baselineOutcome.reward}, {"state_before_outcome", baselineStateBeforeOutcome},
+        {"state_after_outcome", baseline.getCurrentState().encode()},
+        {"energy_before", baselineEnergyBefore}, {"energy_after", baselineTransition.energy}, {"stress_after", baselineTransition.stress},
+        {"satisfaction_after", baselineTransition.satisfaction},
+        {"terminated", baselineOutcome.terminated}, {"truncated", baselineOutcome.truncated},
+        {"completed", baselineTransition.completed}, {"learning_update_enabled", true}
+    };
+    row["proposed"] = {
+        {"observation", {
+            {"goal_state", proposedObservation.goal_state},
+            {"target_proximity", proposedObservation.target_proximity},
+            {"user_status", proposedObservation.user_status},
+            {"task_status", proposedObservation.task_status},
+            {"food_available", proposedObservation.food_available},
+            {"play_available", proposedObservation.play_available}
+        }},
+        {"action", latestProposedAction}, {"action_id", proposedOutcome.action_id},
+        {"reward", proposedOutcome.reward}, {"state_before_outcome", proposedStateBeforeOutcome},
+        {"state_after_outcome", proposed.getCurrentState().encode()},
+        {"memory_candidates", memoryCandidates},
+        {"memory_count_before", memoryCountBefore},
+        {"memory_count_after", proposed.getMemoryRecords().size()},
+        {"affect_before", {
+            {"affinity", affectBefore.affinity}, {"stress", affectBefore.stress},
+            {"arousal", affectBefore.arousal}, {"engagement", affectBefore.engagement},
+            {"valence", static_cast<int>(affectBefore.valence)}
+        }},
+        {"affect_after", {
+            {"affinity", proposed.getAffectiveState().affinity},
+            {"stress", proposed.getAffectiveState().stress},
+            {"arousal", proposed.getAffectiveState().arousal},
+            {"engagement", proposed.getAffectiveState().engagement},
+            {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
+        }},
+        {"energy_before", proposedEnergyBefore}, {"energy_after", proposedTransition.energy},
+        {"stress_after", proposedTransition.stress},
+        {"satisfaction_after", proposedTransition.satisfaction},
+        {"terminated", proposedOutcome.terminated}, {"truncated", proposedOutcome.truncated},
+        {"completed", proposedTransition.completed}, {"learning_update_enabled", true}
+    };
+    std::ofstream log(std::filesystem::path(outputDirectory) /
+                      ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+    if (log) log << row.dump() << '\n';
+    else appendLog("WARNING: interaction event log could not be written.");
     saveSession();
 }
 
 std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward) {
     observation = EnvironmentObservation{0, 1, 0, 0, 0.45f};
-    reward = 0.25f;
+    reward = 0.0f;
     std::string lowered = text;
     std::transform(lowered.begin(), lowered.end(), lowered.begin(),
                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
@@ -477,14 +650,23 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
                 lowered.find("do not") != std::string::npos;
             observation = EnvironmentObservation{
                 parsed.value("goal_state", 0), parsed.value("target_proximity", 1),
-                parsed.value("task_status", 0), negativeFeedback ? 2 : parsed.value("user_status", 0),
-                parsed.value("signal_strength", 0.45f),
+                negativeFeedback ? 2 : parsed.value("user_status", 0),
+                parsed.value("task_status", 0), parsed.value("signal_strength", 0.45f),
                 parsed.value("food_available", false), parsed.value("play_available", false)};
             observation.food_available = observation.food_available ||
                 lowered.find("food") != std::string::npos || lowered.find("feed") != std::string::npos;
             observation.play_available = observation.play_available ||
                 lowered.find("play") != std::string::npos || lowered.find("toy") != std::string::npos;
-            reward = parsed.value("reward", 0.25f);
+            // Commands do not carry a preset reward. Only explicit praise or
+            // rejection is treated as direct user feedback; action quality and
+            // world consequences are computed by the interaction transition.
+            reward = negativeFeedback ? -1.0f : 0.0f;
+            if (!negativeFeedback &&
+                (intent == "praise" || lowered.find("praise") != std::string::npos ||
+                 lowered.find("good") != std::string::npos ||
+                 lowered.find("well done") != std::string::npos ||
+                 lowered.find("thank") != std::string::npos))
+                reward = 1.0f;
             nlpMethod = parsed.value("method", std::string("unknown"));
             return intent;
         }
@@ -498,7 +680,7 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
     }
     if (lowered.find("fetch") != std::string::npos || lowered.find("ball") != std::string::npos ||
         lowered.find("bring") != std::string::npos || lowered.find("retrieve") != std::string::npos) {
-        observation = EnvironmentObservation{1, 1, 1, 0, 0.85f}; reward = 0.65f; return "request";
+        observation = EnvironmentObservation{1, 1, 1, 1, 0.85f}; reward = 0.0f; return "request";
     }
     if (lowered.find("noise") != std::string::npos || lowered.find("scared") != std::string::npos ||
         lowered.find("loud") != std::string::npos) {
@@ -507,15 +689,15 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
     if (lowered.find("feed") != std::string::npos || lowered.find("food") != std::string::npos ||
         lowered.find("eat") != std::string::npos) {
         observation = EnvironmentObservation{2, 0, 1, 0, 0.30f, true, false};
-        reward = 0.5f; return "feeding";
+        reward = 0.0f; return "feeding";
     }
     if (lowered.find("play") != std::string::npos || lowered.find("toy") != std::string::npos) {
         observation = EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true};
-        reward = 0.5f; return "play";
+        reward = 0.0f; return "play";
     }
     if (lowered.find("rest") != std::string::npos || lowered.find("tired") != std::string::npos ||
         lowered.find("quiet") != std::string::npos) {
-        observation = EnvironmentObservation{2, 2, 0, 0, 0.20f}; reward = 0.25f; return "rest";
+        observation = EnvironmentObservation{2, 2, 0, 0, 0.20f}; reward = 0.0f; return "rest";
     }
     if (lowered.find("good") != std::string::npos || lowered.find("praise") != std::string::npos ||
         lowered.find("well done") != std::string::npos) {
@@ -724,6 +906,8 @@ void CompanionUI::handleClick(sf::Vector2f point) {
     if (y >= 14 && y <= 58) {
         if (x < 180) screen = Screen::Simulation;
         else if (x < 330) screen = Screen::AgentSelection;
+        else if (x < 490) screen = Screen::AgentState;
+        else if (x < 650) screen = Screen::Comparison;
         else if (x > 1030) controlsVisible = !controlsVisible;
         return;
     }
@@ -739,12 +923,25 @@ void CompanionUI::handleClick(sf::Vector2f point) {
     if (screen != Screen::Simulation) return;
     if (!controlsVisible) return;
     textInputFocused = y >= 755 && y <= 805;
-    if (y >= 550 && y <= 594) {
-        if (x >= 40 && x < 255) processInteraction("Greet the companion", {0, 1, 0, 0, 0.55f}, 0.65f);
-        else if (x >= 275 && x < 490) processInteraction("Ask the companion to fetch the ball", {1, 1, 1, 1, 0.85f}, 0.85f);
-        else if (x >= 510 && x < 725) processInteraction("Praise the companion", {0, 0, 1, 0, 0.75f}, 1.0f);
-        else if (x >= 745 && x < 960) processInteraction("A sudden loud noise occurs", {2, 0, 0, 0, 0.95f}, -0.15f);
-        else if (x >= 980 && x < 1200) processInteraction("The companion should rest", {2, 2, 0, 0, 0.20f}, 0.25f);
+    if (y >= 550 && y <= 594 && x >= 35.0f && x < 1235.0f) {
+        const int buttonIndex = static_cast<int>((x - 35.0f) / 134.0f);
+        switch (buttonIndex) {
+            case 0: processInteraction("Greet the companion", {0, 1, 0, 0, 0.55f}, 0.0f); break;
+            case 1: processInteraction("Ask the companion to fetch the ball", {1, 1, 1, 1, 0.85f}, 0.0f); break;
+            case 2: processInteraction("Feed the companion", {2, 0, 1, 0, 0.30f, true, false}, 0.0f); break;
+            case 3: processInteraction("Invite the companion to play", {0, 1, 1, 0, 0.70f, false, true}, 0.0f); break;
+            case 4: processInteraction("Praise the companion", {0, 0, 1, 0, 0.75f}, 1.0f); break;
+            case 5: processInteraction("Scold the companion", {0, 1, 2, 0, 0.45f}, -1.0f); break;
+            case 6: processInteraction("Explore the yard", {2, 2, 0, 0, 0.40f}, 0.0f); break;
+            case 7: processInteraction("The companion should rest", {2, 2, 0, 0, 0.20f}, 0.0f); break;
+            case 8:
+                if (interactionCount > 0)
+                    processInteraction("Repeat: " + latestStimulus, latestObservation, 0.0f);
+                else
+                    appendLog("Interact once before repeating a scenario.");
+                break;
+            default: break;
+        }
         return;
     }
     if (y >= 755 && y <= 805 && x >= 1020 && !textInput.empty()) {
@@ -802,8 +999,8 @@ void CompanionUI::drawAgentSelectionScreen() {
 
 void CompanionUI::drawNavigation() {
     drawButton("Simulation", 28, 12, 145, 42, screen == Screen::Simulation);
-    if (screen == Screen::Simulation)
-        drawButton("Change Agent", 185, 12, 145, 42);
+    drawButton("Agent State", 185, 12, 145, 42, screen == Screen::AgentState);
+    drawButton("Comparison", 342, 12, 145, 42, screen == Screen::Comparison);
     if (screen == Screen::Simulation)
         drawButton(controlsVisible ? "Hide Controls" : "Show Controls", 1030, 12, 180, 42);
     drawText("ANIMAL AGENT / SFML", 760, 22, 15, kMuted);
@@ -879,18 +1076,20 @@ void CompanionUI::drawSimulationScreen() {
     person.setFillColor(sf::Color(216, 122, 110));
     window.draw(person);
     drawText("YOU", userX - 3, userY + 67, 12, kInk);
-    drawCompanion(agentX, agentY);
-    drawText("COMPANION", agentX - 12, agentY + 64, 12, kInk);
-    const std::string visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
-    drawText(std::string("Agent ") + selectedAgentCode + " action: " + visibleAction, 50, 150, 16, kGreen);
+    drawCompanion(baselineAgentX, agentY, latestBaselineAction);
+    drawText("BASELINE", baselineAgentX - 12, agentY + 64, 12, kBlue);
+    drawCompanion(proposedAgentX, agentY, latestProposedAction);
+    drawText("PROPOSED", proposedAgentX - 12, agentY + 64, 12, kGreen);
+    drawText("Baseline: " + latestBaselineAction + " | reward " + std::to_string(baseline.getSessionContext().last_reward), 50, 150, 15, kBlue);
+    drawText("Proposed: " + latestProposedAction + " | reward " + std::to_string(proposed.getSessionContext().last_reward), 50, 176, 15, kGreen);
     drawText("Input interpretation: " + nlpMethod, 50, 202, 14, kMuted);
     if (!controlsVisible) {
         drawText("Controls hidden - use Show Controls to interact", 50, 235, 16, kInk);
         return;
     }
-    const std::array<std::string, 5> labels{{"Greet", "Fetch ball", "Praise", "Loud noise", "Rest"}};
+    const std::array<std::string, 9> labels{{"Greet", "Fetch", "Feed", "Play", "Praise", "Scold", "Explore", "Rest", "Repeat last"}};
     for (std::size_t i = 0; i < labels.size(); ++i)
-        drawButton(labels[i], 40.0f + static_cast<float>(i) * 235.0f, 550, 215, 44);
+        drawButton(labels[i], 35.0f + static_cast<float>(i) * 134.0f, 550, 128, 44);
     drawText("Recent activity", 35, 610, 18, kInk);
     float logY = 637;
     for (auto it = eventLog.rbegin(); it != eventLog.rend() && logY < 720; ++it, logY += 20)
@@ -915,10 +1114,11 @@ void CompanionUI::drawAgentStateScreen() {
     drawBar("Stress", affect.stress, 340, 200, 235);
     drawBar("Arousal", affect.arousal, 50, 270, 235);
     drawBar("Engagement", affect.engagement, 340, 270, 235);
-    drawText("Valence", 50, 350, 15, kInk);
+    drawBar("Energy", proposedEnergy, 50, 320, 235);
+    drawText("Valence", 340, 350, 15, kInk);
     drawText(affect.valence == AffectValence::POSITIVE ? "Positive" :
-             affect.valence == AffectValence::NEGATIVE ? "Negative" : "Neutral", 150, 350, 15, kBlue);
-    drawText("Current action: " + latestProposedAction, 50, 380, 15, kInk);
+             affect.valence == AffectValence::NEGATIVE ? "Negative" : "Neutral", 440, 350, 15, kBlue);
+    drawText("Current action: " + latestProposedAction, 50, 385, 15, kInk);
 
     drawText("Current interaction context", 660, 158, 19, kBlue);
     drawText("Stimulus: " + latestStimulus, 660, 200, 15);
@@ -930,10 +1130,10 @@ void CompanionUI::drawAgentStateScreen() {
     drawText("Current user context: local simulation session", 660, 380, 15);
 
     drawText("Relevant stored memories (proposed agent)", 50, 445, 19, kGreen);
-    const auto& memories = proposed.getMemoryRecords();
-    if (memories.empty()) drawText("No interaction memories have been recorded yet.", 50, 490, 16, kMuted);
+    const auto memories = rankRelevantRecords(proposed.getMemoryRecords(), latestStimulus);
+    if (memories.empty()) drawText("No relevant interaction memories have been retrieved yet.", 50, 490, 16, kMuted);
     float y = 490;
-    for (auto it = memories.rbegin(); it != memories.rend() && y < 690; ++it, y += 38) {
+    for (auto it = memories.begin(); it != memories.end() && y < 690; ++it, y += 38) {
         std::ostringstream row;
         row << it->raw_fact.subject << "  --" << it->raw_fact.relation << "-->  "
             << it->raw_fact.object << "   | confidence " << std::fixed << std::setprecision(2) << it->confidence
@@ -1005,8 +1205,8 @@ void CompanionUI::saveSession() {
             return;
         }
         out << session.dump(2) << '\n';
-        baseline.savePersistentState((directory / "baseline-session.qtable").string());
-        proposed.savePersistentContext((std::filesystem::path(policyDirectory) / "proposed.qtable").string());
+        baseline.savePersistentState((std::filesystem::path(policyDirectory) / "baseline.qtable").string());
+        proposed.savePersistentState((std::filesystem::path(policyDirectory) / "proposed.qtable").string());
     } catch (const std::exception& e) {
         std::cerr << "Unable to save simulation session: " << e.what() << '\n';
     }
