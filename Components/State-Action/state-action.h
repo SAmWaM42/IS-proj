@@ -164,6 +164,7 @@ public:
 
     void reset();
     void setExplorationRate(float epsilon);
+    void advanceTime(float elapsedSeconds);
     void setLearningEnabled(bool enabled);
     std::string selectAction(const EnvironmentObservation& observation);
     void applyOutcome(const EnvironmentObservation& observation,

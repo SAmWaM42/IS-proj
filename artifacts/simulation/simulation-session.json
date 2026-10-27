@@ -1,22 +1,21 @@
 {
-  "baseline_action": "SLEEP_LAY",
-  "condition_code": "A",
-  "interaction_count": 26,
+  "baseline_action": "FETCH",
+  "condition_code": "B",
+  "interaction_count": 1,
   "interactions": [
-    "Queued interaction (1 waiting): bad [negative_feedback / spacy]",
-    "You: bad [negative_feedback / spacy]",
-    "Baseline: Hides or moves away",
-    "Proposed: Hides or moves away",
-    "Queued interaction (1 waiting): The companion should rest",
-    "You: The companion should rest",
-    "Baseline: Lies down to rest",
-    "Proposed: Explores the environment",
-    "Queued interaction (1 waiting): The companion should rest",
-    "You: The companion should rest",
-    "Baseline: Lies down to rest",
-    "Proposed: Explores the environment"
+    "Loaded backyard atlas (free.png)",
+    "Simulation ready. Select an interaction or enter a short message.",
+    "Loaded blind condition A",
+    "Loaded blind condition B",
+    "Autonomous environment-driven action: PLAY",
+    "Loaded blind condition B",
+    "Autonomous environment-driven action: PLAY",
+    "Queued interaction (1 waiting): Ask the companion to fetch the ball",
+    "You: Ask the companion to fetch the ball",
+    "Baseline: Attempts to retrieve the requested object",
+    "Proposed: Attempts to retrieve the requested object"
   ],
-  "latest_stimulus": "The companion should rest",
-  "proposed_action": "WANDER",
-  "run_id": "run-1792656498185"
+  "latest_stimulus": "Ask the companion to fetch the ball",
+  "proposed_action": "FETCH",
+  "run_id": "run-1792738920260"
 }
