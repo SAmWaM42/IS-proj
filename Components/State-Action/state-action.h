@@ -180,6 +180,11 @@ public:
                       const std::string& action,
                       const ActionOutcome& outcome,
                       const EnvironmentObservation& nextObservation);
+    void applyOutcome(const EnvironmentObservation& observation,
+                      const std::string& action,
+                      const ActionOutcome& outcome,
+                      const EnvironmentObservation& nextObservation,
+                      float elapsedSeconds);
 
     void loadPersistentState(const std::string& path);
     void savePersistentState(const std::string& path);
