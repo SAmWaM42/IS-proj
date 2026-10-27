@@ -15,6 +15,10 @@
 
 namespace
 {
+    // Training uses a fixed one-second interval between consecutive decisions.
+    // The final transition is terminal and therefore has no subsequent interval.
+    constexpr float kSecondsPerTrainingStep = 1.0f;
+
     struct EpisodeMetrics
     {
         float total_reward = 0.0f;
@@ -572,7 +576,8 @@ namespace
                                   (terminal ? "step_limit" : "interaction");
             outcome.energy_after = transition.energy_after;
 
-            agent.applyOutcome(observation, action, outcome, nextObservation);
+            const float elapsedSeconds = terminal ? 0.0f : kSecondsPerTrainingStep;
+            agent.applyOutcome(observation, action, outcome, nextObservation, elapsedSeconds);
 
             metrics.total_reward += transition.reward;
             metrics.steps = static_cast<int>(step + 1);
@@ -605,6 +610,11 @@ namespace
             row["play_available"] = observation.play_available;
             row["energy_before"] = energyBefore;
             row["energy_after"] = transition.energy_after;
+            row["simulated_elapsed_seconds"] = elapsedSeconds;
+            row["affect_arousal_after_transition"] = agent.getCurrentState().affect.arousal;
+            row["affect_stress_after_transition"] = agent.getCurrentState().affect.stress;
+            row["affect_engagement_after_transition"] = agent.getCurrentState().affect.engagement;
+            row["affect_affinity_after_transition"] = agent.getCurrentState().affect.affinity;
             row["environment_stress_after"] = transition.stress_after;
             row["user_satisfaction_after"] = transition.user_satisfaction_after;
             row["action"] = action;
@@ -704,6 +714,9 @@ bool runTrainingExperiment(const std::string &mode,
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v4_graded_context_fit";
+    summary["affect_decay_during_training"] = true;
+    summary["simulated_seconds_between_decisions"] = kSecondsPerTrainingStep;
+    summary["temporal_model"] = "Outcome feedback is applied first, then proposed-agent affect decays over one simulated second before the next state is built for Q-learning. Baseline ignores affect-only time updates.";
     summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request", "fetch_at_feeding_time"};
     summary["note"] = "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.";
 
