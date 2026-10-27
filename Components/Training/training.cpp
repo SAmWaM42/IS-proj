@@ -12,6 +12,7 @@
 #include <set>
 #include <vector>
 #include <utility>
+#include <type_traits>
 
 namespace
 {
@@ -646,10 +647,12 @@ namespace
             row["energy_before"] = energyBefore;
             row["energy_after"] = transition.energy_after;
             row["simulated_elapsed_seconds"] = elapsedSeconds;
-            row["affect_arousal_after_transition"] = agent.getCurrentState().affect.arousal;
-            row["affect_stress_after_transition"] = agent.getCurrentState().affect.stress;
-            row["affect_engagement_after_transition"] = agent.getCurrentState().affect.engagement;
-            row["affect_affinity_after_transition"] = agent.getCurrentState().affect.affinity;
+            if constexpr (std::is_same_v<Agent, ProposedAgent>) {
+                row["affect_arousal_after_transition"] = agent.getAffectiveState().arousal;
+                row["affect_stress_after_transition"] = agent.getAffectiveState().stress;
+                row["affect_engagement_after_transition"] = agent.getAffectiveState().engagement;
+                row["affect_affinity_after_transition"] = agent.getAffectiveState().affinity;
+            }
             row["environment_stress_after"] = transition.stress_after;
             row["user_satisfaction_after"] = transition.user_satisfaction_after;
             row["action"] = action;
