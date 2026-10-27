@@ -1429,6 +1429,14 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
                                 const std::string& action,
                                 const ActionOutcome& outcome,
                                 const EnvironmentObservation& nextObservation) {
+    applyOutcome(observation, action, outcome, nextObservation, 0.0f);
+}
+
+void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
+                                const std::string& action,
+                                const ActionOutcome& outcome,
+                                const EnvironmentObservation& nextObservation,
+                                float /*elapsedSeconds*/) {
     state next_state = makeState(
         nextObservation.goal_state,
         proximityFromValue(nextObservation.target_proximity),
@@ -1610,13 +1618,21 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
 void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
                                 const std::string& action,
                                 const ActionOutcome& outcome) {
-    applyOutcome(observation, action, outcome, observation);
+    applyOutcome(observation, action, outcome, observation, 0.0f);
 }
 
 void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
                                 const std::string& action,
                                 const ActionOutcome& outcome,
                                 const EnvironmentObservation& nextObservation) {
+    applyOutcome(observation, action, outcome, nextObservation, 0.0f);
+}
+
+void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
+                                const std::string& action,
+                                const ActionOutcome& outcome,
+                                const EnvironmentObservation& nextObservation,
+                                float elapsedSeconds) {
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
@@ -1633,6 +1649,11 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
         else if (outcome.energy_after < 0.67f) affective_state.energy = AffectEnergy::MODERATE;
         else affective_state.energy = AffectEnergy::HIGH;
     }
+
+    // Apply elapsed simulation time after the immediate feedback response and
+    // before constructing the next state used by Q-learning. This keeps the
+    // learned transition aligned with the runtime's affect-decay dynamics.
+    affective_state.decay(elapsedSeconds);
 
     // Confidence estimates observed success, not input signal strength.
     // Repeated outcomes for the same action/context update one record instead
