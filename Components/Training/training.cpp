@@ -3,6 +3,7 @@
 #include "Components/State-Action/state-action.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -499,8 +500,8 @@ namespace
                timed.arousal < immediate.arousal &&
                timed.engagement > immediate.engagement &&
                timed.affinity > immediate.affinity &&
-               nearlyEqual(next.affect.stress, timed.stress) &&
-               nearlyEqual(next.affect.arousal, timed.arousal);
+               std::abs(next.affect.stress - timed.stress) < 1e-5f &&
+               std::abs(next.affect.arousal - timed.arousal) < 1e-5f;
     }
 
     bool testPersistentFetchRetryAndCompletionCredit()
