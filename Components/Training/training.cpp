@@ -16,9 +16,10 @@
 
 namespace
 {
-    // Training uses a fixed one-second interval between consecutive decisions.
-    // The final transition is terminal and therefore has no subsequent interval.
-    constexpr float kSecondsPerTrainingStep = 1.0f;
+    // Sample varied but bounded elapsed time between decisions. Paired agents
+    // receive the same interval sequence within each episode.
+    constexpr float kMinSecondsPerTrainingStep = 0.5f;
+    constexpr float kMaxSecondsPerTrainingStep = 5.0f;
 
     struct EpisodeMetrics
     {
@@ -556,6 +557,7 @@ namespace
     template <typename Agent>
     EpisodeMetrics runEpisode(Agent &agent,
                               const std::vector<EnvironmentObservation> &observations,
+                              const std::vector<float> &elapsedIntervals,
                               bool learning,
                               float epsilon,
                               std::ofstream &stepLog,
@@ -612,7 +614,7 @@ namespace
                                   (terminal ? "step_limit" : "interaction");
             outcome.energy_after = transition.energy_after;
 
-            const float elapsedSeconds = terminal ? 0.0f : kSecondsPerTrainingStep;
+            const float elapsedSeconds = terminal ? 0.0f : elapsedIntervals[step];
             agent.applyOutcome(observation, action, outcome, nextObservation, elapsedSeconds);
 
             metrics.total_reward += transition.reward;
@@ -753,8 +755,9 @@ bool runTrainingExperiment(const std::string &mode,
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v4_graded_context_fit";
     summary["affect_decay_during_training"] = true;
-    summary["simulated_seconds_between_decisions"] = kSecondsPerTrainingStep;
-    summary["temporal_model"] = "Outcome feedback is applied first, then proposed-agent affect decays over one simulated second before the next state is built for Q-learning. Baseline ignores affect-only time updates.";
+    summary["simulated_seconds_between_decisions_min"] = kMinSecondsPerTrainingStep;
+    summary["simulated_seconds_between_decisions_max"] = kMaxSecondsPerTrainingStep;
+    summary["temporal_model"] = "Each non-terminal decision uses a seeded elapsed-time interval sampled uniformly from 0.5 to 5 simulated seconds. Paired agents share intervals. Outcome feedback is applied first, then proposed-agent affect decays over that interval before the next state is built for Q-learning. Baseline ignores affect-only time updates.";
     summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request", "fetch_at_feeding_time"};
     summary["note"] = "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.";
 
@@ -770,10 +773,15 @@ bool runTrainingExperiment(const std::string &mode,
     for (int episode = 0; episode < episodes; ++episode)
     {
         std::vector<EnvironmentObservation> observations;
+        std::vector<float> elapsedIntervals;
         observations.reserve(static_cast<std::size_t>(steps));
+        elapsedIntervals.reserve(static_cast<std::size_t>(steps));
+        std::uniform_real_distribution<float> elapsedDist(
+            kMinSecondsPerTrainingStep, kMaxSecondsPerTrainingStep);
         for (int step = 0; step < steps; ++step)
         {
             observations.push_back(makeObservation(environmentRng, step));
+            elapsedIntervals.push_back(elapsedDist(environmentRng));
         }
 
         const float epsilon = mode == "train"
@@ -782,9 +790,9 @@ bool runTrainingExperiment(const std::string &mode,
         const bool learning = mode == "train";
 
         const EpisodeMetrics baselineMetrics = runEpisode(
-            baseline, observations, learning, epsilon, baselineLog, "baseline", episode);
+            baseline, observations, elapsedIntervals, learning, epsilon, baselineLog, "baseline", episode);
         const EpisodeMetrics proposedMetrics = runEpisode(
-            proposed, observations, learning, epsilon, proposedLog, "proposed", episode);
+            proposed, observations, elapsedIntervals, learning, epsilon, proposedLog, "proposed", episode);
 
         baselineRewardSum += baselineMetrics.total_reward;
         proposedRewardSum += proposedMetrics.total_reward;
