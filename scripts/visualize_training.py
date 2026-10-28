@@ -209,6 +209,81 @@ def plot_mean_rewards(input_dir: Path, out_path: Path) -> list[dict[str, Any]]:
     return values
 
 
+def plot_policy_coverage(rows_by_agent: dict[str, list[dict[str, Any]]],
+                         out_path: Path,
+                         pair_out_path: Path,
+                         top_n: int = 20) -> dict[str, dict[str, int]]:
+    """Plot how often decisions had stored Q-values, and most-visited state/action pairs."""
+    coverage: dict[str, dict[str, int]] = {}
+    pair_counts: dict[str, Counter[str]] = {}
+    for agent, rows in rows_by_agent.items():
+        supported = sum(bool(row.get("q_table_has_valid_action_values", False)) for row in rows)
+        fallback = sum(bool(row.get("decision_used_fallback", not row.get("q_table_has_valid_action_values", False))) for row in rows)
+        coverage[agent] = {
+            "decisions": len(rows),
+            "q_table_supported_decisions": supported,
+            "fallback_decisions": fallback,
+            "unique_states": len({safe_state(row.get("encoded_state")) for row in rows}),
+            "unique_state_action_pairs": len({
+                f"{safe_state(row.get('encoded_state'))}|{row.get('action', 'UNKNOWN')}"
+                for row in rows
+            }),
+        }
+        pair_counts[agent] = Counter(
+            f"{safe_state(row.get('encoded_state'))} | {row.get('action', 'UNKNOWN')}"
+            for row in rows
+        )
+
+    fig, ax = plt.subplots(figsize=(8, 5.5))
+    positions = list(range(len(AGENTS)))
+    supported_values = [coverage.get(agent, {}).get("q_table_supported_decisions", 0) for agent in AGENTS]
+    fallback_values = [coverage.get(agent, {}).get("fallback_decisions", 0) for agent in AGENTS]
+    ax.bar(positions, supported_values, label="Stored valid Q-values available")
+    ax.bar(positions, fallback_values, bottom=supported_values, label="No stored valid Q-values")
+    ax.set_title("Training decision coverage")
+    ax.set_xlabel("Agent")
+    ax.set_ylabel("Decision count")
+    ax.set_xticks(positions)
+    ax.set_xticklabels([agent.title() for agent in AGENTS])
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=160)
+    plt.close(fig)
+
+    combined = Counter()
+    for counter in pair_counts.values():
+        combined.update(counter)
+    selected = [pair for pair, _ in combined.most_common(top_n)]
+    if selected:
+        x = list(range(len(selected)))
+        width = 0.40
+        fig, ax = plt.subplots(figsize=(max(12, len(selected) * 0.7), 6.5))
+        ax.bar([i - width / 2 for i in x],
+               [pair_counts.get("baseline", Counter()).get(pair, 0) for pair in selected],
+               width, label="Baseline")
+        ax.bar([i + width / 2 for i in x],
+               [pair_counts.get("proposed", Counter()).get(pair, 0) for pair in selected],
+               width, label="Proposed")
+        ax.set_title(f"Most-visited state/action pairs (top {len(selected)})")
+        ax.set_xlabel("Encoded state | action")
+        ax.set_ylabel("Visit count")
+        ax.set_xticks(x)
+        ax.set_xticklabels(selected, rotation=60, ha="right", fontsize=7)
+        ax.grid(axis="y", alpha=0.25)
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(pair_out_path, dpi=160)
+        plt.close(fig)
+    return coverage
+
+
+def write_coverage_json(coverage: dict[str, dict[str, int]], path: Path) -> None:
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(coverage, handle, indent=2)
+        handle.write("\n")
+
+
 def write_mean_reward_csv(rows: list[dict[str, Any]], path: Path) -> None:
     fields = [
         "mode", "agent", "episodes", "seed",
@@ -322,6 +397,13 @@ def main() -> int:
     state_counts = plot_state_visitation(step_logs, output_dir / "state_visitation.png", args.top_states)
     mean_rows = plot_mean_rewards(input_dir, output_dir / "mean_reward_by_mode.png")
     write_mean_reward_csv(mean_rows, output_dir / "mean_reward_by_mode.csv")
+    coverage = plot_policy_coverage(
+        step_logs,
+        output_dir / "policy_coverage.png",
+        output_dir / "state_action_visitation.png",
+        args.top_states,
+    )
+    write_coverage_json(coverage, output_dir / "coverage_summary.json")
     final_episode = plot_final_episode_trace(
         step_logs,
         output_dir / "final_episode_behaviour_trace.png",
@@ -333,11 +415,19 @@ def main() -> int:
     print("  state_visitation.png")
     print("  mean_reward_by_mode.png")
     print("  mean_reward_by_mode.csv")
+    print("  policy_coverage.png")
+    print("  state_action_visitation.png")
+    print("  coverage_summary.json")
     print("  final_episode_behaviour_trace.png")
     print("  final_episode_behaviour_trace.dot")
     print(f"Final training episode traced: {final_episode}")
     for agent in AGENTS:
-        print(f"{agent.title()} unique encoded states in training log: {len(state_counts.get(agent, {}))}")
+        stats = coverage.get(agent, {})
+        print(
+            f"{agent.title()}: {len(state_counts.get(agent, {}))} unique states, "
+            f"{stats.get('q_table_supported_decisions', 0)}/{stats.get('decisions', 0)} "
+            "decisions had stored valid Q-values"
+        )
     return 0
 
 
