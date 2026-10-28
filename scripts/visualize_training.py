@@ -633,12 +633,13 @@ def main() -> int:
     print(f"Active-request SLEEP_LAY candidates: {len(sleep_candidates)}")
     for row in window_report:
         coverage_text = (
-            f", states={row['unique_states_visited']}, "
-            f"state-action pairs={row['unique_state_action_pairs']}, "
+            f", sum of per-episode unique states={row['sum_episode_unique_states_visited']}, "
+            f"sum of per-episode state-action pairs={row['sum_episode_unique_state_action_pairs']}, "
             f"fallback rate={row['fallback_decision_rate']:.2%}"
             if row["q_table_coverage_fields_available"] else
-            f", states={row['unique_states_visited']}, "
-            f"state-action pairs={row['unique_state_action_pairs']}, Q coverage unavailable"
+            f", sum of per-episode unique states={row['sum_episode_unique_states_visited']}, "
+            f"sum of per-episode state-action pairs={row['sum_episode_unique_state_action_pairs']}, "
+            "Q coverage unavailable"
         )
         print(
             f"{row['agent'].title()} {row['window']} window "
@@ -652,9 +653,9 @@ def main() -> int:
     for agent in AGENTS:
         stats = coverage.get(agent, {})
         print(
-            f"{agent.title()}: {len(state_counts.get(agent, {}))} unique states, "
-            f"{stats.get('q_table_supported_decisions', 0)}/{stats.get('decisions', 0)} "
-            "decisions had stored valid Q-values"
+            f"{agent.title()}: {stats.get('q_table_supported_decisions', 0)}/"
+            f"{stats.get('decisions', 0)} training decisions had stored valid Q-values; "
+            f"{len(state_counts.get(agent, {}))} unique states appear in retained final-episode logs"
         )
     return 0
 
