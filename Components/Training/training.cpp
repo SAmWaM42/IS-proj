@@ -55,6 +55,9 @@ namespace
         std::map<std::string, int> stimulus_aligned_by_type;
         std::map<std::string, int> action_counts;
         std::set<std::size_t> visited_states;
+        std::map<std::string, int> state_action_visits;
+        int q_table_supported_decisions = 0;
+        int fallback_decisions = 0;
     };
 
     EnvironmentObservation makeObservation(std::mt19937 &rng, int stepIndex)
@@ -658,6 +661,22 @@ namespace
             const std::string action = agent.selectAction(observation);
             const std::size_t stateKeyBeforeAction = agent.getCurrentState().encode();
             metrics.visited_states.insert(stateKeyBeforeAction);
+            ++metrics.state_action_visits[std::to_string(stateKeyBeforeAction) + "|" + action];
+            bool hasValidStoredAction = false;
+            bool qTableStatePresent = false;
+            std::string contextualFallback;
+            if constexpr (std::is_same_v<Agent, ProposedAgent>) {
+                const auto& trace = agent.getLastDecisionTrace();
+                hasValidStoredAction = trace.q_table_has_valid_action_values;
+                qTableStatePresent = trace.q_table_state_present;
+                contextualFallback = trace.contextual_fallback;
+            } else {
+                hasValidStoredAction = agent.lastDecisionHadValidQAction();
+                qTableStatePresent = agent.lastDecisionHadQTableState();
+                contextualFallback = agent.getLastContextualFallback();
+            }
+            if (hasValidStoredAction) ++metrics.q_table_supported_decisions;
+            else ++metrics.fallback_decisions;
 
             const float energyBefore = environmentEnergy;
             const float stressBefore = environmentStress;
@@ -740,6 +759,10 @@ namespace
             row["user_satisfaction_after"] = transition.user_satisfaction_after;
             row["action"] = action;
             row["encoded_state"] = stateKeyBeforeAction;
+            row["q_table_state_present"] = qTableStatePresent;
+            row["q_table_has_valid_action_values"] = hasValidStoredAction;
+            row["contextual_fallback"] = contextualFallback;
+            row["decision_used_fallback"] = !hasValidStoredAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
             row["reward"] = transitionReward;
             row["terminal"] = terminal;
@@ -764,6 +787,13 @@ namespace
         result["completed"] = metrics.completed;
         result["action_counts"] = metrics.action_counts;
         result["unique_states_visited"] = metrics.visited_states.size();
+        result["state_action_visits"] = metrics.state_action_visits;
+        result["q_table_supported_decisions"] = metrics.q_table_supported_decisions;
+        result["fallback_decisions"] = metrics.fallback_decisions;
+        result["q_table_supported_decision_rate"] = metrics.steps > 0
+            ? static_cast<double>(metrics.q_table_supported_decisions) / metrics.steps : 0.0;
+        result["fallback_decision_rate"] = metrics.steps > 0
+            ? static_cast<double>(metrics.fallback_decisions) / metrics.steps : 0.0;
         result["stimulus_checks"] = metrics.stimulus_checks;
         result["stimulus_aligned_actions"] = metrics.stimulus_aligned_actions;
         result["stimulus_response_alignment_rate"] =
