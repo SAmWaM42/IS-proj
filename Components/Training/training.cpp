@@ -23,6 +23,44 @@ namespace
     constexpr float kMinSecondsPerTrainingStep = 0.5f;
     constexpr float kMaxSecondsPerTrainingStep = 5.0f;
 
+    // Old verbose per-step logs can grow to tens of megabytes. Since current
+    // runs retain only the final few episodes, discard obsolete oversized step
+    // logs instead of rotating them into another large tracked artifact.
+    void pruneOversizedStepLogs(const std::filesystem::path& outputDirectory)
+    {
+        constexpr std::uintmax_t kMaxRetainedStepLogBytes = 5u * 1024u * 1024u;
+        std::error_code error;
+        for (const auto& entry : std::filesystem::directory_iterator(outputDirectory, error))
+        {
+            if (error)
+                break;
+            if (!entry.is_regular_file(error) || error)
+            {
+                error.clear();
+                continue;
+            }
+            const std::string filename = entry.path().filename().string();
+            if (filename.size() < 11 ||
+                filename.compare(filename.size() - 11, 11, "_steps.jsonl") != 0)
+                continue;
+
+            const auto size = entry.file_size(error);
+            if (error)
+            {
+                error.clear();
+                continue;
+            }
+            if (size > kMaxRetainedStepLogBytes)
+            {
+                std::error_code removeError;
+                const bool removed = std::filesystem::remove(entry.path(), removeError);
+                if (removed && !removeError)
+                    std::cout << "Removed obsolete oversized step log: "
+                              << entry.path() << " (" << size << " bytes)\n";
+            }
+        }
+    }
+
     // Keep one previous version of each generated artifact, tagged with compare_.
     // The comparison-mode outputs already begin with compare_, so their backup
     // uses compare_previous_ to avoid an ambiguous compare_compare_ prefix.
@@ -855,6 +893,7 @@ bool runTrainingExperiment(const std::string &mode,
     namespace fs = std::filesystem;
     const fs::path outDir(outputDirectory);
     fs::create_directories(outDir);
+    pruneOversizedStepLogs(outDir);
     const fs::path baselinePolicy = outDir / "baseline.qtable";
     const fs::path proposedPolicy = outDir / "proposed.qtable";
 
