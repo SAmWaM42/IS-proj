@@ -8,7 +8,6 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
-#include <cstdlib>
 #include <memory>
 #include <json.hpp>
 #include <filesystem>
@@ -29,6 +28,33 @@
 
 namespace {
 using nlohmann::json;
+
+void rotateOutputDirectoryForComparison(const std::filesystem::path& directory) {
+    std::filesystem::create_directories(directory);
+    std::vector<std::filesystem::path> currentFiles;
+
+    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+        if (!entry.is_regular_file())
+            continue;
+        const auto filename = entry.path().filename().string();
+        if (filename.rfind("compare_", 0) == 0) {
+            std::error_code ec;
+            std::filesystem::remove(entry.path(), ec);
+        } else {
+            currentFiles.push_back(entry.path());
+        }
+    }
+
+    for (const auto& currentPath : currentFiles) {
+        const auto backupPath = currentPath.parent_path() /
+            ("compare_" + currentPath.filename().string());
+        std::error_code ec;
+        std::filesystem::rename(currentPath, backupPath, ec);
+        if (ec)
+            std::cerr << "Warning: unable to preserve previous simulation artifact "
+                      << currentPath << " as " << backupPath << ": " << ec.message() << '\\n';
+    }
+}
 
 class PersistentNlpClient {
 public:
@@ -255,7 +281,7 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     loadFrames(sleepFrames, {"sleep1.png", "sleep2.png"});
     loadFrames(barkFrames, {"bark1.png", "bark2.png"});
     if (idleFrames.empty()) appendLog("Dog frames missing (Data/Assets/white_dog_by_Brysia); using a placeholder companion.");
-    std::filesystem::create_directories(outputDirectory);
+    rotateOutputDirectoryForComparison(outputDirectory);
     std::filesystem::create_directories(policyDirectory);
     const auto basePath = std::filesystem::path(policyDirectory) / "baseline.qtable";
     const auto proposedPath = std::filesystem::path(policyDirectory) / "proposed.qtable";
@@ -1157,7 +1183,8 @@ void CompanionUI::executeInteraction(const std::string& label,
                 {"engagement", proposed.getAffectiveState().engagement},
                 {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
             }}
-        };        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+        };
+        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
         if (log) log << row.dump() << '\n';
         else appendLog("WARNING: interaction event log could not be written.");
     }
