@@ -52,7 +52,7 @@ void rotateOutputDirectoryForComparison(const std::filesystem::path& directory) 
         std::filesystem::rename(currentPath, backupPath, ec);
         if (ec)
             std::cerr << "Warning: unable to preserve previous simulation artifact "
-                      << currentPath << " as " << backupPath << ": " << ec.message() << '\\n';
+                      << currentPath << " as " << backupPath << ": " << ec.message() << '\n';
     }
 }
 
