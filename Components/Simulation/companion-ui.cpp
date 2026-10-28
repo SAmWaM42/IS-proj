@@ -755,6 +755,8 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
                     {"encoded_state", trace.encoded_state},
                     {"contextual_fallback", trace.contextual_fallback},
                     {"policy_action_before_overrides", trace.policy_action},
+                    {"q_table_state_present", trace.q_table_state_present},
+                    {"q_table_has_valid_action_values", trace.q_table_has_valid_action_values},
                     {"final_action_after_overrides", trace.final_action},
                     {"general_preference_override", trace.general_preference_override},
                     {"rejection_override_applied", trace.rejection_override_applied},
