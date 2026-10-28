@@ -146,7 +146,7 @@ def plot_state_visitation(rows_by_agent: dict[str, list[dict[str, Any]]],
     ax.bar([p + width / 2 for p in positions],
            [counts.get("proposed", Counter()).get(state, 0) for state in selected],
            width, label="Proposed")
-    ax.set_title(f"Most-visited encoded states during training (top {len(selected)})")
+    ax.set_title(f"Most-visited encoded states in retained final episodes (top {len(selected)})")
     ax.set_xlabel("Encoded state ID")
     ax.set_ylabel("Number of visits")
     ax.set_xticks(positions)
@@ -393,79 +393,63 @@ def population_std(values: list[float]) -> float:
 
 
 def write_training_window_report(summary: dict[str, Any],
-                                 rows_by_agent: dict[str, list[dict[str, Any]]],
                                  csv_path: Path, plot_path: Path,
                                  window_size: int) -> list[dict[str, Any]]:
-    """Compare early/late reward and coverage windows; avoid single-episode conclusions."""
+    """Compare early/late reward and summary-derived coverage over all training episodes."""
     report: list[dict[str, Any]] = []
     actual_window = window_size
     for agent in AGENTS:
-        episode_records = sorted(
+        episodes = sorted(
             episode_rows(summary, agent), key=lambda row: int(row.get("episode", 0))
         )
-        if not episode_records:
+        if not episodes:
             continue
-        actual_window = min(window_size, len(episode_records))
+        actual_window = min(window_size, len(episodes))
         windows = [
-            ("early", episode_records[:actual_window]),
-            ("late", episode_records[-actual_window:]),
+            ("early", episodes[:actual_window]),
+            ("late", episodes[-actual_window:]),
         ]
-        step_rows = rows_by_agent.get(agent, [])
-        for label, selected_episodes in windows:
-            rewards = [episode_reward(row) for row in selected_episodes]
-            episode_ids = {int(row.get("episode", index))
-                           for index, row in enumerate(selected_episodes)}
-            selected_steps = [
-                row for row in step_rows
-                if int(row.get("episode", -1)) in episode_ids
+        for label, selected in windows:
+            rewards = [episode_reward(row) for row in selected]
+            decisions = sum(int(row.get("steps", 0)) for row in selected)
+            supported = sum(int(row.get("q_table_supported_decisions", 0)) for row in selected)
+            fallback = sum(int(row.get("fallback_decisions", 0)) for row in selected)
+            state_counts = [int(row.get("unique_states_visited", 0)) for row in selected]
+            pair_counts = [
+                len(row.get("state_action_visits", {}))
+                if isinstance(row.get("state_action_visits", {}), dict) else 0
+                for row in selected
             ]
-            has_coverage_fields = bool(selected_steps) and all(
-                "q_table_has_valid_action_values" in row and
-                "decision_used_fallback" in row
-                for row in selected_steps
-            )
-            decisions = len(selected_steps)
-            q_supported = sum(
-                bool(row.get("q_table_has_valid_action_values", False))
-                for row in selected_steps
-            )
-            fallback = sum(
-                bool(row.get("decision_used_fallback", False))
-                for row in selected_steps
-            )
             report.append({
                 "agent": agent,
                 "window": label,
                 "episodes_in_window": len(rewards),
-                "start_episode": int(selected_episodes[0].get("episode", 0)) + 1,
-                "end_episode": int(selected_episodes[-1].get("episode", 0)) + 1,
+                "start_episode": int(selected[0].get("episode", 0)) + 1,
+                "end_episode": int(selected[-1].get("episode", 0)) + 1,
                 "mean_total_reward": sum(rewards) / len(rewards),
                 "std_total_reward": population_std(rewards),
                 "min_total_reward": min(rewards),
                 "max_total_reward": max(rewards),
-                "decisions_logged": decisions,
-                "unique_states_visited": len({
-                    safe_state(row.get("encoded_state")) for row in selected_steps
-                }),
-                "unique_state_action_pairs": len({
-                    f"{safe_state(row.get('encoded_state'))}|{row.get('action', 'UNKNOWN')}"
-                    for row in selected_steps
-                }),
-                "q_table_coverage_fields_available": has_coverage_fields,
-                "q_table_supported_decisions": q_supported if has_coverage_fields else "",
-                "fallback_decisions": fallback if has_coverage_fields else "",
-                "q_table_supported_decision_rate": q_supported / decisions
-                    if has_coverage_fields and decisions else "",
-                "fallback_decision_rate": fallback / decisions
-                    if has_coverage_fields and decisions else "",
+                "decisions": decisions,
+                "sum_episode_unique_states_visited": sum(state_counts),
+                "sum_episode_unique_state_action_pairs": sum(pair_counts),
+                "q_table_coverage_fields_available": bool(selected) and all(
+                    "q_table_supported_decisions" in row and "fallback_decisions" in row
+                    for row in selected
+                ),
+                "q_table_supported_decisions": supported,
+                "fallback_decisions": fallback,
+                "q_table_supported_decision_rate": supported / decisions if decisions else "",
+                "fallback_decision_rate": fallback / decisions if decisions else "",
             })
 
     fields = [
         "agent", "window", "episodes_in_window", "start_episode", "end_episode",
         "mean_total_reward", "std_total_reward", "min_total_reward", "max_total_reward",
-        "decisions_logged", "unique_states_visited", "unique_state_action_pairs",
-        "q_table_coverage_fields_available", "q_table_supported_decisions",
-        "fallback_decisions", "q_table_supported_decision_rate", "fallback_decision_rate",
+        "decisions", "sum_episode_unique_states_visited",
+        "sum_episode_unique_state_action_pairs", "q_table_coverage_fields_available",
+        "q_table_supported_decisions", "fallback_decisions",
+        "q_table_supported_decision_rate", "fallback_decision_rate",
     ]
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
@@ -605,7 +589,6 @@ def main() -> int:
     write_coverage_json(coverage, output_dir / "coverage_summary.json")
     window_report = write_training_window_report(
         training_summary,
-        step_logs,
         output_dir / "training_window_summary.csv",
         output_dir / "early_vs_late_training_reward.png",
         args.training_window,
