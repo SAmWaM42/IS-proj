@@ -383,6 +383,147 @@ def plot_final_episode_trace(rows_by_agent: dict[str, list[dict[str, Any]]],
     return max(final_episodes.values())
 
 
+
+
+def population_std(values: list[float]) -> float:
+    if not values:
+        return math.nan
+    mean = sum(values) / len(values)
+    return math.sqrt(sum((value - mean) ** 2 for value in values) / len(values))
+
+
+def write_training_window_report(summary: dict[str, Any], csv_path: Path,
+                                 plot_path: Path, window_size: int) -> list[dict[str, Any]]:
+    """Compare early and late training windows; never use a single episode as the endpoint."""
+    report: list[dict[str, Any]] = []
+    for agent in AGENTS:
+        rows = sorted(episode_rows(summary, agent), key=lambda row: int(row.get("episode", 0)))
+        rewards = [episode_reward(row) for row in rows]
+        if not rewards:
+            continue
+        actual_window = min(window_size, len(rewards))
+        windows = [
+            ("early", rewards[:actual_window], 1, actual_window),
+            ("late", rewards[-actual_window:], len(rewards) - actual_window + 1, len(rewards)),
+        ]
+        for label, values, start_episode, end_episode in windows:
+            report.append({
+                "agent": agent,
+                "window": label,
+                "episodes_in_window": len(values),
+                "start_episode": start_episode,
+                "end_episode": end_episode,
+                "mean_total_reward": sum(values) / len(values),
+                "std_total_reward": population_std(values),
+                "min_total_reward": min(values),
+                "max_total_reward": max(values),
+            })
+
+    fields = ["agent", "window", "episodes_in_window", "start_episode", "end_episode",
+              "mean_total_reward", "std_total_reward", "min_total_reward", "max_total_reward"]
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(report)
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    positions = [0, 1]
+    width = 0.36
+    for offset, agent in ((-width / 2, "baseline"), (width / 2, "proposed")):
+        selected = [row for row in report if row["agent"] == agent]
+        lookup = {row["window"]: row for row in selected}
+        means = [lookup.get(window, {}).get("mean_total_reward", math.nan)
+                 for window in ("early", "late")]
+        errors = [lookup.get(window, {}).get("std_total_reward", 0.0)
+                  for window in ("early", "late")]
+        ax.bar([position + offset for position in positions], means, width,
+               yerr=errors, capsize=4, label=agent.title())
+    ax.set_title(f"Early vs late training reward (window = {actual_window} episodes)")
+    ax.set_xlabel("Training window")
+    ax.set_ylabel("Mean total reward per episode (error bars: SD)")
+    ax.set_xticks(positions)
+    ax.set_xticklabels(["Early", "Late"])
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(plot_path, dpi=160)
+    plt.close(fig)
+    return report
+
+
+def write_sleep_lay_diagnostics(rows_by_agent: dict[str, list[dict[str, Any]]],
+                                csv_path: Path, json_path: Path) -> list[dict[str, Any]]:
+    """Extract sleep decisions during an active request for inspection, not automatic classification."""
+    candidates: list[dict[str, Any]] = []
+    for agent, rows in rows_by_agent.items():
+        for row in rows:
+            if row.get("action") != "SLEEP_LAY":
+                continue
+            # goal_state 1 is a request; task_status 1 denotes an active task in current logs.
+            if row.get("goal_state") != 1 or row.get("task_status") != 1:
+                continue
+            energy = row.get("energy_before")
+            energy_value = float(energy) if isinstance(energy, (int, float)) else math.nan
+            candidates.append({
+                "agent": agent,
+                "episode": row.get("episode"),
+                "step": row.get("step"),
+                "encoded_state": row.get("encoded_state"),
+                "energy_before": energy,
+                "energy_after": row.get("energy_after"),
+                "energy_below_35pct_recovery_threshold": energy_value < 0.35 if not math.isnan(energy_value) else None,
+                "energy_at_or_below_20pct_restriction_threshold": energy_value <= 0.20 if not math.isnan(energy_value) else None,
+                "target_proximity": row.get("target_proximity"),
+                "target_proximity_label": PROXIMITY_LABELS.get(row.get("target_proximity"), "unknown"),
+                "food_available": row.get("food_available"),
+                "play_available": row.get("play_available"),
+                "contextual_fallback": row.get("contextual_fallback", ""),
+                "q_table_state_present": row.get("q_table_state_present"),
+                "q_table_has_valid_action_values": row.get("q_table_has_valid_action_values"),
+                "decision_used_fallback": row.get("decision_used_fallback"),
+                "policy_action_before_overrides": row.get("policy_action_before_overrides", ""),
+                "final_action_after_overrides": row.get("final_action_after_overrides", row.get("action", "")),
+                "general_preference_override": row.get("general_preference_override", ""),
+                "rejection_override_applied": row.get("rejection_override_applied"),
+                "valid_action_q_values": json.dumps(row.get("valid_action_q_values", []), ensure_ascii=False),
+                "reward": row.get("reward"),
+                "terminal": row.get("terminal"),
+                "terminal_reason": row.get("terminal_reason"),
+                "interpretation": (
+                    "Inspect energy and action constraints before judging this decision; "
+                    "low-energy thresholds are contextual clues, not proof that sleep was required."
+                ),
+            })
+
+    fields = list(candidates[0].keys()) if candidates else [
+        "agent", "episode", "step", "encoded_state", "energy_before", "energy_after",
+        "energy_below_35pct_recovery_threshold", "energy_at_or_below_20pct_restriction_threshold",
+        "target_proximity", "target_proximity_label", "food_available", "play_available",
+        "contextual_fallback", "q_table_state_present", "q_table_has_valid_action_values",
+        "decision_used_fallback", "policy_action_before_overrides", "final_action_after_overrides",
+        "general_preference_override", "rejection_override_applied", "valid_action_q_values",
+        "reward", "terminal", "terminal_reason", "interpretation"
+    ]
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(candidates)
+    with json_path.open("w", encoding="utf-8") as handle:
+        json.dump({
+            "candidate_definition": "SLEEP_LAY while goal_state=request and task_status=active",
+            "candidate_count": len(candidates),
+            "notes": [
+                "These records are diagnostic candidates, not confirmed errors.",
+                "Energy thresholds mirror the current README description: recovery shaping below 35%; recovery-action restriction at or below 20%.",
+                "target_proximity is logged context; it does not by itself prove a distance guard was triggered.",
+                "Q-values and override details are available for proposed-agent decisions when present in current C++ step logs."
+            ],
+            "candidates": candidates,
+        }, handle, indent=2)
+        handle.write("\n")
+    return candidates
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-dir", type=Path, default=Path("artifacts/training"))
@@ -391,9 +532,11 @@ def main() -> int:
                         help="number of most-visited encoded states to show (default: 20)")
     parser.add_argument("--rolling-window", type=int, default=25,
                         help="episode window for the reward trend line (default: 25)")
+    parser.add_argument("--training-window", type=int, default=100,
+                        help="episodes in each early/late training comparison window (default: 100)")
     args = parser.parse_args()
-    if args.top_states < 1 or args.rolling_window < 1:
-        parser.error("--top-states and --rolling-window must be positive integers")
+    if args.top_states < 1 or args.rolling_window < 1 or args.training_window < 1:
+        parser.error("--top-states, --rolling-window, and --training-window must be positive integers")
 
     input_dir = args.input_dir
     output_dir = args.output_dir
@@ -415,6 +558,17 @@ def main() -> int:
         args.top_states,
     )
     write_coverage_json(coverage, output_dir / "coverage_summary.json")
+    window_report = write_training_window_report(
+        training_summary,
+        output_dir / "training_window_summary.csv",
+        output_dir / "early_vs_late_training_reward.png",
+        args.training_window,
+    )
+    sleep_candidates = write_sleep_lay_diagnostics(
+        step_logs,
+        output_dir / "sleep_lay_active_request_diagnostics.csv",
+        output_dir / "sleep_lay_active_request_diagnostics.json",
+    )
     final_episode = plot_final_episode_trace(
         step_logs,
         output_dir / "final_episode_behaviour_trace.png",
@@ -429,6 +583,18 @@ def main() -> int:
     print("  policy_coverage.png")
     print("  state_action_visitation.png")
     print("  coverage_summary.json")
+    print("  training_window_summary.csv")
+    print("  early_vs_late_training_reward.png")
+    print("  sleep_lay_active_request_diagnostics.csv")
+    print("  sleep_lay_active_request_diagnostics.json")
+    print(f"Training window size: {args.training_window} episodes per window")
+    print(f"Active-request SLEEP_LAY candidates: {len(sleep_candidates)}")
+    for row in window_report:
+        print(
+            f"{row['agent'].title()} {row['window']} window "
+            f"(episodes {row['start_episode']}-{row['end_episode']}): "
+            f"mean={row['mean_total_reward']:.3f}, SD={row['std_total_reward']:.3f}"
+        )
     print("  final_episode_behaviour_trace.png")
     print("  final_episode_behaviour_trace.dot")
     print(f"Final training episode traced: {final_episode}")
