@@ -40,8 +40,10 @@ namespace
                 continue;
             }
             const std::string filename = entry.path().filename().string();
-            if (filename.size() < 11 ||
-                filename.compare(filename.size() - 11, 11, "_steps.jsonl") != 0)
+            const std::string stepLogSuffix = "_steps.jsonl";
+            if (filename.size() < stepLogSuffix.size() ||
+                filename.compare(filename.size() - stepLogSuffix.size(),
+                                 stepLogSuffix.size(), stepLogSuffix) != 0)
                 continue;
 
             const auto size = entry.file_size(error);
