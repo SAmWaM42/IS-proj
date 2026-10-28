@@ -198,6 +198,15 @@ namespace
             driveRelief = 0.18f + 0.42f * (1.0f - energy);
         else if (action == "SLEEP_LAY")
             driveRelief = 0.28f * (1.0f - energy) + 0.45f * stress;
+
+        // Explicit survival pressure: below 35% energy, recovery is increasingly
+        // valuable and non-recovery actions carry a growing opportunity cost.
+        if (energy < 0.35f) {
+            const float urgency = (0.35f - energy) / 0.35f;
+            const bool validRecovery = action == "SLEEP_LAY" ||
+                                       (action == "EAT" && observation.food_available);
+            driveRelief += validRecovery ? 0.30f * urgency : -0.22f * urgency;
+        }
         else if (action == "PLAY" && observation.play_available)
             driveRelief = 0.12f * energy - 0.10f * stress;
         else if (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2 &&
@@ -245,7 +254,8 @@ namespace
                                            float energy,
                                            float stress,
                                            float userSatisfaction,
-                                           std::mt19937 &rng)
+                                           std::mt19937 &rng,
+                                           float elapsedSeconds = 0.0f)
     {
         EnvironmentStep result;
         result.next_observation = observation;
@@ -295,6 +305,13 @@ namespace
 
         if (action != "SLEEP_LAY" && !(action == "EAT" && observation.food_available))
             energy = std::max(0.0f, energy - effort * 1.5f);
+
+        // Shared physical-energy dynamics: passive drain occurs during the
+        // elapsed interval after the action. Resting reduces, but does not
+        // eliminate, baseline metabolic drain. The UI uses the same rates.
+        const float passiveDrainPerSecond = action == "SLEEP_LAY" ? 0.0008f : 0.0025f;
+        energy = std::max(0.0f, energy - passiveDrainPerSecond * std::max(0.0f, elapsedSeconds));
+        result.next_observation.energy = energy;
 
         const float fit = actionContextFit(action, observation, energyBefore, stressBefore);
         if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
@@ -469,6 +486,40 @@ namespace
                sawFarSuccess && sawFarFailure;
     }
 
+    bool testCriticalEnergyPrioritizesRecovery()
+    {
+        EnvironmentObservation critical{2, 1, 0, 0, 0.20f, false, true, 0.15f};
+        const auto withoutFood = validActionsForObservation(critical);
+        if (withoutFood.size() != 1 || withoutFood.front() != "SLEEP_LAY") return false;
+        critical.food_available = true;
+        const auto withFood = validActionsForObservation(critical);
+        return withFood.size() == 2 &&
+               std::find(withFood.begin(), withFood.end(), "EAT") != withFood.end() &&
+               std::find(withFood.begin(), withFood.end(), "SLEEP_LAY") != withFood.end();
+    }
+
+    bool testEnergyDepletionTransition()
+    {
+        const EnvironmentObservation observation{2, 1, 0, 0, 0.20f, false, false, 0.01f};
+        std::mt19937 rng(912u);
+        const EnvironmentStep depleted = applyEnvironmentAction(
+            "WANDER", observation, 0.01f, 0.2f, 0.5f, rng, 1.0f);
+        return depleted.energy_after <= 0.0f;
+    }
+
+    bool testPassiveEnergyDrain()
+    {
+        const EnvironmentObservation observation{2, 1, 0, 0, 0.20f};
+        std::mt19937 firstRng(711u), secondRng(711u);
+        const EnvironmentStep immediate = applyEnvironmentAction(
+            "WANDER", observation, 0.8f, 0.2f, 0.5f, firstRng, 0.0f);
+        const EnvironmentStep elapsed = applyEnvironmentAction(
+            "WANDER", observation, 0.8f, 0.2f, 0.5f, secondRng, 5.0f);
+        return elapsed.energy_after < immediate.energy_after &&
+               std::abs((immediate.energy_after - elapsed.energy_after) - 0.0125f) < 1e-5f &&
+               std::abs(elapsed.next_observation.energy - elapsed.energy_after) < 1e-6f;
+    }
+
     bool testTrainingAppliesElapsedAffectDecay()
     {
         const EnvironmentObservation observation{0, 1, 1, 0, 0.45f};
@@ -580,6 +631,7 @@ namespace
                 currentObservation = mergeTaskTransition(
                     observations[step - 1], currentObservation, observations[step]);
             }
+            currentObservation.energy = environmentEnergy;
             const EnvironmentObservation observation = currentObservation;
             const std::string action = agent.selectAction(observation);
             const std::size_t stateKeyBeforeAction = agent.getCurrentState().encode();
@@ -589,36 +641,42 @@ namespace
             const float stressBefore = environmentStress;
             // Same seed per episode/step gives both agents paired environmental noise,
             // independent of how many stochastic actions either policy selected.
+            const float elapsedSeconds = step + 1 == observations.size() ? 0.0f : elapsedIntervals[step];
             std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
                                        static_cast<unsigned int>(step) * 104729u);
             const EnvironmentStep transition =
                 applyEnvironmentAction(action, observation, environmentEnergy,
-                                       environmentStress, userSatisfaction, transitionRng);
+                                       environmentStress, userSatisfaction, transitionRng, elapsedSeconds);
             environmentEnergy = transition.energy_after;
             environmentStress = transition.stress_after;
             userSatisfaction = transition.user_satisfaction_after;
-            const bool terminal = step + 1 == observations.size();
+            const bool energyDepleted = transition.energy_after <= 0.0f;
+            const bool terminal = step + 1 == observations.size() || energyDepleted;
+            const float transitionReward = energyDepleted ? -1.0f : transition.reward;
 
             EnvironmentObservation nextObservation = transition.next_observation;
             if (!terminal) {
                 nextObservation = mergeTaskTransition(
                     observation, transition.next_observation, observations[step + 1]);
             }
+            // Scenario merging may replace observation fields, but physical energy
+            // is environment-owned and must survive every merge.
+            nextObservation.energy = transition.energy_after;
 
             ActionOutcome outcome;
             outcome.action_id = static_cast<int>(std::distance(
                 companionActionSet().begin(),
                 std::find(companionActionSet().begin(), companionActionSet().end(), action)));
-            outcome.reward = transition.reward;
+            outcome.reward = transitionReward;
             outcome.terminal = terminal;
-            outcome.outcome_tag = transition.completed ? "goal_completed" :
-                                  (terminal ? "step_limit" : "interaction");
+            outcome.outcome_tag = energyDepleted ? "energy_depleted" :
+                                  (transition.completed ? "goal_completed" :
+                                   (terminal ? "step_limit" : "interaction"));
             outcome.energy_after = transition.energy_after;
 
-            const float elapsedSeconds = terminal ? 0.0f : elapsedIntervals[step];
             agent.applyOutcome(observation, action, outcome, nextObservation, elapsedSeconds);
 
-            metrics.total_reward += transition.reward;
+            metrics.total_reward += transitionReward;
             metrics.steps = static_cast<int>(step + 1);
             metrics.completed = metrics.completed || transition.completed;
             ++metrics.action_counts[action];
@@ -661,8 +719,11 @@ namespace
             row["action"] = action;
             row["encoded_state"] = stateKeyBeforeAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
-            row["reward"] = transition.reward;
+            row["reward"] = transitionReward;
             row["terminal"] = terminal;
+            row["terminal_reason"] = energyDepleted ? "energy_depleted" :
+                                     (step + 1 == observations.size() ? "step_limit" : "none");
+            row["energy_depleted"] = energyDepleted;
             row["completed"] = transition.completed;
             row["fetch_succeeded"] = transition.completed;
             stepLog << row.dump() << '\n';
@@ -697,9 +758,11 @@ bool runTrainingExperiment(const std::string &mode,
                            int episodes,
                            int steps,
                            unsigned int seed,
-                           const std::string &outputDirectory)
+                           const std::string &outputDirectory,
+                           bool resumeTraining)
 {
-    if (mode != "train" && mode != "validate" && mode != "compare")
+    const bool trainingMode = mode == "train" || mode == "resume-training";
+    if (mode != "train" && mode != "resume-training" && mode != "validate" && mode != "compare")
     {
         std::cerr << "Unsupported experiment mode: " << mode << '\n';
         return false;
@@ -716,7 +779,8 @@ bool runTrainingExperiment(const std::string &mode,
     const fs::path baselinePolicy = outDir / "baseline.qtable";
     const fs::path proposedPolicy = outDir / "proposed.qtable";
 
-    if (mode != "train" && (!fs::exists(baselinePolicy) || !fs::exists(proposedPolicy)))
+    if ((mode == "resume-training" || mode == "validate" || mode == "compare") &&
+        (!fs::exists(baselinePolicy) || !fs::exists(proposedPolicy)))
     {
         std::cerr << "No trained policies found. Run --train first; expected "
                   << baselinePolicy << " and " << proposedPolicy << ".\n";
@@ -728,10 +792,13 @@ bool runTrainingExperiment(const std::string &mode,
     BaselineAgent baseline(config);
     ProposedAgent proposed(config);
 
-    if (mode != "train")
+    if (mode == "resume-training" || mode == "validate" || mode == "compare")
     {
         baseline.loadPersistentState(baselinePolicy.string());
         proposed.loadPersistentState(proposedPolicy.string());
+    }
+    if (mode == "validate" || mode == "compare")
+    {
         baseline.setLearningEnabled(false);
         proposed.setLearningEnabled(false);
         baseline.setExplorationRate(0.0f);
@@ -746,10 +813,13 @@ bool runTrainingExperiment(const std::string &mode,
         return false;
     }
 
-    const unsigned int environmentSeed = mode == "train" ? seed : seed + 1000003u;
+    const unsigned int environmentSeed = trainingMode ? seed : seed + 1000003u;
     std::mt19937 environmentRng(environmentSeed);
     nlohmann::json summary;
     summary["mode"] = mode;
+    summary["training_initialization"] = mode == "resume-training" ? "loaded_existing_qtables" :
+                                         mode == "train" ? "fresh_qtables" : "loaded_evaluation_checkpoint";
+    summary["resume_training_requested"] = resumeTraining || mode == "resume-training";
     summary["seed"] = seed;
     summary["environment_seed"] = environmentSeed;
     summary["episodes"] = episodes;
@@ -758,7 +828,7 @@ bool runTrainingExperiment(const std::string &mode,
     summary["affect_decay_during_training"] = true;
     summary["simulated_seconds_between_decisions_min"] = kMinSecondsPerTrainingStep;
     summary["simulated_seconds_between_decisions_max"] = kMaxSecondsPerTrainingStep;
-    summary["temporal_model"] = "Each non-terminal decision uses a seeded elapsed-time interval sampled uniformly from 0.5 to 5 simulated seconds. Paired agents share intervals. Outcome feedback is applied first, then proposed-agent affect decays over that interval before the next state is built for Q-learning. Baseline ignores affect-only time updates.";
+    summary["temporal_model"] = "Each non-terminal decision uses a seeded elapsed-time interval sampled uniformly from 0.5 to 5 simulated seconds. Paired agents share intervals. Physical energy receives action effort costs and passive time-based drain (0.0025 per second normally; 0.0008 while resting). The shared energy value is observable to both agents and included in both state representations. Proposed-agent affect decays over the interval before the next state is built for Q-learning.";
     summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request", "fetch_at_feeding_time"};
     summary["note"] = "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.";
 
@@ -785,10 +855,10 @@ bool runTrainingExperiment(const std::string &mode,
             elapsedIntervals.push_back(elapsedDist(environmentRng));
         }
 
-        const float epsilon = mode == "train"
+        const float epsilon = trainingMode
                                   ? std::max(0.05f, 0.30f * (1.0f - static_cast<float>(episode) / static_cast<float>(episodes)))
                                   : 0.0f;
-        const bool learning = mode == "train";
+        const bool learning = trainingMode;
 
         const EpisodeMetrics baselineMetrics = runEpisode(
             baseline, observations, elapsedIntervals, learning, epsilon, baselineLog, "baseline", episode);
@@ -813,7 +883,7 @@ bool runTrainingExperiment(const std::string &mode,
     baselineLog.close();
     proposedLog.close();
 
-    if (mode == "train")
+    if (trainingMode)
     {
         baseline.savePersistentState(baselinePolicy.string());
         proposed.savePersistentState(proposedPolicy.string());
@@ -1025,6 +1095,8 @@ bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
             {"encoded_state", proposedState.encode()},
             {"contextual_fallback", trace.contextual_fallback},
             {"policy_action_before_overrides", trace.policy_action},
+            {"q_table_state_present", trace.q_table_state_present},
+            {"q_table_has_valid_action_values", trace.q_table_has_valid_action_values},
             {"final_action_after_overrides", trace.final_action},
             {"general_preference_override", trace.general_preference_override},
             {"rejection_override_applied", trace.rejection_override_applied},
@@ -1076,6 +1148,15 @@ bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
 
 bool runTrainingSelfTests()
 {
+    const bool energyDrainPassed = testPassiveEnergyDrain();
+    std::cout << "Shared passive energy drain across elapsed simulation time: "
+              << (energyDrainPassed ? "PASS" : "FAIL") << '\n';
+    const bool recoveryPriorityPassed = testCriticalEnergyPrioritizesRecovery();
+    std::cout << "Critical energy restricts both policies to recovery actions: "
+              << (recoveryPriorityPassed ? "PASS" : "FAIL") << '\n';
+    const bool depletionTransitionPassed = testEnergyDepletionTransition();
+    std::cout << "Energy can reach the terminal depleted state: "
+              << (depletionTransitionPassed ? "PASS" : "FAIL") << '\n';
     const bool temporalDecayPassed = testTrainingAppliesElapsedAffectDecay();
     std::cout << "Training transition applies elapsed-time affect decay before next-state construction: "
               << (temporalDecayPassed ? "PASS" : "FAIL") << '\n';
@@ -1087,6 +1168,7 @@ bool runTrainingSelfTests()
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    return temporalDecayPassed && transitionsPassed && retryPassed &&
+    return energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
+           temporalDecayPassed && transitionsPassed && retryPassed &&
            taskPriorityPassed && completionContextPassed;
 }

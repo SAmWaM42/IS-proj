@@ -970,6 +970,20 @@ double QLearning::getQValue(const state& stateRef, const std::string& action) co
     return q_table.getQValue(stateRef.encode(), action);
 }
 
+bool QLearning::hasState(const state& stateRef) const {
+    return q_table.table.find(stateRef.encode()) != q_table.table.end();
+}
+
+bool QLearning::hasStoredValidActionValue(const state& stateRef,
+                                          const std::vector<std::string>& validActions) const {
+    const auto stateIt = q_table.table.find(stateRef.encode());
+    if (stateIt == q_table.table.end()) return false;
+    for (const auto& action : validActions) {
+        if (stateIt->second.find(action) != stateIt->second.end()) return true;
+    }
+    return false;
+}
+
 void QLearning::loadQTable(const std::string& path) {
     q_table.load(path);
 }
@@ -1401,7 +1415,7 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
     const state candidate = makeState(
         session_context.current_intent,
         proximityFromValue(observation.target_proximity),
-        Level::MEDIUM, // Baseline does not observe the environment's hidden energy variable.
+        levelFromValue(observation.energy < 0.34f ? 0 : (observation.energy < 0.67f ? 1 : 2)), // Shared physical energy.
         levelFromValue(session_context.stress_level),
         Level::MEDIUM,
         Level::LOW,
@@ -1440,7 +1454,7 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
     state next_state = makeState(
         nextObservation.goal_state,
         proximityFromValue(nextObservation.target_proximity),
-        Level::MEDIUM, // Do not leak hidden environment energy into the baseline state.
+        levelFromValue(nextObservation.energy < 0.34f ? 0 : (nextObservation.energy < 0.67f ? 1 : 2)), // Shared physical energy.
         levelFromValue(std::max(0, session_context.stress_level + (outcome.reward < 0.0f ? 1 : 0))),
         Level::MEDIUM,
         Level::LOW,
@@ -1537,6 +1551,10 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
+    session_context.energy_level = observation.energy < 0.34f ? 0 : (observation.energy < 0.67f ? 1 : 2);
+    if (observation.energy < 0.34f) affective_state.energy = AffectEnergy::LOW;
+    else if (observation.energy < 0.67f) affective_state.energy = AffectEnergy::MODERATE;
+    else affective_state.energy = AffectEnergy::HIGH;
     runtime_context.session_context = session_context;
     runtime_context.affective_state = affective_state;
     runtime_context.memory_summary = buildMemorySummary(memory_records, "");
@@ -1558,6 +1576,9 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     last_decision_trace.encoded_state = current_state.encode();
     last_decision_trace.contextual_fallback = fallback;
     last_decision_trace.policy_action = selected;
+    last_decision_trace.q_table_state_present = q_policy.hasState(current_state);
+    last_decision_trace.q_table_has_valid_action_values =
+        q_policy.hasStoredValidActionValue(current_state, validActions);
     last_decision_trace.memory_record_count = memory_records.size();
     last_decision_trace.affect = affective_state;
     for (const auto& action : validActions) {
@@ -1640,8 +1661,7 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     session_context.last_timestamp = currentTimeStamp();
     if (outcome.energy_after >= 0.0f) {
         const float boundedEnergy = std::clamp(outcome.energy_after, 0.0f, 1.0f);
-        session_context.energy_level = std::clamp(
-            static_cast<int>(std::lround(boundedEnergy * 2.0f)), 0, 2);
+        session_context.energy_level = boundedEnergy < 0.34f ? 0 : (boundedEnergy < 0.67f ? 1 : 2);
     }
     affective_state.updateFromFeedback(outcome.reward, outcome.reward > 0.0f, outcome.reward < 0.0f);
     if (outcome.energy_after >= 0.0f) {

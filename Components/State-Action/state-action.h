@@ -107,6 +107,8 @@ public:
 
     void setEpsilon(float epsilon);
     double getQValue(const state& stateRef, const std::string& action) const;
+    bool hasState(const state& stateRef) const;
+    bool hasStoredValidActionValue(const state& stateRef, const std::vector<std::string>& validActions) const;
 
     void loadQTable(const std::string& path);
     void saveQTable(const std::string& path);
@@ -158,6 +160,8 @@ struct ActionDecisionTrace {
     std::string policy_action;
     std::string general_preference_override;
     std::string final_action;
+    bool q_table_state_present = false;
+    bool q_table_has_valid_action_values = false;
     bool rejection_override_applied = false;
     std::vector<std::pair<std::string, double>> valid_action_q_values;
     std::size_t memory_record_count = 0;

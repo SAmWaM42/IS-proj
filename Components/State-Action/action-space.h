@@ -32,9 +32,9 @@ inline bool isActionValidForObservation(
     if (action == "BARK")
         return observation.signal_strength >= 0.80f;
     if (action == "SLEEP_LAY")
-        // Rest can be a justified alternative during ordinary interactions,
-        // including an active request, but not during a high-intensity disturbance.
-        return observation.signal_strength < 0.80f;
+        // Rest remains available during a critical energy state, even if a
+        // disturbance is present: survival takes priority at this threshold.
+        return observation.signal_strength < 0.80f || observation.energy <= 0.20f;
     if (action == "INSIST")
         return observation.task_status == 1 && observation.user_status == 0;
     if (action == "APPROACH_FOLLOW")
@@ -56,6 +56,16 @@ inline bool isActionValidForObservation(
 
 inline std::vector<std::string> validActionsForObservation(
     const EnvironmentObservation& observation) {
+    // Critical physical energy is a shared survival constraint, not an affect
+    // treatment. At this level, only feasible recovery actions are selectable.
+    if (observation.energy > 0.0f && observation.energy <= 0.20f) {
+        std::vector<std::string> recoveryActions;
+        if (observation.food_available) recoveryActions.push_back("EAT");
+        if (isActionValidForObservation("SLEEP_LAY", observation))
+            recoveryActions.push_back("SLEEP_LAY");
+        if (!recoveryActions.empty()) return recoveryActions;
+    }
+
     std::vector<std::string> valid;
     for (const auto& action : companionActionSet()) {
         if (isActionValidForObservation(action, observation))

@@ -12,4 +12,5 @@ bool runTrainingExperiment(const std::string& mode,
                           int episodes,
                           int steps,
                           unsigned int seed,
-                          const std::string& outputDirectory);
+                          const std::string& outputDirectory,
+                          bool resumeTraining = false);
