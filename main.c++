@@ -31,11 +31,12 @@ namespace
             << "Usage:\n"
             << "  " << executable << " --self-test\n"
             << "  " << executable << " --train [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
+            << "  " << executable << " --resume-training [--episodes N] [--steps N] [--seed N] [--out DIR] (loads and continues saved Q-tables)\n"
             << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
             << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
             << "  " << executable << " --diagnose-idle [--policy-dir DIR] [--out DIR] [--seed N]\n"
             << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
-            << "Run --train before --validate, --compare, --study, or --diagnose-idle. Evaluation disables policy updates.\n";
+            << "Run --train before --validate, --compare, --study, or --diagnose-idle. --resume-training continues existing Q-tables. Evaluation disables policy updates.\n";
     }
 } // namespace
 
@@ -73,7 +74,7 @@ int main(int argc, char **argv)
             printUsage(argv[0]);
             return 0;
         }
-        if (arg == "--self-test" || arg == "--train" || arg == "--validate" || arg == "--compare" || arg == "--diagnose-idle" || arg == "--study")
+        if (arg == "--self-test" || arg == "--train" || arg == "--resume-training" || arg == "--validate" || arg == "--compare" || arg == "--diagnose-idle" || arg == "--study")
         {
             if (!mode.empty())
             {
@@ -154,7 +155,7 @@ int main(int argc, char **argv)
         return runParticipantStudy(policyDirectory, studyOutputDirectory) ? 0 : 1;
     }
 
-    if (mode == "train" && !explicitEpisodes)
+    if ((mode == "train" || mode == "resume-training") && !explicitEpisodes)
     {
         episodes = 1000;
     }
@@ -164,7 +165,8 @@ int main(int argc, char **argv)
         simulation.run();
     }
 
-    if (!runTrainingExperiment(mode, episodes, steps, static_cast<unsigned int>(seed), outputDirectory))
+    if (!runTrainingExperiment(mode, episodes, steps, static_cast<unsigned int>(seed), outputDirectory,
+                               mode == "resume-training"))
     {
         return 1;
     }
