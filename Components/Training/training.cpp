@@ -495,11 +495,12 @@ namespace
         const EnvironmentObservation feedingTimeRequest{1, 1, 1, 1, 0.56f, true, false};
         const EnvironmentObservation idle{2, 1, 0, 0, 0.20f};
         const float fetchReward = rewardFor("FETCH", request, true, 0.75f, 0.20f);
-        // Keep both comparisons below reward saturation so this test verifies
-        // task/drive priority rather than merely comparing two clamped +1 rewards.
-        const float eatWhenHungry = rewardFor("EAT", feedingTimeRequest, false, 0.32f, 0.20f);
-        const float sleepWhenOverwhelmed = rewardFor("SLEEP_LAY", feedingTimeRequest, false, 0.32f, 0.82f);
-        const float sniffWhenCompetingNeeds = rewardFor("SNIFF", feedingTimeRequest, false, 0.32f, 0.20f);
+        // Keep comparisons below reward saturation. Use a moderate energy level
+        // so the stress-relief preference for sleep can be distinguished from food
+        // relief, while sniffing remains a poor response to an active request.
+        const float eatWhenHungry = rewardFor("EAT", feedingTimeRequest, false, 0.55f, 0.20f);
+        const float sleepWhenOverwhelmed = rewardFor("SLEEP_LAY", feedingTimeRequest, false, 0.55f, 0.82f);
+        const float sniffWhenCompetingNeeds = rewardFor("SNIFF", feedingTimeRequest, false, 0.55f, 0.20f);
         const float sniffWhenIdle = rewardFor("SNIFF", idle, false, 0.75f, 0.20f);
         std::mt19937 scenarioRng(42);
         const EnvironmentObservation generated = makeObservation(scenarioRng, 13);
