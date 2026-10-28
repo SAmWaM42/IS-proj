@@ -1146,6 +1146,215 @@ bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
 }
 
 
+
+bool runTemporalStimulusDiagnostics(const std::string& policyDirectory,
+                                    const std::string& outputDirectory,
+                                    unsigned int seed)
+{
+    namespace fs = std::filesystem;
+    const fs::path policyDir(policyDirectory);
+    const fs::path baselinePath = policyDir / "baseline.qtable";
+    const fs::path proposedPath = policyDir / "proposed.qtable";
+    if (!fs::exists(baselinePath) || !fs::exists(proposedPath)) {
+        std::cerr << "Temporal stimulus diagnostics require trained policies at "
+                  << baselinePath << " and " << proposedPath
+                  << ". Run --train first.\n";
+        return false;
+    }
+
+    struct StimulusPhase {
+        std::string name;
+        EnvironmentObservation observation;
+        int decisions;
+    };
+
+    // Each phase is held constant for six decisions, five simulated seconds apart.
+    // The final phase returns to an unstimulated context to test whether behaviour
+    // returns to its ambient distribution after the agent has experienced stimuli.
+    EnvironmentObservation ambient;
+    ambient.goal_state = 2;
+    ambient.target_proximity = 1;
+    ambient.user_status = 0;
+    ambient.task_status = 0;
+    ambient.signal_strength = 0.0f;
+    ambient.food_available = false;
+    ambient.play_available = true;
+
+    const std::vector<StimulusPhase> phases = {
+        {"ambient_initial", ambient, 6},
+        {"social_contact", EnvironmentObservation{0, 1, 0, 0, 0.45f}, 6},
+        {"disturbance", EnvironmentObservation{2, 0, 0, 0, 0.95f}, 6},
+        {"quiet_no_stimulus", EnvironmentObservation{2, 2, 0, 0, 0.20f}, 6},
+        {"play_invitation", EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true}, 6},
+        {"ambient_return", ambient, 6}
+    };
+
+    fs::create_directories(outputDirectory);
+    const fs::path logPath = fs::path(outputDirectory) / "temporal-stimulus-diagnostics.jsonl";
+    const fs::path summaryPath = fs::path(outputDirectory) / "temporal-stimulus-diagnostics-summary.json";
+    std::ofstream log(logPath);
+    if (!log) {
+        std::cerr << "Unable to write temporal stimulus diagnostics to " << logPath << '\n';
+        return false;
+    }
+
+    EnvironmentConfig config;
+    config.seed = static_cast<int>(seed);
+    BaselineAgent baseline(config);
+    ProposedAgent proposed(config);
+    baseline.loadPersistentState(baselinePath.string());
+    proposed.loadPersistentState(proposedPath.string());
+    baseline.setLearningEnabled(false);
+    proposed.setLearningEnabled(false);
+    baseline.setExplorationRate(0.0f);
+    proposed.setExplorationRate(0.0f);
+
+    nlohmann::json summary;
+    summary["mode"] = "paired_temporal_stimulus_policy_diagnostic";
+    summary["policy_directory"] = policyDir.string();
+    summary["seed"] = seed;
+    summary["learning_enabled"] = false;
+    summary["exploration_enabled"] = false;
+    summary["outcome_feedback_applied"] = false;
+    summary["decision_interval_seconds"] = 5.0f;
+    summary["phases"] = nlohmann::json::array();
+    summary["notes"] = nlohmann::json::array({
+        "Both policies receive the same fixed observation in each phase and the same phase order.",
+        "Policies are evaluated without learning, exploration, reward updates, or environment transitions. Only the proposed agent advances its time-dependent affect between decisions.",
+        "Action distributions describe policy response to this scripted sequence; they are not evidence of perceived believability.",
+        "Q-table coverage and contextual fallback are logged to distinguish learned choices from fallback behaviour."
+    });
+
+    nlohmann::json snapshots = nlohmann::json::array();
+    nlohmann::json phaseSummaries = nlohmann::json::array();
+    std::map<std::string, std::map<std::string, int>> baselineCountsByPhase;
+    std::map<std::string, std::map<std::string, int>> proposedCountsByPhase;
+    std::map<std::string, int> baselineChangesByPhase;
+    std::map<std::string, int> proposedChangesByPhase;
+    std::string previousBaselineAction;
+    std::string previousProposedAction;
+    std::string previousPhase;
+    float elapsedSeconds = 0.0f;
+    int globalStep = 0;
+
+    for (const auto& phase : phases) {
+        std::string phasePreviousBaseline;
+        std::string phasePreviousProposed;
+        int phaseBaselineChanges = 0;
+        int phaseProposedChanges = 0;
+        nlohmann::json phaseObservation = {
+            {"goal_state", phase.observation.goal_state},
+            {"target_proximity", phase.observation.target_proximity},
+            {"user_status", phase.observation.user_status},
+            {"task_status", phase.observation.task_status},
+            {"signal_strength", phase.observation.signal_strength},
+            {"food_available", phase.observation.food_available},
+            {"play_available", phase.observation.play_available}
+        };
+
+        for (int decision = 0; decision < phase.decisions; ++decision) {
+            if (globalStep > 0) {
+                baseline.setLearningEnabled(false);
+                proposed.advanceTime(5.0f);
+                elapsedSeconds += 5.0f;
+            }
+
+            EnvironmentObservation observation = phase.observation;
+            const std::string baselineAction = baseline.selectAction(observation);
+            const std::string proposedAction = proposed.selectAction(observation);
+            const auto& proposedTrace = proposed.getLastDecisionTrace();
+
+            ++baselineCountsByPhase[phase.name][baselineAction];
+            ++proposedCountsByPhase[phase.name][proposedAction];
+            if (!phasePreviousBaseline.empty() && baselineAction != phasePreviousBaseline)
+                ++phaseBaselineChanges;
+            if (!phasePreviousProposed.empty() && proposedAction != phasePreviousProposed)
+                ++phaseProposedChanges;
+
+            nlohmann::json row;
+            row["step"] = globalStep;
+            row["elapsed_seconds"] = elapsedSeconds;
+            row["phase"] = phase.name;
+            row["phase_decision"] = decision;
+            row["observation"] = phaseObservation;
+            row["baseline"] = {
+                {"action", baselineAction},
+                {"encoded_state", baseline.getCurrentState().encode()},
+                {"action_changed_from_previous_decision",
+                 !previousBaselineAction.empty() && baselineAction != previousBaselineAction}
+            };
+            row["proposed"] = {
+                {"action", proposedAction},
+                {"encoded_state", proposed.getCurrentState().encode()},
+                {"action_changed_from_previous_decision",
+                 !previousProposedAction.empty() && proposedAction != previousProposedAction},
+                {"contextual_fallback", proposedTrace.contextual_fallback},
+                {"policy_action_before_overrides", proposedTrace.policy_action},
+                {"final_action_after_overrides", proposedTrace.final_action},
+                {"q_table_state_present", proposedTrace.q_table_state_present},
+                {"q_table_has_valid_action_values", proposedTrace.q_table_has_valid_action_values},
+                {"valid_action_q_values", nlohmann::json::array()},
+                {"affect", {
+                    {"valence", static_cast<int>(proposedTrace.affect.valence)},
+                    {"energy", static_cast<int>(proposedTrace.affect.energy)},
+                    {"arousal", proposedTrace.affect.arousal},
+                    {"stress", proposedTrace.affect.stress},
+                    {"engagement", proposedTrace.affect.engagement},
+                    {"affinity", proposedTrace.affect.affinity}
+                }},
+                {"memory_record_count", proposedTrace.memory_record_count},
+                {"general_preference_override", proposedTrace.general_preference_override},
+                {"rejection_override_applied", proposedTrace.rejection_override_applied}
+            };
+            for (const auto& item : proposedTrace.valid_action_q_values) {
+                row["proposed"]["valid_action_q_values"].push_back(
+                    {{"action", item.first}, {"q_value", item.second}});
+            }
+            snapshots.push_back(row);
+            log << row.dump() << '\n';
+
+            phasePreviousBaseline = baselineAction;
+            phasePreviousProposed = proposedAction;
+            previousBaselineAction = baselineAction;
+            previousProposedAction = proposedAction;
+            previousPhase = phase.name;
+            ++globalStep;
+        }
+
+        baselineChangesByPhase[phase.name] = phaseBaselineChanges;
+        proposedChangesByPhase[phase.name] = phaseProposedChanges;
+        phaseSummaries.push_back({
+            {"phase", phase.name},
+            {"decisions", phase.decisions},
+            {"observation", phaseObservation},
+            {"baseline_action_counts", baselineCountsByPhase[phase.name]},
+            {"proposed_action_counts", proposedCountsByPhase[phase.name]},
+            {"baseline_action_changes_within_phase", phaseBaselineChanges},
+            {"proposed_action_changes_within_phase", phaseProposedChanges}
+        });
+    }
+
+    summary["total_decisions"] = globalStep;
+    summary["total_simulated_seconds_between_decisions"] = elapsedSeconds;
+    summary["phase_summaries"] = phaseSummaries;
+    summary["snapshots"] = snapshots;
+    summary["baseline_action_counts_by_phase"] = baselineCountsByPhase;
+    summary["proposed_action_counts_by_phase"] = proposedCountsByPhase;
+    summary["baseline_action_changes_within_phase"] = baselineChangesByPhase;
+    summary["proposed_action_changes_within_phase"] = proposedChangesByPhase;
+
+    std::ofstream summaryFile(summaryPath);
+    if (!summaryFile) {
+        std::cerr << "Unable to write temporal stimulus summary to " << summaryPath << '\n';
+        return false;
+    }
+    summaryFile << summary.dump(2) << '\n';
+    std::cout << "Temporal stimulus diagnostics complete.\n"
+              << "Snapshots: " << logPath << '\n'
+              << "Summary: " << summaryPath << '\n';
+    return true;
+}
+
 bool runTrainingSelfTests()
 {
     const bool energyDrainPassed = testPassiveEnergyDrain();
