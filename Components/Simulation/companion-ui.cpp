@@ -346,6 +346,7 @@ const std::vector<std::unique_ptr<sf::Texture>>& CompanionUI::framesForPose(cons
 void CompanionUI::resetScene() {
     const SceneLayout L = sceneLayout();
     totalSimulationElapsedSeconds = 0.0f;
+    environmentEnergy = 0.8f;
     behaviourPlan.clear();
     stepIndex = 0;
     stepTime = 0.0f;
@@ -477,6 +478,24 @@ void CompanionUI::finishStep() {
 
 void CompanionUI::startBehaviour(const std::string& action, const std::string& sceneEvent) {
     const SceneLayout L = sceneLayout();
+    // Apply the physical consequence of the action actually executed by the
+    // selected condition. Both policies observe the same resulting energy.
+    const float energyBeforeAction = environmentEnergy;
+    float effort = 0.012f;
+    if (action == "FETCH") {
+        const int proximity = std::clamp(latestObservation.target_proximity, 0, 2);
+        const float distanceCost[] = {0.035f, 0.085f, 0.16f};
+        effort = distanceCost[proximity] * (1.0f + 0.8f * (1.0f - energyBeforeAction));
+    } else if (action == "APPROACH_FOLLOW") {
+        effort = 0.045f * (1.0f + 0.8f * (1.0f - energyBeforeAction));
+    } else if (action == "PLAY" && latestObservation.play_available) {
+        effort = 0.055f * (1.0f + 0.8f * (1.0f - energyBeforeAction));
+    } else if (action == "SNIFF" || action == "WANDER") {
+        effort = action == "WANDER" ? 0.025f : 0.018f;
+    }
+    if (action == "SLEEP_LAY") environmentEnergy = std::min(1.0f, environmentEnergy + 0.28f);
+    else if (action == "EAT" && latestObservation.food_available) environmentEnergy = std::min(1.0f, environmentEnergy + 0.24f);
+    else environmentEnergy = std::max(0.0f, environmentEnergy - effort * 1.5f);
     behaviourPlan.clear();
     stepIndex = 0;
     restingPose = (action == "SLEEP_LAY") ? "sleep" : "idle";
@@ -627,8 +646,12 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
 void CompanionUI::updateAnimation(float elapsedSeconds) {
     elapsedSeconds = std::min(elapsedSeconds, 0.1f);   // avoid jumps after the window is dragged
     sceneTime += elapsedSeconds;
-    totalSimulationElapsedSeconds += elapsedSeconds;
-    proposed.advanceTime(elapsedSeconds);
+    if (screen == Screen::Simulation) {
+        totalSimulationElapsedSeconds += elapsedSeconds;
+        const float passiveDrainPerSecond = restingPose == "sleep" ? 0.0008f : 0.0025f;
+        environmentEnergy = std::max(0.0f, environmentEnergy - passiveDrainPerSecond * elapsedSeconds);
+        proposed.advanceTime(elapsedSeconds);
+    }
     if (throwTimer > 0.0f) throwTimer = std::max(0.0f, throwTimer - elapsedSeconds);
 
     if (ballFlying) {
@@ -692,6 +715,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
             ambient.signal_strength = 0.0f;
             ambient.food_available = foodPresent;
             ambient.play_available = !ballCarried && !ballFlying;
+            ambient.energy = environmentEnergy;
             const float targetDistance = std::fabs(agentX - ballX);
             ambient.target_proximity = targetDistance < 120.0f ? 0 :
                                        targetDistance < 300.0f ? 1 : 2;
@@ -717,6 +741,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
                 row["selected_condition"] = selectedAgentIsProposed ? "proposed" : "baseline";
                 row["baseline_action"] = latestBaselineAction;
                 row["proposed_action"] = latestProposedAction;
+                row["environment_energy"] = environmentEnergy;
                 row["observation"] = {
                     {"goal_state", ambient.goal_state},
                     {"target_proximity", ambient.target_proximity},
@@ -1010,10 +1035,12 @@ void CompanionUI::executeInteraction(const std::string& label,
     const std::size_t memoryCountBefore = proposed.getMemoryRecords().size();
     const int interactionId = interactionCount + 1;
     lastActionInteractionId = interactionId;
-    latestObservation = observation;
+    EnvironmentObservation sharedObservation = observation;
+    sharedObservation.energy = environmentEnergy;
+    latestObservation = sharedObservation;
     latestStimulus = label;
-    latestBaselineAction = baseline.selectAction(observation);
-    latestProposedAction = proposed.selectAction(observation);
+    latestBaselineAction = baseline.selectAction(sharedObservation);
+    latestProposedAction = proposed.selectAction(sharedObservation);
     const std::size_t baselineStateBeforeOutcome = baseline.getCurrentState().encode();
     const std::size_t proposedStateBeforeOutcome = proposed.getCurrentState().encode();
     nlohmann::json memoryCandidates = nlohmann::json::array();
