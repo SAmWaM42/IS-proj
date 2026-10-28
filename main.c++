@@ -35,6 +35,7 @@ namespace
             << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
             << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
             << "  " << executable << " --diagnose-idle [--policy-dir DIR] [--out DIR] [--seed N]\n"
+            << "  " << executable << " --diagnose-temporal [--policy-dir DIR] [--out DIR] [--seed N]\n"
             << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
             << "Run --train before --validate, --compare, --study, or --diagnose-idle. --resume-training continues existing Q-tables. Evaluation disables policy updates.\n";
     }
@@ -74,7 +75,7 @@ int main(int argc, char **argv)
             printUsage(argv[0]);
             return 0;
         }
-        if (arg == "--self-test" || arg == "--train" || arg == "--resume-training" || arg == "--validate" || arg == "--compare" || arg == "--diagnose-idle" || arg == "--study")
+        if (arg == "--self-test" || arg == "--train" || arg == "--resume-training" || arg == "--validate" || arg == "--compare" || arg == "--diagnose-idle" || arg == "--diagnose-temporal" || arg == "--study")
         {
             if (!mode.empty())
             {
@@ -148,6 +149,11 @@ int main(int argc, char **argv)
     if (mode == "diagnose-idle")
     {
         return runIdlePolicyDiagnostics(policyDirectory, outputDirectory, static_cast<unsigned int>(seed)) ? 0 : 1;
+    }
+
+    if (mode == "diagnose-temporal")
+    {
+        return runTemporalStimulusDiagnostics(policyDirectory, outputDirectory, static_cast<unsigned int>(seed)) ? 0 : 1;
     }
 
     if (mode == "study")
