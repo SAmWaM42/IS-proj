@@ -626,6 +626,7 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
 void CompanionUI::updateAnimation(float elapsedSeconds) {
     elapsedSeconds = std::min(elapsedSeconds, 0.1f);   // avoid jumps after the window is dragged
     sceneTime += elapsedSeconds;
+    totalSimulationElapsedSeconds += elapsedSeconds;
     proposed.advanceTime(elapsedSeconds);
     if (throwTimer > 0.0f) throwTimer = std::max(0.0f, throwTimer - elapsedSeconds);
 
@@ -681,6 +682,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
         autonomousDecisionTimer += elapsedSeconds;
         if (autonomousDecisionTimer >= autonomousDecisionInterval &&
             screen == Screen::Simulation) {
+            const float idleSecondsBeforeDecision = autonomousDecisionTimer;
             autonomousDecisionTimer = 0.0f;
             EnvironmentObservation ambient = latestObservation;
             ambient.goal_state = 2;       // no new user request: ambient context
@@ -695,6 +697,57 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
 
             latestBaselineAction = baseline.selectAction(ambient);
             latestProposedAction = proposed.selectAction(ambient);
+
+            // Researcher-only trace of the real UI idle loop. Unlike the
+            // fixed-context sweep, this records the actual scene-derived
+            // observation after the previous behaviour has completed.
+            if (researcherMode) {
+                const ActionDecisionTrace& trace = proposed.getLastDecisionTrace();
+                nlohmann::json qValues = nlohmann::json::array();
+                for (const auto& item : trace.valid_action_q_values) {
+                    qValues.push_back({{"action", item.first}, {"q_value", item.second}});
+                }
+                nlohmann::json row;
+                row["event"] = "autonomous_policy_decision";
+                row["simulation_elapsed_seconds"] = totalSimulationElapsedSeconds;
+                row["idle_seconds_before_decision"] = idleSecondsBeforeDecision;
+                row["idle_threshold_seconds"] = autonomousDecisionInterval;
+                row["selected_condition"] = selectedAgentIsProposed ? "proposed" : "baseline";
+                row["baseline_action"] = latestBaselineAction;
+                row["proposed_action"] = latestProposedAction;
+                row["observation"] = {
+                    {"goal_state", ambient.goal_state},
+                    {"target_proximity", ambient.target_proximity},
+                    {"user_status", ambient.user_status},
+                    {"task_status", ambient.task_status},
+                    {"signal_strength", ambient.signal_strength},
+                    {"food_available", ambient.food_available},
+                    {"play_available", ambient.play_available}
+                };
+                row["proposed"] = {
+                    {"encoded_state", trace.encoded_state},
+                    {"contextual_fallback", trace.contextual_fallback},
+                    {"policy_action_before_overrides", trace.policy_action},
+                    {"final_action_after_overrides", trace.final_action},
+                    {"general_preference_override", trace.general_preference_override},
+                    {"rejection_override_applied", trace.rejection_override_applied},
+                    {"memory_record_count", trace.memory_record_count},
+                    {"affect", {
+                        {"valence", static_cast<int>(trace.affect.valence)},
+                        {"energy", static_cast<int>(trace.affect.energy)},
+                        {"arousal", trace.affect.arousal},
+                        {"stress", trace.affect.stress},
+                        {"engagement", trace.affect.engagement},
+                        {"affinity", trace.affect.affinity}
+                    }},
+                    {"valid_action_q_values", qValues}
+                };
+                std::ofstream diagnostic(
+                    std::filesystem::path(outputDirectory) / "idle-runtime-diagnostics.jsonl",
+                    std::ios::app);
+                if (diagnostic) diagnostic << row.dump() << '\\n';
+            }
+
             latestObservation = ambient;
             latestStimulus = "The companion responds to its surroundings.";
             startBehaviour(selectedAgentIsProposed ? latestProposedAction : latestBaselineAction, "");
