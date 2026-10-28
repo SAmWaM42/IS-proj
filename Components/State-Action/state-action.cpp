@@ -1401,7 +1401,7 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
     const state candidate = makeState(
         session_context.current_intent,
         proximityFromValue(observation.target_proximity),
-        Level::MEDIUM, // Baseline does not observe the environment's hidden energy variable.
+        levelFromValue(static_cast<int>(std::lround(observation.energy * 2.0f))), // Shared physical energy.
         levelFromValue(session_context.stress_level),
         Level::MEDIUM,
         Level::LOW,
@@ -1440,7 +1440,7 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
     state next_state = makeState(
         nextObservation.goal_state,
         proximityFromValue(nextObservation.target_proximity),
-        Level::MEDIUM, // Do not leak hidden environment energy into the baseline state.
+        levelFromValue(static_cast<int>(std::lround(nextObservation.energy * 2.0f))), // Shared physical energy.
         levelFromValue(std::max(0, session_context.stress_level + (outcome.reward < 0.0f ? 1 : 0))),
         Level::MEDIUM,
         Level::LOW,
@@ -1537,6 +1537,10 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
+    session_context.energy_level = std::clamp(static_cast<int>(std::lround(observation.energy * 2.0f)), 0, 2);
+    if (observation.energy < 0.34f) affective_state.energy = AffectEnergy::LOW;
+    else if (observation.energy < 0.67f) affective_state.energy = AffectEnergy::MODERATE;
+    else affective_state.energy = AffectEnergy::HIGH;
     runtime_context.session_context = session_context;
     runtime_context.affective_state = affective_state;
     runtime_context.memory_summary = buildMemorySummary(memory_records, "");
