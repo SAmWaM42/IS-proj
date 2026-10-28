@@ -198,6 +198,15 @@ namespace
             driveRelief = 0.18f + 0.42f * (1.0f - energy);
         else if (action == "SLEEP_LAY")
             driveRelief = 0.28f * (1.0f - energy) + 0.45f * stress;
+
+        // Explicit survival pressure: below 35% energy, recovery is increasingly
+        // valuable and non-recovery actions carry a growing opportunity cost.
+        if (energy < 0.35f) {
+            const float urgency = (0.35f - energy) / 0.35f;
+            const bool validRecovery = action == "SLEEP_LAY" ||
+                                       (action == "EAT" && observation.food_available);
+            driveRelief += validRecovery ? 0.30f * urgency : -0.22f * urgency;
+        }
         else if (action == "PLAY" && observation.play_available)
             driveRelief = 0.12f * energy - 0.10f * stress;
         else if (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2 &&
@@ -477,6 +486,27 @@ namespace
                sawFarSuccess && sawFarFailure;
     }
 
+    bool testCriticalEnergyPrioritizesRecovery()
+    {
+        EnvironmentObservation critical{2, 1, 0, 0, 0.20f, false, true, 0.15f};
+        const auto withoutFood = validActionsForObservation(critical);
+        if (withoutFood.size() != 1 || withoutFood.front() != "SLEEP_LAY") return false;
+        critical.food_available = true;
+        const auto withFood = validActionsForObservation(critical);
+        return withFood.size() == 2 &&
+               std::find(withFood.begin(), withFood.end(), "EAT") != withFood.end() &&
+               std::find(withFood.begin(), withFood.end(), "SLEEP_LAY") != withFood.end();
+    }
+
+    bool testEnergyDepletionTransition()
+    {
+        const EnvironmentObservation observation{2, 1, 0, 0, 0.20f, false, false, 0.01f};
+        std::mt19937 rng(912u);
+        const EnvironmentStep depleted = applyEnvironmentAction(
+            "WANDER", observation, 0.01f, 0.2f, 0.5f, rng, 1.0f);
+        return depleted.energy_after <= 0.0f;
+    }
+
     bool testPassiveEnergyDrain()
     {
         const EnvironmentObservation observation{2, 1, 0, 0, 0.20f};
@@ -620,7 +650,9 @@ namespace
             environmentEnergy = transition.energy_after;
             environmentStress = transition.stress_after;
             userSatisfaction = transition.user_satisfaction_after;
-            const bool terminal = step + 1 == observations.size();
+            const bool energyDepleted = transition.energy_after <= 0.0f;
+            const bool terminal = step + 1 == observations.size() || energyDepleted;
+            const float transitionReward = energyDepleted ? -1.0f : transition.reward;
 
             EnvironmentObservation nextObservation = transition.next_observation;
             if (!terminal) {
@@ -635,15 +667,16 @@ namespace
             outcome.action_id = static_cast<int>(std::distance(
                 companionActionSet().begin(),
                 std::find(companionActionSet().begin(), companionActionSet().end(), action)));
-            outcome.reward = transition.reward;
+            outcome.reward = transitionReward;
             outcome.terminal = terminal;
-            outcome.outcome_tag = transition.completed ? "goal_completed" :
-                                  (terminal ? "step_limit" : "interaction");
+            outcome.outcome_tag = energyDepleted ? "energy_depleted" :
+                                  (transition.completed ? "goal_completed" :
+                                   (terminal ? "step_limit" : "interaction"));
             outcome.energy_after = transition.energy_after;
 
             agent.applyOutcome(observation, action, outcome, nextObservation, elapsedSeconds);
 
-            metrics.total_reward += transition.reward;
+            metrics.total_reward += transitionReward;
             metrics.steps = static_cast<int>(step + 1);
             metrics.completed = metrics.completed || transition.completed;
             ++metrics.action_counts[action];
@@ -686,8 +719,11 @@ namespace
             row["action"] = action;
             row["encoded_state"] = stateKeyBeforeAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
-            row["reward"] = transition.reward;
+            row["reward"] = transitionReward;
             row["terminal"] = terminal;
+            row["terminal_reason"] = energyDepleted ? "energy_depleted" :
+                                     (step + 1 == observations.size() ? "step_limit" : "none");
+            row["energy_depleted"] = energyDepleted;
             row["completed"] = transition.completed;
             row["fetch_succeeded"] = transition.completed;
             stepLog << row.dump() << '\n';
@@ -1115,6 +1151,12 @@ bool runTrainingSelfTests()
     const bool energyDrainPassed = testPassiveEnergyDrain();
     std::cout << "Shared passive energy drain across elapsed simulation time: "
               << (energyDrainPassed ? "PASS" : "FAIL") << '\n';
+    const bool recoveryPriorityPassed = testCriticalEnergyPrioritizesRecovery();
+    std::cout << "Critical energy restricts both policies to recovery actions: "
+              << (recoveryPriorityPassed ? "PASS" : "FAIL") << '\n';
+    const bool depletionTransitionPassed = testEnergyDepletionTransition();
+    std::cout << "Energy can reach the terminal depleted state: "
+              << (depletionTransitionPassed ? "PASS" : "FAIL") << '\n';
     const bool temporalDecayPassed = testTrainingAppliesElapsedAffectDecay();
     std::cout << "Training transition applies elapsed-time affect decay before next-state construction: "
               << (temporalDecayPassed ? "PASS" : "FAIL") << '\n';
@@ -1126,6 +1168,7 @@ bool runTrainingSelfTests()
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    return energyDrainPassed && temporalDecayPassed && transitionsPassed && retryPassed &&
+    return energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
+           temporalDecayPassed && transitionsPassed && retryPassed &&
            taskPriorityPassed && completionContextPassed;
 }
