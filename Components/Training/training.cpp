@@ -914,7 +914,7 @@ bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
     if (!fs::exists(baselinePath) || !fs::exists(proposedPath)) {
         std::cerr << "Idle diagnostics require trained policies at "
                   << baselinePath << " and " << proposedPath
-                  << ". Run --train first.\\n";
+                  << ". Run --train first.\n";
         return false;
     }
 
@@ -923,7 +923,7 @@ bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
     const fs::path summaryPath = fs::path(outputDirectory) / "idle-policy-diagnostics-summary.json";
     std::ofstream log(logPath);
     if (!log) {
-        std::cerr << "Unable to write idle diagnostics to " << logPath << '\\n';
+        std::cerr << "Unable to write idle diagnostics to " << logPath << '\n';
         return false;
     }
 
@@ -1040,7 +1040,7 @@ bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
             {"valid_action_q_values", qValues}
         };
         snapshots.push_back(row);
-        log << row.dump() << '\\n';
+        log << row.dump() << '\n';
     }
     log.close();
 
@@ -1061,15 +1061,15 @@ bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
 
     std::ofstream summaryFile(summaryPath);
     if (!summaryFile) {
-        std::cerr << "Unable to write idle diagnostic summary to " << summaryPath << '\\n';
+        std::cerr << "Unable to write idle diagnostic summary to " << summaryPath << '\n';
         return false;
     }
-    summaryFile << summary.dump(2) << '\\n';
-    std::cout << "Idle policy diagnostics complete.\\n"
-              << "Snapshots: " << logPath << '\\n'
-              << "Summary: " << summaryPath << '\\n'
-              << "Baseline actions changed between checkpoints: " << baselineActionChanges << '\\n'
-              << "Proposed actions changed between checkpoints: " << proposedActionChanges << '\\n';
+    summaryFile << summary.dump(2) << '\n';
+    std::cout << "Idle policy diagnostics complete.\n"
+              << "Snapshots: " << logPath << '\n'
+              << "Summary: " << summaryPath << '\n'
+              << "Baseline actions changed between checkpoints: " << baselineActionChanges << '\n'
+              << "Proposed actions changed between checkpoints: " << proposedActionChanges << '\n';
     return true;
 }
 
