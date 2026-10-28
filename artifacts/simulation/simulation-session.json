@@ -1,22 +1,22 @@
 {
   "baseline_action": "SLEEP_LAY",
-  "condition_code": "A",
-  "interaction_count": 26,
+  "condition_code": "B",
+  "interaction_count": 4,
   "interactions": [
-    "Queued interaction (1 waiting): bad [negative_feedback / spacy]",
-    "You: bad [negative_feedback / spacy]",
-    "Baseline: Hides or moves away",
-    "Proposed: Hides or moves away",
-    "Queued interaction (1 waiting): The companion should rest",
-    "You: The companion should rest",
+    "You: A sudden loud noise occurs",
+    "Baseline: Vocalises",
+    "Proposed: Vocalises",
+    "Queued interaction (1 waiting): hi [greeting / spacy]",
+    "You: hi [greeting / spacy]",
+    "Baseline: Offers a greeting",
+    "Proposed: Offers a greeting",
+    "Autonomous environment-driven action: PLAY",
+    "Queued interaction (1 waiting): Go to sleep [rest / spacy]",
+    "You: Go to sleep [rest / spacy]",
     "Baseline: Lies down to rest",
-    "Proposed: Explores the environment",
-    "Queued interaction (1 waiting): The companion should rest",
-    "You: The companion should rest",
-    "Baseline: Lies down to rest",
-    "Proposed: Explores the environment"
+    "Proposed: Lies down to rest"
   ],
-  "latest_stimulus": "The companion should rest",
-  "proposed_action": "WANDER",
-  "run_id": "run-1792656498185"
+  "latest_stimulus": "Go to sleep [rest / spacy]",
+  "proposed_action": "SLEEP_LAY",
+  "run_id": "run-1793173983067"
 }

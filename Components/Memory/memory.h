@@ -54,6 +54,8 @@ struct AffectiveState
     float affinity = 0.5f;
 
     void updateFromFeedback(float reward, bool positive_feedback, bool explicit_negative);
+    // Advance transient affect toward resting baselines; energy is environment-owned.
+    void decay(float elapsedSeconds);
 };
 
 enum class MemorySource
@@ -178,6 +180,8 @@ struct EnvironmentObservation
     // Explicit observable affordances used by the shared action mask.
     bool food_available = false;
     bool play_available = false;
+    // Shared physical/environmental energy (0..1), observable to both agents.
+    float energy = 0.8f;
 };
 
 struct ActionResult

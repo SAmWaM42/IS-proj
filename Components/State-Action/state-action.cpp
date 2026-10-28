@@ -970,6 +970,20 @@ double QLearning::getQValue(const state& stateRef, const std::string& action) co
     return q_table.getQValue(stateRef.encode(), action);
 }
 
+bool QLearning::hasState(const state& stateRef) const {
+    return q_table.table.find(stateRef.encode()) != q_table.table.end();
+}
+
+bool QLearning::hasStoredValidActionValue(const state& stateRef,
+                                          const std::vector<std::string>& validActions) const {
+    const auto stateIt = q_table.table.find(stateRef.encode());
+    if (stateIt == q_table.table.end()) return false;
+    for (const auto& action : validActions) {
+        if (stateIt->second.find(action) != stateIt->second.end()) return true;
+    }
+    return false;
+}
+
 void QLearning::loadQTable(const std::string& path) {
     q_table.load(path);
 }
@@ -1401,7 +1415,7 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
     const state candidate = makeState(
         session_context.current_intent,
         proximityFromValue(observation.target_proximity),
-        Level::MEDIUM, // Baseline does not observe the environment's hidden energy variable.
+        levelFromValue(observation.energy < 0.34f ? 0 : (observation.energy < 0.67f ? 1 : 2)), // Shared physical energy.
         levelFromValue(session_context.stress_level),
         Level::MEDIUM,
         Level::LOW,
@@ -1414,8 +1428,13 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
     observedState.food_available = observation.food_available;
     observedState.play_available = observation.play_available;
     current_state = observedState;
+    last_contextual_fallback = contextualAction(observation);
+    const auto validActions = validActionsForObservation(observation);
+    last_decision_q_table_state_present = q_policy.hasState(observedState);
+    last_decision_q_table_has_valid_action_values =
+        q_policy.hasStoredValidActionValue(observedState, validActions);
     session_context.current_action = q_policy.chooseAction(
-        observedState, contextualAction(observation), validActionsForObservation(observation));
+        observedState, last_contextual_fallback, validActions);
     return session_context.current_action;
 }
 
@@ -1429,10 +1448,18 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
                                 const std::string& action,
                                 const ActionOutcome& outcome,
                                 const EnvironmentObservation& nextObservation) {
+    applyOutcome(observation, action, outcome, nextObservation, 0.0f);
+}
+
+void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
+                                const std::string& action,
+                                const ActionOutcome& outcome,
+                                const EnvironmentObservation& nextObservation,
+                                float /*elapsedSeconds*/) {
     state next_state = makeState(
         nextObservation.goal_state,
         proximityFromValue(nextObservation.target_proximity),
-        Level::MEDIUM, // Do not leak hidden environment energy into the baseline state.
+        levelFromValue(nextObservation.energy < 0.34f ? 0 : (nextObservation.energy < 0.67f ? 1 : 2)), // Shared physical energy.
         levelFromValue(std::max(0, session_context.stress_level + (outcome.reward < 0.0f ? 1 : 0))),
         Level::MEDIUM,
         Level::LOW,
@@ -1484,6 +1511,18 @@ const std::vector<InteractionEvent>& BaselineAgent::getInteractionHistory() cons
     return interaction_history;
 }
 
+bool BaselineAgent::lastDecisionHadQTableState() const {
+    return last_decision_q_table_state_present;
+}
+
+bool BaselineAgent::lastDecisionHadValidQAction() const {
+    return last_decision_q_table_has_valid_action_values;
+}
+
+const std::string& BaselineAgent::getLastContextualFallback() const {
+    return last_contextual_fallback;
+}
+
 ProposedAgent::ProposedAgent(const EnvironmentConfig& configValue)
     : config(configValue), q_policy(0.25f, 0.8f, 0.15f, static_cast<unsigned int>(configValue.seed)), affective_state{} {
     q_policy.setActions(config.actions);
@@ -1520,10 +1559,19 @@ void ProposedAgent::setLearningEnabled(bool enabled) {
     learning_enabled = enabled;
 }
 
+void ProposedAgent::advanceTime(float elapsedSeconds) {
+    affective_state.decay(elapsedSeconds);
+    runtime_context.affective_state = affective_state;
+}
+
 std::string ProposedAgent::selectAction(const EnvironmentObservation& observation) {
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
+    session_context.energy_level = observation.energy < 0.34f ? 0 : (observation.energy < 0.67f ? 1 : 2);
+    if (observation.energy < 0.34f) affective_state.energy = AffectEnergy::LOW;
+    else if (observation.energy < 0.67f) affective_state.energy = AffectEnergy::MODERATE;
+    else affective_state.energy = AffectEnergy::HIGH;
     runtime_context.session_context = session_context;
     runtime_context.affective_state = affective_state;
     runtime_context.memory_summary = buildMemorySummary(memory_records, "");
@@ -1545,6 +1593,9 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     last_decision_trace.encoded_state = current_state.encode();
     last_decision_trace.contextual_fallback = fallback;
     last_decision_trace.policy_action = selected;
+    last_decision_trace.q_table_state_present = q_policy.hasState(current_state);
+    last_decision_trace.q_table_has_valid_action_values =
+        q_policy.hasStoredValidActionValue(current_state, validActions);
     last_decision_trace.memory_record_count = memory_records.size();
     last_decision_trace.affect = affective_state;
     for (const auto& action : validActions) {
@@ -1605,13 +1656,21 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
 void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
                                 const std::string& action,
                                 const ActionOutcome& outcome) {
-    applyOutcome(observation, action, outcome, observation);
+    applyOutcome(observation, action, outcome, observation, 0.0f);
 }
 
 void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
                                 const std::string& action,
                                 const ActionOutcome& outcome,
                                 const EnvironmentObservation& nextObservation) {
+    applyOutcome(observation, action, outcome, nextObservation, 0.0f);
+}
+
+void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
+                                const std::string& action,
+                                const ActionOutcome& outcome,
+                                const EnvironmentObservation& nextObservation,
+                                float elapsedSeconds) {
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
     session_context.user_status = observation.user_status;
@@ -1619,8 +1678,7 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
     session_context.last_timestamp = currentTimeStamp();
     if (outcome.energy_after >= 0.0f) {
         const float boundedEnergy = std::clamp(outcome.energy_after, 0.0f, 1.0f);
-        session_context.energy_level = std::clamp(
-            static_cast<int>(std::lround(boundedEnergy * 2.0f)), 0, 2);
+        session_context.energy_level = boundedEnergy < 0.34f ? 0 : (boundedEnergy < 0.67f ? 1 : 2);
     }
     affective_state.updateFromFeedback(outcome.reward, outcome.reward > 0.0f, outcome.reward < 0.0f);
     if (outcome.energy_after >= 0.0f) {
@@ -1628,6 +1686,11 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
         else if (outcome.energy_after < 0.67f) affective_state.energy = AffectEnergy::MODERATE;
         else affective_state.energy = AffectEnergy::HIGH;
     }
+
+    // Apply elapsed simulation time after the immediate feedback response and
+    // before constructing the next state used by Q-learning. This keeps the
+    // learned transition aligned with the runtime's affect-decay dynamics.
+    affective_state.decay(elapsedSeconds);
 
     // Confidence estimates observed success, not input signal strength.
     // Repeated outcomes for the same action/context update one record instead
@@ -2059,6 +2122,31 @@ bool testMemoryQueryRankingMatchesOnlyRelevantRecords() {
     return ranked.front().raw_fact.object == "fetch";
 }
 
+bool testAffectiveDecayUsesVariableSpecificRatesAndPreservesEnergy() {
+    AffectiveState affect;
+    affect.valence = AffectValence::NEGATIVE;
+    affect.energy = AffectEnergy::LOW;
+    affect.arousal = 1.0f;
+    affect.engagement = 1.0f;
+    affect.stress = 1.0f;
+    affect.affinity = 1.0f;
+
+    affect.decay(10.0f);
+    if (!(affect.arousal < 1.0f && affect.stress < 1.0f &&
+          affect.engagement < 1.0f && affect.affinity < 1.0f)) return false;
+    if (!(affect.arousal < affect.engagement && affect.engagement < affect.affinity)) return false;
+    if (affect.energy != AffectEnergy::LOW) return false;
+
+    const float beforeInvalidStep = affect.stress;
+    affect.decay(-1.0f);
+    if (!nearlyEqual(affect.stress, beforeInvalidStep)) return false;
+
+    affect.arousal = 0.25f;
+    affect.stress = 0.15f;
+    affect.decay(1.0f);
+    return affect.valence == AffectValence::NEUTRAL;
+}
+
 bool runBaselineValidation() {
     std::vector<TestResultRecord> results;
     results.push_back({"Basic Q update", "PASS", testBasicQUpdate(), "baseline"});
@@ -2078,6 +2166,7 @@ bool runBaselineValidation() {
     results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
     results.push_back({"Environment energy visible only to proposed agent", "PASS", testEnvironmentEnergyVisibleOnlyToProposedAgent(), "fairness"});
     results.push_back({"Negative feedback updates all affect dimensions", "PASS", testNegativeFeedbackUpdatesAffectDimensions(), "affect"});
+    results.push_back({"Affective decay uses variable-specific rates and preserves environment energy", "PASS", testAffectiveDecayUsesVariableSpecificRatesAndPreservesEnergy(), "affect"});
     results.push_back({"Outcome uses explicit next observation", "PASS", testOutcomeUsesExplicitNextObservation(), "training"});
     results.push_back({"Persistence", "PASS", testPersistence(), "baseline"});
     results.push_back({"Terminal handling", "PASS", testTerminalHandling(), "baseline"});

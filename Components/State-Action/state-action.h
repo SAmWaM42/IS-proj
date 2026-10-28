@@ -107,6 +107,8 @@ public:
 
     void setEpsilon(float epsilon);
     double getQValue(const state& stateRef, const std::string& action) const;
+    bool hasState(const state& stateRef) const;
+    bool hasStoredValidActionValue(const state& stateRef, const std::vector<std::string>& validActions) const;
 
     void loadQTable(const std::string& path);
     void saveQTable(const std::string& path);
@@ -119,6 +121,8 @@ public:
     void reset();
     void setExplorationRate(float epsilon);
     void setLearningEnabled(bool enabled);
+    // Advance time-dependent affect without inventing a user interaction or reward.
+    void advanceTime(float elapsedSeconds);
     std::string selectAction(const EnvironmentObservation& observation);
     void applyOutcome(const EnvironmentObservation& observation,
                       const std::string& action,
@@ -127,6 +131,12 @@ public:
                       const std::string& action,
                       const ActionOutcome& outcome,
                       const EnvironmentObservation& nextObservation);
+    // Elapsed time until the next decision; baseline intentionally ignores it.
+    void applyOutcome(const EnvironmentObservation& observation,
+                      const std::string& action,
+                      const ActionOutcome& outcome,
+                      const EnvironmentObservation& nextObservation,
+                      float elapsedSeconds);
 
     void loadPersistentState(const std::string& path);
     void savePersistentState(const std::string& path);
@@ -134,6 +144,9 @@ public:
     const state& getCurrentState() const;
     const SessionContext& getSessionContext() const;
     const std::vector<InteractionEvent>& getInteractionHistory() const;
+    bool lastDecisionHadQTableState() const;
+    bool lastDecisionHadValidQAction() const;
+    const std::string& getLastContextualFallback() const;
 
 private:
     EnvironmentConfig config;
@@ -141,6 +154,9 @@ private:
     SessionContext session_context;
     std::vector<InteractionEvent> interaction_history;
     state current_state;
+    bool last_decision_q_table_state_present = false;
+    bool last_decision_q_table_has_valid_action_values = false;
+    std::string last_contextual_fallback;
     bool learning_enabled = true;
 };
 
@@ -150,6 +166,8 @@ struct ActionDecisionTrace {
     std::string policy_action;
     std::string general_preference_override;
     std::string final_action;
+    bool q_table_state_present = false;
+    bool q_table_has_valid_action_values = false;
     bool rejection_override_applied = false;
     std::vector<std::pair<std::string, double>> valid_action_q_values;
     std::size_t memory_record_count = 0;
@@ -162,6 +180,7 @@ public:
 
     void reset();
     void setExplorationRate(float epsilon);
+    void advanceTime(float elapsedSeconds);
     void setLearningEnabled(bool enabled);
     std::string selectAction(const EnvironmentObservation& observation);
     void applyOutcome(const EnvironmentObservation& observation,
@@ -171,6 +190,11 @@ public:
                       const std::string& action,
                       const ActionOutcome& outcome,
                       const EnvironmentObservation& nextObservation);
+    void applyOutcome(const EnvironmentObservation& observation,
+                      const std::string& action,
+                      const ActionOutcome& outcome,
+                      const EnvironmentObservation& nextObservation,
+                      float elapsedSeconds);
 
     void loadPersistentState(const std::string& path);
     void savePersistentState(const std::string& path);

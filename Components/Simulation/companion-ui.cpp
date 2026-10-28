@@ -8,7 +8,6 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
-#include <cstdlib>
 #include <memory>
 #include <json.hpp>
 #include <filesystem>
@@ -29,6 +28,33 @@
 
 namespace {
 using nlohmann::json;
+
+void rotateOutputDirectoryForComparison(const std::filesystem::path& directory) {
+    std::filesystem::create_directories(directory);
+    std::vector<std::filesystem::path> currentFiles;
+
+    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+        if (!entry.is_regular_file())
+            continue;
+        const auto filename = entry.path().filename().string();
+        if (filename.rfind("compare_", 0) == 0) {
+            std::error_code ec;
+            std::filesystem::remove(entry.path(), ec);
+        } else {
+            currentFiles.push_back(entry.path());
+        }
+    }
+
+    for (const auto& currentPath : currentFiles) {
+        const auto backupPath = currentPath.parent_path() /
+            ("compare_" + currentPath.filename().string());
+        std::error_code ec;
+        std::filesystem::rename(currentPath, backupPath, ec);
+        if (ec)
+            std::cerr << "Warning: unable to preserve previous simulation artifact "
+                      << currentPath << " as " << backupPath << ": " << ec.message() << '\n';
+    }
+}
 
 class PersistentNlpClient {
 public:
@@ -255,7 +281,7 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     loadFrames(sleepFrames, {"sleep1.png", "sleep2.png"});
     loadFrames(barkFrames, {"bark1.png", "bark2.png"});
     if (idleFrames.empty()) appendLog("Dog frames missing (Data/Assets/white_dog_by_Brysia); using a placeholder companion.");
-    std::filesystem::create_directories(outputDirectory);
+    rotateOutputDirectoryForComparison(outputDirectory);
     std::filesystem::create_directories(policyDirectory);
     const auto basePath = std::filesystem::path(policyDirectory) / "baseline.qtable";
     const auto proposedPath = std::filesystem::path(policyDirectory) / "proposed.qtable";
@@ -345,6 +371,9 @@ const std::vector<std::unique_ptr<sf::Texture>>& CompanionUI::framesForPose(cons
 
 void CompanionUI::resetScene() {
     const SceneLayout L = sceneLayout();
+    totalSimulationElapsedSeconds = 0.0f;
+    environmentEnergy = 0.8f;
+    environmentDepleted = false;
     behaviourPlan.clear();
     stepIndex = 0;
     stepTime = 0.0f;
@@ -475,7 +504,35 @@ void CompanionUI::finishStep() {
 }
 
 void CompanionUI::startBehaviour(const std::string& action, const std::string& sceneEvent) {
+    if (environmentDepleted) return;
     const SceneLayout L = sceneLayout();
+    // Apply the physical consequence of the action actually executed by the
+    // selected condition. Both policies observe the same resulting energy.
+    const float energyBeforeAction = environmentEnergy;
+    float effort = 0.012f;
+    if (action == "FETCH") {
+        const int proximity = std::clamp(latestObservation.target_proximity, 0, 2);
+        const float distanceCost[] = {0.035f, 0.085f, 0.16f};
+        effort = distanceCost[proximity] * (1.0f + 0.8f * (1.0f - energyBeforeAction));
+    } else if (action == "APPROACH_FOLLOW") {
+        effort = 0.045f * (1.0f + 0.8f * (1.0f - energyBeforeAction));
+    } else if (action == "PLAY" && latestObservation.play_available) {
+        effort = 0.055f * (1.0f + 0.8f * (1.0f - energyBeforeAction));
+    } else if (action == "SNIFF" || action == "WANDER") {
+        effort = action == "WANDER" ? 0.025f : 0.018f;
+    }
+    if (action == "SLEEP_LAY") environmentEnergy = std::min(1.0f, environmentEnergy + 0.28f);
+    else if (action == "EAT" && latestObservation.food_available) environmentEnergy = std::min(1.0f, environmentEnergy + 0.24f);
+    else environmentEnergy = std::max(0.0f, environmentEnergy - effort * 1.5f);
+    if (environmentEnergy <= 0.0f) {
+        environmentEnergy = 0.0f;
+        environmentDepleted = true;
+        behaviourPlan.clear();
+        behaviourActive = false;
+        restingPose = "lay";
+        appendLog("Energy depleted: companion entered terminal state.");
+        return;
+    }
     behaviourPlan.clear();
     stepIndex = 0;
     restingPose = (action == "SLEEP_LAY") ? "sleep" : "idle";
@@ -626,6 +683,23 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
 void CompanionUI::updateAnimation(float elapsedSeconds) {
     elapsedSeconds = std::min(elapsedSeconds, 0.1f);   // avoid jumps after the window is dragged
     sceneTime += elapsedSeconds;
+    if (screen == Screen::Simulation) {
+        totalSimulationElapsedSeconds += elapsedSeconds;
+        const float passiveDrainPerSecond = restingPose == "sleep" ? 0.0008f : 0.0025f;
+        if (!environmentDepleted) {
+            environmentEnergy = std::max(0.0f, environmentEnergy - passiveDrainPerSecond * elapsedSeconds);
+            if (environmentEnergy <= 0.0f) {
+                environmentEnergy = 0.0f;
+                environmentDepleted = true;
+                behaviourActive = false;
+                behaviourPlan.clear();
+                restingPose = "lay";
+                autonomousDecisionTimer = 0.0f;
+                appendLog("Energy depleted: companion entered terminal state.");
+            }
+            proposed.advanceTime(elapsedSeconds);
+        }
+    }
     if (throwTimer > 0.0f) throwTimer = std::max(0.0f, throwTimer - elapsedSeconds);
 
     if (ballFlying) {
@@ -669,8 +743,96 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
     if (!behaviourActive && !interactionBuffer.empty()) {
         const auto next = interactionBuffer.front();
         interactionBuffer.pop_front();
+        autonomousDecisionTimer = 0.0f;
         executeInteraction(next.label, next.observation, next.reward, next.preference,
                            next.preferencePositive, next.sceneEvent);
+    } else if (!behaviourActive && interactionBuffer.empty()) {
+        // The environment continues to evolve when the user is idle. Refresh
+        // observable affordances and let both policies choose from that context;
+        // only the selected A/B condition is rendered. No synthetic user reward
+        // or memory event is recorded for this autonomous decision.
+        autonomousDecisionTimer += elapsedSeconds;
+        if (!environmentDepleted && autonomousDecisionTimer >= autonomousDecisionInterval &&
+            screen == Screen::Simulation) {
+            const float idleSecondsBeforeDecision = autonomousDecisionTimer;
+            autonomousDecisionTimer = 0.0f;
+            EnvironmentObservation ambient = latestObservation;
+            ambient.goal_state = 2;       // no new user request: ambient context
+            ambient.user_status = 0;
+            ambient.task_status = 0;
+            ambient.signal_strength = 0.0f;
+            ambient.food_available = foodPresent;
+            ambient.play_available = !ballCarried && !ballFlying;
+            ambient.energy = environmentEnergy;
+            const float targetDistance = std::fabs(agentX - ballX);
+            ambient.target_proximity = targetDistance < 120.0f ? 0 :
+                                       targetDistance < 300.0f ? 1 : 2;
+
+            latestBaselineAction = baseline.selectAction(ambient);
+            latestProposedAction = proposed.selectAction(ambient);
+
+            // Researcher-only trace of the real UI idle loop. Unlike the
+            // fixed-context sweep, this records the actual scene-derived
+            // observation after the previous behaviour has completed.
+            if (researcherMode) {
+                const ActionDecisionTrace& trace = proposed.getLastDecisionTrace();
+                nlohmann::json qValues = nlohmann::json::array();
+                for (const auto& item : trace.valid_action_q_values) {
+                    qValues.push_back({{"action", item.first}, {"q_value", item.second}});
+                }
+                nlohmann::json row;
+                row["event"] = "autonomous_policy_decision";
+                row["run_id"] = runId;
+                row["simulation_elapsed_seconds"] = totalSimulationElapsedSeconds;
+                row["idle_seconds_before_decision"] = idleSecondsBeforeDecision;
+                row["idle_threshold_seconds"] = autonomousDecisionInterval;
+                row["selected_condition"] = selectedAgentIsProposed ? "proposed" : "baseline";
+                row["baseline_action"] = latestBaselineAction;
+                row["proposed_action"] = latestProposedAction;
+                row["environment_energy"] = environmentEnergy;
+                row["observation"] = {
+                    {"goal_state", ambient.goal_state},
+                    {"target_proximity", ambient.target_proximity},
+                    {"user_status", ambient.user_status},
+                    {"task_status", ambient.task_status},
+                    {"signal_strength", ambient.signal_strength},
+                    {"food_available", ambient.food_available},
+                    {"play_available", ambient.play_available}
+                };
+                row["proposed"] = {
+                    {"encoded_state", trace.encoded_state},
+                    {"contextual_fallback", trace.contextual_fallback},
+                    {"policy_action_before_overrides", trace.policy_action},
+                    {"q_table_state_present", trace.q_table_state_present},
+                    {"q_table_has_valid_action_values", trace.q_table_has_valid_action_values},
+                    {"final_action_after_overrides", trace.final_action},
+                    {"general_preference_override", trace.general_preference_override},
+                    {"rejection_override_applied", trace.rejection_override_applied},
+                    {"memory_record_count", trace.memory_record_count},
+                    {"affect", {
+                        {"valence", static_cast<int>(trace.affect.valence)},
+                        {"energy", static_cast<int>(trace.affect.energy)},
+                        {"arousal", trace.affect.arousal},
+                        {"stress", trace.affect.stress},
+                        {"engagement", trace.affect.engagement},
+                        {"affinity", trace.affect.affinity}
+                    }},
+                    {"valid_action_q_values", qValues}
+                };
+                std::ofstream diagnostic(
+                    std::filesystem::path(outputDirectory) / "idle-runtime-diagnostics.jsonl",
+                    std::ios::app);
+                if (diagnostic) diagnostic << row.dump() << '\n';
+            }
+
+            latestObservation = ambient;
+            latestStimulus = "The companion responds to its surroundings.";
+            startBehaviour(selectedAgentIsProposed ? latestProposedAction : latestBaselineAction, "");
+            if (researcherMode) {
+                appendLog("Autonomous environment-driven action: " +
+                          (selectedAgentIsProposed ? latestProposedAction : latestBaselineAction));
+            }
+        }
     }
 }
 
@@ -907,6 +1069,10 @@ void CompanionUI::processInteraction(const std::string& label,
                                      const std::string& preference,
                                      bool preferencePositive,
                                      const std::string& sceneEvent) {
+    if (environmentDepleted) {
+        appendLog("Interaction ignored: the companion is depleted; start a new session.");
+        return;
+    }
     interactionBuffer.push_back(QueuedInteraction{label, observation, feedbackRewardValue, preference,
                                                   preferencePositive, sceneEvent});
     appendLog("Queued interaction (" + std::to_string(interactionBuffer.size()) + " waiting): " + label);
@@ -918,15 +1084,21 @@ void CompanionUI::executeInteraction(const std::string& label,
                                      const std::string& preference,
                                      bool preferencePositive,
                                      const std::string& sceneEvent) {
+    if (environmentDepleted) {
+        appendLog("Interaction ignored: the companion is depleted; start a new session.");
+        return;
+    }
     if (!preference.empty()) proposed.recordUserPreference(preference, preferencePositive);
     const auto affectBefore = proposed.getAffectiveState();
     const std::size_t memoryCountBefore = proposed.getMemoryRecords().size();
     const int interactionId = interactionCount + 1;
     lastActionInteractionId = interactionId;
-    latestObservation = observation;
+    EnvironmentObservation sharedObservation = observation;
+    sharedObservation.energy = environmentEnergy;
+    latestObservation = sharedObservation;
     latestStimulus = label;
-    latestBaselineAction = baseline.selectAction(observation);
-    latestProposedAction = proposed.selectAction(observation);
+    latestBaselineAction = baseline.selectAction(sharedObservation);
+    latestProposedAction = proposed.selectAction(sharedObservation);
     const std::size_t baselineStateBeforeOutcome = baseline.getCurrentState().encode();
     const std::size_t proposedStateBeforeOutcome = proposed.getCurrentState().encode();
     nlohmann::json memoryCandidates = nlohmann::json::array();
@@ -953,8 +1125,12 @@ void CompanionUI::executeInteraction(const std::string& label,
     baselineOutcome.outcome_tag = "simulation_" + (feedbackRewardValue > 0 ? std::string("positive") :
                                                     feedbackRewardValue < 0 ? std::string("negative") : std::string("neutral"));
     ActionOutcome proposedOutcome = baselineOutcome;
-    baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome);
-    proposed.applyOutcome(observation, latestProposedAction, proposedOutcome);
+    baselineOutcome.energy_after = environmentEnergy;
+    proposedOutcome.energy_after = environmentEnergy;
+    EnvironmentObservation nextSharedObservation = sharedObservation;
+    nextSharedObservation.energy = environmentEnergy;
+    baseline.applyOutcome(sharedObservation, latestBaselineAction, baselineOutcome, nextSharedObservation);
+    proposed.applyOutcome(sharedObservation, latestProposedAction, proposedOutcome, nextSharedObservation);
 
     baselineRewards.push_back(feedbackRewardValue);
     proposedRewards.push_back(feedbackRewardValue);
@@ -973,6 +1149,8 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["condition_code"] = std::string(1, selectedAgentCode);
         row["input_summary"] = label;
         row["observation"] = {
+            {"energy_before_action", sharedObservation.energy},
+            {"energy_after_action", environmentEnergy},
             {"goal_state", observation.goal_state},
             {"target_proximity", observation.target_proximity},
             {"user_status", observation.user_status},
@@ -1005,7 +1183,8 @@ void CompanionUI::executeInteraction(const std::string& label,
                 {"engagement", proposed.getAffectiveState().engagement},
                 {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
             }}
-        };        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+        };
+        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
         if (log) log << row.dump() << '\n';
         else appendLog("WARNING: interaction event log could not be written.");
     }
@@ -1085,6 +1264,10 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
 }
 
 void CompanionUI::processTextInteraction(const std::string& text) {
+    if (environmentDepleted) {
+        appendLog("Input ignored: the companion is depleted; start a new session.");
+        return;
+    }
     std::string lower = text;
     std::transform(lower.begin(), lower.end(), lower.begin(),
         [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
@@ -1473,13 +1656,25 @@ void CompanionUI::drawSimulationScreen() {
     drawText("YOU", L.userX - 14.0f, L.groundY + 14.0f, 13, kInk);
     drawText(std::string("Companion ") + selectedAgentCode, agentX - 46.0f, L.groundY + 14.0f, 13, kInk);
 
+    if (environmentDepleted) {
+        sf::RectangleShape notice({690.0f, 112.0f});
+        notice.setPosition({295.0f, 235.0f});
+        notice.setFillColor(sf::Color(255, 248, 244, 238));
+        notice.setOutlineColor(sf::Color(160, 55, 45));
+        notice.setOutlineThickness(2.0f);
+        window.draw(notice);
+        drawText("ENERGY DEPLETED - SIMULATION ENDED", 330.0f, 258.0f, 22, sf::Color(160, 45, 40));
+        drawText("Return to agent selection to start a new session.", 330.0f, 300.0f, 16, kInk);
+    }
+
     if (researcherMode) {
         const std::string visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
         drawText(std::string("Agent ") + selectedAgentCode + " action: " + visibleAction, 50, 150, 16, kGreen);
         drawText("Input interpretation: " + nlpMethod, 50, 172, 14, kMuted);
     }
     if (!controlsVisible) {
-        drawText("Controls hidden - use Show Controls to interact", 50, 200, 16, kInk);
+        drawText(environmentDepleted ? "Simulation ended - select Change Agent for a new session."
+                                     : "Controls hidden - use Show Controls to interact", 50, 200, 16, kInk);
         drawHover();
         return;
     }
