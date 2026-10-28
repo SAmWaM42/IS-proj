@@ -180,6 +180,8 @@ struct EnvironmentObservation
     // Explicit observable affordances used by the shared action mask.
     bool food_available = false;
     bool play_available = false;
+    // Shared physical/environmental energy (0..1), observable to both agents.
+    float energy = 0.8f;
 };
 
 struct ActionResult
