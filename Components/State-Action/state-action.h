@@ -144,6 +144,9 @@ public:
     const state& getCurrentState() const;
     const SessionContext& getSessionContext() const;
     const std::vector<InteractionEvent>& getInteractionHistory() const;
+    bool lastDecisionHadQTableState() const;
+    bool lastDecisionHadValidQAction() const;
+    const std::string& getLastContextualFallback() const;
 
 private:
     EnvironmentConfig config;
@@ -151,6 +154,9 @@ private:
     SessionContext session_context;
     std::vector<InteractionEvent> interaction_history;
     state current_state;
+    bool last_decision_q_table_state_present = false;
+    bool last_decision_q_table_has_valid_action_values = false;
+    std::string last_contextual_fallback;
     bool learning_enabled = true;
 };
 
