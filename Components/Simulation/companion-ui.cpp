@@ -1069,8 +1069,12 @@ void CompanionUI::executeInteraction(const std::string& label,
     baselineOutcome.outcome_tag = "simulation_" + (feedbackRewardValue > 0 ? std::string("positive") :
                                                     feedbackRewardValue < 0 ? std::string("negative") : std::string("neutral"));
     ActionOutcome proposedOutcome = baselineOutcome;
-    baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome);
-    proposed.applyOutcome(observation, latestProposedAction, proposedOutcome);
+    baselineOutcome.energy_after = environmentEnergy;
+    proposedOutcome.energy_after = environmentEnergy;
+    EnvironmentObservation nextSharedObservation = sharedObservation;
+    nextSharedObservation.energy = environmentEnergy;
+    baseline.applyOutcome(sharedObservation, latestBaselineAction, baselineOutcome, nextSharedObservation);
+    proposed.applyOutcome(sharedObservation, latestProposedAction, proposedOutcome, nextSharedObservation);
 
     baselineRewards.push_back(feedbackRewardValue);
     proposedRewards.push_back(feedbackRewardValue);
@@ -1089,6 +1093,8 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["condition_code"] = std::string(1, selectedAgentCode);
         row["input_summary"] = label;
         row["observation"] = {
+            {"energy_before_action", sharedObservation.energy},
+            {"energy_after_action", environmentEnergy},
             {"goal_state", observation.goal_state},
             {"target_proximity", observation.target_proximity},
             {"user_status", observation.user_status},
