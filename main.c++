@@ -33,8 +33,9 @@ namespace
             << "  " << executable << " --train [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
             << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
             << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
+            << "  " << executable << " --diagnose-idle [--policy-dir DIR] [--out DIR] [--seed N]\n"
             << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
-            << "Run --train before --validate, --compare, or --study. Evaluation disables policy updates.\n";
+            << "Run --train before --validate, --compare, --study, or --diagnose-idle. Evaluation disables policy updates.\n";
     }
 } // namespace
 
@@ -72,7 +73,7 @@ int main(int argc, char **argv)
             printUsage(argv[0]);
             return 0;
         }
-        if (arg == "--self-test" || arg == "--train" || arg == "--validate" || arg == "--compare" || arg == "--study")
+        if (arg == "--self-test" || arg == "--train" || arg == "--validate" || arg == "--compare" || arg == "--diagnose-idle" || arg == "--study")
         {
             if (!mode.empty())
             {
@@ -141,6 +142,11 @@ int main(int argc, char **argv)
         }
         std::cout << "Component validation passed.\n";
         return 0;
+    }
+
+    if (mode == "diagnose-idle")
+    {
+        return runIdlePolicyDiagnostics(policyDirectory, outputDirectory, static_cast<unsigned int>(seed)) ? 0 : 1;
     }
 
     if (mode == "study")
