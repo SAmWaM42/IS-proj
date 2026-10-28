@@ -903,6 +903,177 @@ bool runTrainingExperiment(const std::string &mode,
 }
 
 
+bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
+                              const std::string& outputDirectory,
+                              unsigned int seed)
+{
+    namespace fs = std::filesystem;
+    const fs::path policyDir(policyDirectory);
+    const fs::path baselinePath = policyDir / "baseline.qtable";
+    const fs::path proposedPath = policyDir / "proposed.qtable";
+    if (!fs::exists(baselinePath) || !fs::exists(proposedPath)) {
+        std::cerr << "Idle diagnostics require trained policies at "
+                  << baselinePath << " and " << proposedPath
+                  << ". Run --train first.\\n";
+        return false;
+    }
+
+    fs::create_directories(outputDirectory);
+    const fs::path logPath = fs::path(outputDirectory) / "idle-policy-diagnostics.jsonl";
+    const fs::path summaryPath = fs::path(outputDirectory) / "idle-policy-diagnostics-summary.json";
+    std::ofstream log(logPath);
+    if (!log) {
+        std::cerr << "Unable to write idle diagnostics to " << logPath << '\\n';
+        return false;
+    }
+
+    EnvironmentConfig config;
+    config.seed = static_cast<int>(seed);
+    BaselineAgent baseline(config);
+    ProposedAgent proposed(config);
+    baseline.loadPersistentState(baselinePath.string());
+    proposed.loadPersistentState(proposedPath.string());
+    baseline.setLearningEnabled(false);
+    proposed.setLearningEnabled(false);
+    baseline.setExplorationRate(0.0f);
+    proposed.setExplorationRate(0.0f);
+
+    // Mirrors the UI's ambient observation after reset: no task, no user
+    // stimulus, no food, the ball nearby enough to be a medium-distance target.
+    EnvironmentObservation ambient;
+    ambient.goal_state = 2;
+    ambient.target_proximity = 1;
+    ambient.user_status = 0;
+    ambient.task_status = 0;
+    ambient.signal_strength = 0.0f;
+    ambient.food_available = false;
+    ambient.play_available = true;
+
+    const std::vector<float> checkpoints{0.0f, 1.0f, 5.0f, 10.0f, 30.0f};
+    nlohmann::json summary;
+    summary["mode"] = "fixed_context_temporal_sweep";
+    summary["policy_directory"] = policyDir.string();
+    summary["seed"] = seed;
+    summary["ambient_observation"] = {
+        {"goal_state", ambient.goal_state},
+        {"target_proximity", ambient.target_proximity},
+        {"user_status", ambient.user_status},
+        {"task_status", ambient.task_status},
+        {"signal_strength", ambient.signal_strength},
+        {"food_available", ambient.food_available},
+        {"play_available", ambient.play_available}
+    };
+    summary["checkpoints_seconds"] = checkpoints;
+    summary["notes"] = nlohmann::json::array({
+        "Loads the saved Q-tables and proposed-agent sidecar state, disables exploration and learning, and holds the UI-like ambient observation constant.",
+        "The fixed-context sweep isolates changes caused by elapsed-time affect decay; it does not claim to reproduce animation/behaviour completion timing.",
+        "The UI starts another autonomous decision only after the 5-second idle timer expires while no behaviour is active. Behaviour duration depends on the selected action and scene geometry, so the snapshot sweep is diagnostic evidence rather than an exact full-UI replay.",
+        "Q-values are logged for every valid proposed-agent action, alongside state encoding, contextual fallback, policy choice, final post-override action, affect, and memory count.",
+        "Synthetic policy diagnostics do not measure perceived believability."
+    });
+
+    nlohmann::json snapshots = nlohmann::json::array();
+    std::map<std::string, int> baselineActionCounts;
+    std::map<std::string, int> proposedActionCounts;
+    std::size_t priorBaselineState = 0;
+    std::size_t priorProposedState = 0;
+    std::string priorBaselineAction;
+    std::string priorProposedAction;
+    int baselineStateChanges = 0;
+    int proposedStateChanges = 0;
+    int baselineActionChanges = 0;
+    int proposedActionChanges = 0;
+    float previousSeconds = 0.0f;
+
+    for (const float seconds : checkpoints) {
+        const float delta = seconds - previousSeconds;
+        if (delta > 0.0f) proposed.advanceTime(delta);
+        previousSeconds = seconds;
+
+        const std::string baselineAction = baseline.selectAction(ambient);
+        const std::string proposedAction = proposed.selectAction(ambient);
+        const state& baselineState = baseline.getCurrentState();
+        const state& proposedState = proposed.getCurrentState();
+        const ActionDecisionTrace& trace = proposed.getLastDecisionTrace();
+        ++baselineActionCounts[baselineAction];
+        ++proposedActionCounts[proposedAction];
+
+        if (!snapshots.empty()) {
+            if (baselineState.encode() != priorBaselineState) ++baselineStateChanges;
+            if (proposedState.encode() != priorProposedState) ++proposedStateChanges;
+            if (baselineAction != priorBaselineAction) ++baselineActionChanges;
+            if (proposedAction != priorProposedAction) ++proposedActionChanges;
+        }
+        priorBaselineState = baselineState.encode();
+        priorProposedState = proposedState.encode();
+        priorBaselineAction = baselineAction;
+        priorProposedAction = proposedAction;
+
+        nlohmann::json qValues = nlohmann::json::array();
+        for (const auto& item : trace.valid_action_q_values) {
+            qValues.push_back({{"action", item.first}, {"q_value", item.second}});
+        }
+
+        nlohmann::json row;
+        row["elapsed_seconds"] = seconds;
+        row["baseline"] = {
+            {"action", baselineAction},
+            {"encoded_state", baselineState.encode()}
+        };
+        row["proposed"] = {
+            {"action", proposedAction},
+            {"encoded_state", proposedState.encode()},
+            {"contextual_fallback", trace.contextual_fallback},
+            {"policy_action_before_overrides", trace.policy_action},
+            {"final_action_after_overrides", trace.final_action},
+            {"general_preference_override", trace.general_preference_override},
+            {"rejection_override_applied", trace.rejection_override_applied},
+            {"memory_record_count", trace.memory_record_count},
+            {"affect", {
+                {"valence", static_cast<int>(trace.affect.valence)},
+                {"energy", static_cast<int>(trace.affect.energy)},
+                {"arousal", trace.affect.arousal},
+                {"stress", trace.affect.stress},
+                {"engagement", trace.affect.engagement},
+                {"affinity", trace.affect.affinity}
+            }},
+            {"valid_action_q_values", qValues}
+        };
+        snapshots.push_back(row);
+        log << row.dump() << '\\n';
+    }
+    log.close();
+
+    summary["snapshot_count"] = snapshots.size();
+    summary["snapshots"] = snapshots;
+    summary["baseline_action_counts"] = baselineActionCounts;
+    summary["proposed_action_counts"] = proposedActionCounts;
+    summary["baseline_state_changes_between_checkpoints"] = baselineStateChanges;
+    summary["proposed_state_changes_between_checkpoints"] = proposedStateChanges;
+    summary["baseline_action_changes_between_checkpoints"] = baselineActionChanges;
+    summary["proposed_action_changes_between_checkpoints"] = proposedActionChanges;
+    summary["diagnostic_interpretation"] = {
+        {"state_changes", "If affect values change but encoded state does not, the state discretization may be hiding temporal change at these checkpoints."},
+        {"action_changes", "If encoded state changes but selected action does not, inspect Q-value ranking, action masking, and deterministic tie/fallback behaviour."},
+        {"overrides", "If policy_action_before_overrides differs from final_action_after_overrides, a memory/preference/rejection override rather than the Q-table determined the displayed action."},
+        {"single_action", "A repeated action across this small sweep is a signal to inspect, not proof of a global policy collapse; use the per-action Q-values and wider context tests."}
+    };
+
+    std::ofstream summaryFile(summaryPath);
+    if (!summaryFile) {
+        std::cerr << "Unable to write idle diagnostic summary to " << summaryPath << '\\n';
+        return false;
+    }
+    summaryFile << summary.dump(2) << '\\n';
+    std::cout << "Idle policy diagnostics complete.\\n"
+              << "Snapshots: " << logPath << '\\n'
+              << "Summary: " << summaryPath << '\\n'
+              << "Baseline actions changed between checkpoints: " << baselineActionChanges << '\\n'
+              << "Proposed actions changed between checkpoints: " << proposedActionChanges << '\\n';
+    return true;
+}
+
+
 bool runTrainingSelfTests()
 {
     const bool temporalDecayPassed = testTrainingAppliesElapsedAffectDecay();
