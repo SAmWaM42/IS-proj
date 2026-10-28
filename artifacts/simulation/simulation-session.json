@@ -1,22 +1,22 @@
 {
-  "baseline_action": "PLAY",
-  "condition_code": "A",
-  "interaction_count": 9,
+  "baseline_action": "SLEEP_LAY",
+  "condition_code": "B",
+  "interaction_count": 4,
   "interactions": [
-    "Autonomous environment-driven action: PLAY",
-    "Queued interaction (1 waiting): hi boy [greeting / keyword-fallback]",
-    "You: hi boy [greeting / keyword-fallback]",
+    "You: A sudden loud noise occurs",
+    "Baseline: Vocalises",
+    "Proposed: Vocalises",
+    "Queued interaction (1 waiting): hi [greeting / spacy]",
+    "You: hi [greeting / spacy]",
     "Baseline: Offers a greeting",
     "Proposed: Offers a greeting",
     "Autonomous environment-driven action: PLAY",
-    "Queued interaction (1 waiting): go to sleep [rest / keyword-fallback]",
-    "You: go to sleep [rest / keyword-fallback]",
+    "Queued interaction (1 waiting): Go to sleep [rest / spacy]",
+    "You: Go to sleep [rest / spacy]",
     "Baseline: Lies down to rest",
-    "Proposed: Lies down to rest",
-    "Loaded blind condition A",
-    "Autonomous environment-driven action: PLAY"
+    "Proposed: Lies down to rest"
   ],
-  "latest_stimulus": "The companion responds to its surroundings.",
-  "proposed_action": "PLAY",
-  "run_id": "run-1793173157940"
+  "latest_stimulus": "Go to sleep [rest / spacy]",
+  "proposed_action": "SLEEP_LAY",
+  "run_id": "run-1793173983067"
 }
