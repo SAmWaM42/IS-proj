@@ -1233,7 +1233,6 @@ bool runTemporalStimulusDiagnostics(const std::string& policyDirectory,
     std::map<std::string, int> proposedChangesByPhase;
     std::string previousBaselineAction;
     std::string previousProposedAction;
-    std::string previousPhase;
     float elapsedSeconds = 0.0f;
     int globalStep = 0;
 
@@ -1317,7 +1316,6 @@ bool runTemporalStimulusDiagnostics(const std::string& policyDirectory,
             phasePreviousProposed = proposedAction;
             previousBaselineAction = baselineAction;
             previousProposedAction = proposedAction;
-            previousPhase = phase.name;
             ++globalStep;
         }
 
