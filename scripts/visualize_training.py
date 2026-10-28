@@ -392,35 +392,81 @@ def population_std(values: list[float]) -> float:
     return math.sqrt(sum((value - mean) ** 2 for value in values) / len(values))
 
 
-def write_training_window_report(summary: dict[str, Any], csv_path: Path,
-                                 plot_path: Path, window_size: int) -> list[dict[str, Any]]:
-    """Compare early and late training windows; never use a single episode as the endpoint."""
+def write_training_window_report(summary: dict[str, Any],
+                                 rows_by_agent: dict[str, list[dict[str, Any]]],
+                                 csv_path: Path, plot_path: Path,
+                                 window_size: int) -> list[dict[str, Any]]:
+    """Compare early/late reward and coverage windows; avoid single-episode conclusions."""
     report: list[dict[str, Any]] = []
+    actual_window = window_size
     for agent in AGENTS:
-        rows = sorted(episode_rows(summary, agent), key=lambda row: int(row.get("episode", 0)))
-        rewards = [episode_reward(row) for row in rows]
-        if not rewards:
+        episode_records = sorted(
+            episode_rows(summary, agent), key=lambda row: int(row.get("episode", 0))
+        )
+        if not episode_records:
             continue
-        actual_window = min(window_size, len(rewards))
+        actual_window = min(window_size, len(episode_records))
         windows = [
-            ("early", rewards[:actual_window], 1, actual_window),
-            ("late", rewards[-actual_window:], len(rewards) - actual_window + 1, len(rewards)),
+            ("early", episode_records[:actual_window]),
+            ("late", episode_records[-actual_window:]),
         ]
-        for label, values, start_episode, end_episode in windows:
+        step_rows = rows_by_agent.get(agent, [])
+        for label, selected_episodes in windows:
+            rewards = [episode_reward(row) for row in selected_episodes]
+            episode_ids = {int(row.get("episode", index))
+                           for index, row in enumerate(selected_episodes)}
+            selected_steps = [
+                row for row in step_rows
+                if int(row.get("episode", -1)) in episode_ids
+            ]
+            has_coverage_fields = bool(selected_steps) and all(
+                "q_table_has_valid_action_values" in row and
+                "decision_used_fallback" in row
+                for row in selected_steps
+            )
+            decisions = len(selected_steps)
+            q_supported = sum(
+                bool(row.get("q_table_has_valid_action_values", False))
+                for row in selected_steps
+            )
+            fallback = sum(
+                bool(row.get("decision_used_fallback", False))
+                for row in selected_steps
+            )
             report.append({
                 "agent": agent,
                 "window": label,
-                "episodes_in_window": len(values),
-                "start_episode": start_episode,
-                "end_episode": end_episode,
-                "mean_total_reward": sum(values) / len(values),
-                "std_total_reward": population_std(values),
-                "min_total_reward": min(values),
-                "max_total_reward": max(values),
+                "episodes_in_window": len(rewards),
+                "start_episode": int(selected_episodes[0].get("episode", 0)) + 1,
+                "end_episode": int(selected_episodes[-1].get("episode", 0)) + 1,
+                "mean_total_reward": sum(rewards) / len(rewards),
+                "std_total_reward": population_std(rewards),
+                "min_total_reward": min(rewards),
+                "max_total_reward": max(rewards),
+                "decisions_logged": decisions,
+                "unique_states_visited": len({
+                    safe_state(row.get("encoded_state")) for row in selected_steps
+                }),
+                "unique_state_action_pairs": len({
+                    f"{safe_state(row.get('encoded_state'))}|{row.get('action', 'UNKNOWN')}"
+                    for row in selected_steps
+                }),
+                "q_table_coverage_fields_available": has_coverage_fields,
+                "q_table_supported_decisions": q_supported if has_coverage_fields else "",
+                "fallback_decisions": fallback if has_coverage_fields else "",
+                "q_table_supported_decision_rate": q_supported / decisions
+                    if has_coverage_fields and decisions else "",
+                "fallback_decision_rate": fallback / decisions
+                    if has_coverage_fields and decisions else "",
             })
 
-    fields = ["agent", "window", "episodes_in_window", "start_episode", "end_episode",
-              "mean_total_reward", "std_total_reward", "min_total_reward", "max_total_reward"]
+    fields = [
+        "agent", "window", "episodes_in_window", "start_episode", "end_episode",
+        "mean_total_reward", "std_total_reward", "min_total_reward", "max_total_reward",
+        "decisions_logged", "unique_states_visited", "unique_state_action_pairs",
+        "q_table_coverage_fields_available", "q_table_supported_decisions",
+        "fallback_decisions", "q_table_supported_decision_rate", "fallback_decision_rate",
+    ]
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
@@ -449,7 +495,6 @@ def write_training_window_report(summary: dict[str, Any], csv_path: Path,
     fig.savefig(plot_path, dpi=160)
     plt.close(fig)
     return report
-
 
 def write_sleep_lay_diagnostics(rows_by_agent: dict[str, list[dict[str, Any]]],
                                 csv_path: Path, json_path: Path) -> list[dict[str, Any]]:
@@ -560,6 +605,7 @@ def main() -> int:
     write_coverage_json(coverage, output_dir / "coverage_summary.json")
     window_report = write_training_window_report(
         training_summary,
+        step_logs,
         output_dir / "training_window_summary.csv",
         output_dir / "early_vs_late_training_reward.png",
         args.training_window,
