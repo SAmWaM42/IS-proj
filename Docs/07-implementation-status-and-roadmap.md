@@ -47,7 +47,7 @@ The project is a simulated companion-animal research prototype comparing a basel
 Capabilities:
 - Tabular Q-value lookup/update and handling of unseen states.
 - Q-table persistence and terminal-state handling.
-- Baseline remains the control condition and excludes memory/affect inputs.
+- Baseline remains the control condition and excludes semantic memory/affect augmentation, but observes shared physical energy because it is an environmental/physical variable.
 - Exploration can be seeded for reproducible runs; evaluation mode disables exploration and policy updates.
 
 Paths:
@@ -90,7 +90,7 @@ Paths:
 - Tracking spec: [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md)
 - Environment/comparison contracts: [Docs/14-pre-simulation-environment-contract.md](14-pre-simulation-environment-contract.md), [Docs/15-proposed-agent-comparison-spec.md](15-proposed-agent-comparison-spec.md), [Docs/16-baseline-agent-comparison-spec.md](16-baseline-agent-comparison-spec.md)
 
-**Fairness issue to resolve:** the latest implementation gives the proposed policy access to environment energy while the baseline does not. Decide whether energy is an explicitly intended treatment difference or make the observation available consistently to both agents. Document the decision and test it before interpreting comparison results.
+**Energy fairness decision:** physical energy is shared environment state, not a treatment difference. Both agents observe its low/medium/high category and share action effort plus passive time-based drain. The proposed agent additionally maps environment energy into its affective-energy category. Retrain both policies after this state-encoding change.
 
 ### 2.4 Headless training, validation, and comparison
 
@@ -168,7 +168,7 @@ Prioritised order reflects the next useful engineering gates, not a claim that t
 - [ ] Verify approach/far-fetch changes distance, and fetch logs show successful and failed outcomes under the intended distance/energy conditions.
 - [ ] Verify rest/eating restore energy and do not bypass task/action constraints.
 - [ ] Verify food/play availability is encoded consistently in observations and state.
-- [ ] Resolve and document baseline/proposed energy-observation fairness.
+- [x] Resolve baseline/proposed energy-observation fairness: both agents observe the shared physical energy state; proposed affect remains an additional representation.
 - [ ] Confirm terminal transitions do not bootstrap from next-state Q-values.
 
 Tracking: [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md).
