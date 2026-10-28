@@ -209,31 +209,43 @@ def plot_mean_rewards(input_dir: Path, out_path: Path) -> list[dict[str, Any]]:
     return values
 
 
-def plot_policy_coverage(rows_by_agent: dict[str, list[dict[str, Any]]],
+def plot_policy_coverage(summary: dict[str, Any],
+                         rows_by_agent: dict[str, list[dict[str, Any]]],
                          out_path: Path,
                          pair_out_path: Path,
-                         top_n: int = 20) -> dict[str, dict[str, int]]:
+                         top_n: int = 20) -> dict[str, dict[str, Any]]:
     """Plot how often decisions had stored Q-values, and most-visited state/action pairs."""
     coverage: dict[str, dict[str, Any]] = {}
     pair_counts: dict[str, Counter[str]] = {}
-    for agent, rows in rows_by_agent.items():
-        has_policy_coverage_fields = bool(rows) and all(
-            "q_table_has_valid_action_values" in row and "decision_used_fallback" in row
-            for row in rows
+    for agent in AGENTS:
+        episodes = episode_rows(summary, agent)
+        has_policy_coverage_fields = bool(episodes) and all(
+            "q_table_supported_decisions" in row and "fallback_decisions" in row
+            for row in episodes
         )
-        supported = sum(bool(row.get("q_table_has_valid_action_values", False)) for row in rows)
-        fallback = sum(bool(row.get("decision_used_fallback", False)) for row in rows)
+        decisions = sum(int(row.get("steps", 0)) for row in episodes)
+        supported = sum(int(row.get("q_table_supported_decisions", 0)) for row in episodes)
+        fallback = sum(int(row.get("fallback_decisions", 0)) for row in episodes)
+        # Episode summaries aggregate coverage across the whole run. Exact global
+        # unique-state unions require full step logs, so do not infer them from
+        # the intentionally truncated diagnostic trace.
         coverage[agent] = {
             "coverage_fields_available": has_policy_coverage_fields,
-            "decisions": len(rows),
+            "scope": "all_training_episodes_from_episode_summary",
+            "decisions": decisions,
             "q_table_supported_decisions": supported if has_policy_coverage_fields else None,
             "fallback_decisions": fallback if has_policy_coverage_fields else None,
-            "unique_states": len({safe_state(row.get("encoded_state")) for row in rows}),
-            "unique_state_action_pairs": len({
-                f"{safe_state(row.get('encoded_state'))}|{row.get('action', 'UNKNOWN')}"
-                for row in rows
-            }),
+            "q_table_supported_decision_rate": supported / decisions if has_policy_coverage_fields and decisions else None,
+            "fallback_decision_rate": fallback / decisions if has_policy_coverage_fields and decisions else None,
+            "sum_episode_unique_states_visited": sum(int(row.get("unique_states_visited", 0)) for row in episodes),
+            "sum_episode_unique_state_action_pairs": sum(
+                len(row.get("state_action_visits", {}))
+                if isinstance(row.get("state_action_visits", {}), dict) else 0
+                for row in episodes
+            ),
+            "retained_step_log_rows": len(rows_by_agent.get(agent, [])),
         }
+        rows = rows_by_agent.get(agent, [])
         pair_counts[agent] = Counter(
             f"{safe_state(row.get('encoded_state'))} | {row.get('action', 'UNKNOWN')}"
             for row in rows
@@ -276,7 +288,7 @@ def plot_policy_coverage(rows_by_agent: dict[str, list[dict[str, Any]]],
         ax.bar([i + width / 2 for i in x],
                [pair_counts.get("proposed", Counter()).get(pair, 0) for pair in selected],
                width, label="Proposed")
-        ax.set_title(f"Most-visited state/action pairs (top {len(selected)})")
+        ax.set_title(f"Most-visited state/action pairs in retained final episodes (top {len(selected)})")
         ax.set_xlabel("Encoded state | action")
         ax.set_ylabel("Visit count")
         ax.set_xticks(x)
@@ -581,6 +593,7 @@ def main() -> int:
     mean_rows = plot_mean_rewards(input_dir, output_dir / "mean_reward_by_mode.png")
     write_mean_reward_csv(mean_rows, output_dir / "mean_reward_by_mode.csv")
     coverage = plot_policy_coverage(
+        training_summary,
         step_logs,
         output_dir / "policy_coverage.png",
         output_dir / "state_action_visitation.png",
