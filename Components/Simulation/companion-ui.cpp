@@ -345,6 +345,7 @@ const std::vector<std::unique_ptr<sf::Texture>>& CompanionUI::framesForPose(cons
 
 void CompanionUI::resetScene() {
     const SceneLayout L = sceneLayout();
+    totalSimulationElapsedSeconds = 0.0f;
     behaviourPlan.clear();
     stepIndex = 0;
     stepTime = 0.0f;
@@ -745,7 +746,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
                 std::ofstream diagnostic(
                     std::filesystem::path(outputDirectory) / "idle-runtime-diagnostics.jsonl",
                     std::ios::app);
-                if (diagnostic) diagnostic << row.dump() << '\\n';
+                if (diagnostic) diagnostic << row.dump() << '\n';
             }
 
             latestObservation = ambient;
