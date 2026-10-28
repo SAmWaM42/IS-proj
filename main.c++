@@ -37,7 +37,7 @@ namespace
             << "  " << executable << " --diagnose-idle [--policy-dir DIR] [--out DIR] [--seed N]\n"
             << "  " << executable << " --diagnose-temporal [--policy-dir DIR] [--out DIR] [--seed N]\n"
             << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
-            << "Run --train before --validate, --compare, --study, or --diagnose-idle. --resume-training continues existing Q-tables. Evaluation disables policy updates.\n";
+            << "Run --train before --validate, --compare, --study, --diagnose-idle, or --diagnose-temporal. --resume-training continues existing Q-tables. Evaluation disables policy updates.\n";
     }
 } // namespace
 
