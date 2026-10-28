@@ -1,18 +1,26 @@
 {
   "baseline": {
     "coverage_fields_available": true,
+    "scope": "all_training_episodes_from_episode_summary",
     "decisions": 39559,
     "q_table_supported_decisions": 39495,
     "fallback_decisions": 64,
-    "unique_states": 54,
-    "unique_state_action_pairs": 332
+    "q_table_supported_decision_rate": 0.9983821633509442,
+    "fallback_decision_rate": 0.0016178366490558406,
+    "sum_episode_unique_states_visited": 24547,
+    "sum_episode_unique_state_action_pairs": 27922,
+    "retained_step_log_rows": 67
   },
   "proposed": {
     "coverage_fields_available": true,
+    "scope": "all_training_episodes_from_episode_summary",
     "decisions": 38539,
     "q_table_supported_decisions": 38265,
     "fallback_decisions": 274,
-    "unique_states": 262,
-    "unique_state_action_pairs": 546
+    "q_table_supported_decision_rate": 0.9928903188977399,
+    "fallback_decision_rate": 0.007109681102260048,
+    "sum_episode_unique_states_visited": 25340,
+    "sum_episode_unique_state_action_pairs": 27658,
+    "retained_step_log_rows": 80
   }
 }
