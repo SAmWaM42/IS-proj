@@ -710,6 +710,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
                 }
                 nlohmann::json row;
                 row["event"] = "autonomous_policy_decision";
+                row["run_id"] = runId;
                 row["simulation_elapsed_seconds"] = totalSimulationElapsedSeconds;
                 row["idle_seconds_before_decision"] = idleSecondsBeforeDecision;
                 row["idle_threshold_seconds"] = autonomousDecisionInterval;
