@@ -754,6 +754,28 @@ namespace
                 row["affect_stress_after_transition"] = agent.getAffectiveState().stress;
                 row["affect_engagement_after_transition"] = agent.getAffectiveState().engagement;
                 row["affect_affinity_after_transition"] = agent.getAffectiveState().affinity;
+
+                // Preserve the decision path so surprising actions can be diagnosed
+                // without assuming they are errors from reward alone.
+                const auto& decisionTrace = agent.getLastDecisionTrace();
+                row["policy_action_before_overrides"] = decisionTrace.policy_action;
+                row["final_action_after_overrides"] = decisionTrace.final_action;
+                row["general_preference_override"] = decisionTrace.general_preference_override;
+                row["rejection_override_applied"] = decisionTrace.rejection_override_applied;
+                nlohmann::json validActionQValues = nlohmann::json::array();
+                for (const auto& item : decisionTrace.valid_action_q_values) {
+                    validActionQValues.push_back({
+                        {"action", item.first},
+                        {"q_value", item.second}
+                    });
+                }
+                row["valid_action_q_values"] = validActionQValues;
+            } else {
+                row["policy_action_before_overrides"] = action;
+                row["final_action_after_overrides"] = action;
+                row["general_preference_override"] = "";
+                row["rejection_override_applied"] = false;
+                row["valid_action_q_values"] = nlohmann::json::array();
             }
             row["environment_stress_after"] = transition.stress_after;
             row["user_satisfaction_after"] = transition.user_satisfaction_after;
