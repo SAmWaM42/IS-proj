@@ -22,6 +22,28 @@ namespace
     constexpr float kMinSecondsPerTrainingStep = 0.5f;
     constexpr float kMaxSecondsPerTrainingStep = 5.0f;
 
+    // Keep one previous version of each generated artifact, tagged with compare_.
+    // The comparison-mode outputs already begin with compare_, so their backup
+    // uses compare_previous_ to avoid an ambiguous compare_compare_ prefix.
+    void rotateArtifactForComparison(const std::filesystem::path& currentPath)
+    {
+        if (!std::filesystem::is_regular_file(currentPath))
+            return;
+
+        const std::string filename = currentPath.filename().string();
+        const std::string backupName = filename.rfind("compare_", 0) == 0
+            ? "compare_previous_" + filename.substr(8)
+            : "compare_" + filename;
+        const auto backupPath = currentPath.parent_path() / backupName;
+        std::error_code ec;
+        std::filesystem::remove(backupPath, ec);
+        ec.clear();
+        std::filesystem::rename(currentPath, backupPath, ec);
+        if (ec)
+            std::cerr << "Warning: unable to preserve previous artifact " << currentPath
+                      << " as " << backupPath << ": " << ec.message() << '\\n';
+    }
+
     struct EpisodeMetrics
     {
         float total_reward = 0.0f;
@@ -805,6 +827,9 @@ bool runTrainingExperiment(const std::string &mode,
         proposed.setExplorationRate(0.0f);
     }
 
+    rotateArtifactForComparison(outDir / (mode + "_baseline_steps.jsonl"));
+    rotateArtifactForComparison(outDir / (mode + "_proposed_steps.jsonl"));
+    rotateArtifactForComparison(outDir / (mode + "_summary.json"));
     std::ofstream baselineLog(outDir / (mode + "_baseline_steps.jsonl"));
     std::ofstream proposedLog(outDir / (mode + "_proposed_steps.jsonl"));
     if (!baselineLog || !proposedLog)
@@ -885,6 +910,10 @@ bool runTrainingExperiment(const std::string &mode,
 
     if (trainingMode)
     {
+        rotateArtifactForComparison(baselinePolicy);
+        rotateArtifactForComparison(proposedPolicy);
+        rotateArtifactForComparison(outDir / "proposed.qtable.affect.json");
+        rotateArtifactForComparison(outDir / "proposed.qtable.memory.json");
         baseline.savePersistentState(baselinePolicy.string());
         proposed.savePersistentState(proposedPolicy.string());
     }
@@ -991,6 +1020,8 @@ bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
     fs::create_directories(outputDirectory);
     const fs::path logPath = fs::path(outputDirectory) / "idle-policy-diagnostics.jsonl";
     const fs::path summaryPath = fs::path(outputDirectory) / "idle-policy-diagnostics-summary.json";
+    rotateArtifactForComparison(logPath);
+    rotateArtifactForComparison(summaryPath);
     std::ofstream log(logPath);
     if (!log) {
         std::cerr << "Unable to write idle diagnostics to " << logPath << '\n';
@@ -1192,6 +1223,8 @@ bool runTemporalStimulusDiagnostics(const std::string& policyDirectory,
     fs::create_directories(outputDirectory);
     const fs::path logPath = fs::path(outputDirectory) / "temporal-stimulus-diagnostics.jsonl";
     const fs::path summaryPath = fs::path(outputDirectory) / "temporal-stimulus-diagnostics-summary.json";
+    rotateArtifactForComparison(logPath);
+    rotateArtifactForComparison(summaryPath);
     std::ofstream log(logPath);
     if (!log) {
         std::cerr << "Unable to write temporal stimulus diagnostics to " << logPath << '\n';
