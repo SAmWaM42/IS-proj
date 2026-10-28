@@ -1,0 +1,18 @@
+{
+  "baseline": {
+    "coverage_fields_available": true,
+    "decisions": 39559,
+    "q_table_supported_decisions": 39495,
+    "fallback_decisions": 64,
+    "unique_states": 54,
+    "unique_state_action_pairs": 332
+  },
+  "proposed": {
+    "coverage_fields_available": true,
+    "decisions": 38539,
+    "q_table_supported_decisions": 38265,
+    "fallback_decisions": 274,
+    "unique_states": 262,
+    "unique_state_action_pairs": 546
+  }
+}
