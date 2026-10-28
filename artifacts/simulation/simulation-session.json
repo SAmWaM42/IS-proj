@@ -1,21 +1,22 @@
 {
-  "baseline_action": "FETCH",
-  "condition_code": "B",
-  "interaction_count": 1,
+  "baseline_action": "PLAY",
+  "condition_code": "A",
+  "interaction_count": 9,
   "interactions": [
-    "Loaded backyard atlas (free.png)",
-    "Simulation ready. Select an interaction or enter a short message.",
+    "Autonomous environment-driven action: PLAY",
+    "Queued interaction (1 waiting): hi boy [greeting / keyword-fallback]",
+    "You: hi boy [greeting / keyword-fallback]",
+    "Baseline: Offers a greeting",
+    "Proposed: Offers a greeting",
+    "Autonomous environment-driven action: PLAY",
+    "Queued interaction (1 waiting): go to sleep [rest / keyword-fallback]",
+    "You: go to sleep [rest / keyword-fallback]",
+    "Baseline: Lies down to rest",
+    "Proposed: Lies down to rest",
     "Loaded blind condition A",
-    "Loaded blind condition B",
-    "Autonomous environment-driven action: PLAY",
-    "Loaded blind condition B",
-    "Autonomous environment-driven action: PLAY",
-    "Queued interaction (1 waiting): Ask the companion to fetch the ball",
-    "You: Ask the companion to fetch the ball",
-    "Baseline: Attempts to retrieve the requested object",
-    "Proposed: Attempts to retrieve the requested object"
+    "Autonomous environment-driven action: PLAY"
   ],
-  "latest_stimulus": "Ask the companion to fetch the ball",
-  "proposed_action": "FETCH",
-  "run_id": "run-1792738920260"
+  "latest_stimulus": "The companion responds to its surroundings.",
+  "proposed_action": "PLAY",
+  "run_id": "run-1793173157940"
 }

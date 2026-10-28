@@ -1,0 +1,982 @@
+{
+  "affect_decay_during_training": true,
+  "baseline": {
+    "completion_rate": 1.0,
+    "episodes": [
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 4,
+          "BARK": 1,
+          "EAT": 2,
+          "FETCH": 4,
+          "GREETING": 1,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 3,
+          "WANDER": 1,
+          "WHINE": 1
+        },
+        "completed": true,
+        "episode": 0,
+        "steps": 20,
+        "stimulus_aligned_actions": 16,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 1,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 4
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 5,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 4
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 10.52180290222168,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "FETCH": 4,
+          "GREETING": 4,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 4,
+          "WANDER": 1,
+          "WHINE": 2
+        },
+        "completed": true,
+        "episode": 1,
+        "steps": 20,
+        "stimulus_aligned_actions": 16,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 2,
+          "food_offer": 2,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 4,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 10.606035232543945,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 4,
+          "BARK": 1,
+          "EAT": 2,
+          "FETCH": 4,
+          "GREETING": 2,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 3,
+          "WHINE": 1
+        },
+        "completed": true,
+        "episode": 2,
+        "steps": 20,
+        "stimulus_aligned_actions": 16,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 1,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 4
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 5,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 4
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 11.251893997192383,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "BARK": 2,
+          "EAT": 1,
+          "FETCH": 4,
+          "GREETING": 2,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 3,
+          "PLAY": 1,
+          "SLEEP_LAY": 3,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 3,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 2,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 6
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 4,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 6
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 13.673483848571777,
+        "unique_states_visited": 18
+      },
+      {
+        "action_counts": {
+          "FETCH": 6,
+          "GREETING": 4,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 1,
+          "PLAY": 1,
+          "SLEEP_LAY": 3,
+          "WHINE": 1
+        },
+        "completed": true,
+        "episode": 4,
+        "steps": 17,
+        "stimulus_aligned_actions": 16,
+        "stimulus_aligned_by_type": {
+          "disturbance": 1,
+          "fetch_far": 2,
+          "fetch_near": 4,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 1,
+          "social_contact": 4
+        },
+        "stimulus_checks": 17,
+        "stimulus_checks_by_type": {
+          "disturbance": 1,
+          "fetch_far": 3,
+          "fetch_near": 4,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 1,
+          "social_contact": 4
+        },
+        "stimulus_response_alignment_rate": 0.9411764705882353,
+        "total_reward": 10.59073257446289,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "BARK": 1,
+          "EAT": 1,
+          "FETCH": 6,
+          "GREETING": 2,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 4,
+          "WANDER": 1,
+          "WHINE": 1
+        },
+        "completed": true,
+        "episode": 5,
+        "steps": 20,
+        "stimulus_aligned_actions": 19,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 4,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 4,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_response_alignment_rate": 0.95,
+        "total_reward": 14.258702278137207,
+        "unique_states_visited": 19
+      },
+      {
+        "action_counts": {
+          "EAT": 1,
+          "FETCH": 5,
+          "GREETING": 4,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 4,
+          "WANDER": 1,
+          "WHINE": 2
+        },
+        "completed": true,
+        "episode": 6,
+        "steps": 20,
+        "stimulus_aligned_actions": 19,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 3,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 6
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 3,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 7
+        },
+        "stimulus_response_alignment_rate": 0.95,
+        "total_reward": 13.9894437789917,
+        "unique_states_visited": 16
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "BARK": 1,
+          "EAT": 1,
+          "FETCH": 4,
+          "GREETING": 4,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 3,
+          "WHINE": 1
+        },
+        "completed": true,
+        "episode": 7,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 2,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 6
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 4,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 6
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 14.080511093139648,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "BARK": 1,
+          "EAT": 2,
+          "FETCH": 5,
+          "GREETING": 2,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 4,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 8,
+        "steps": 20,
+        "stimulus_aligned_actions": 17,
+        "stimulus_aligned_by_type": {
+          "disturbance": 1,
+          "fetch_far": 3,
+          "fetch_near": 2,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 4,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_response_alignment_rate": 0.85,
+        "total_reward": 11.802525520324707,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 4,
+          "BARK": 1,
+          "EAT": 1,
+          "FETCH": 3,
+          "GREETING": 1,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 3,
+          "PLAY": 1,
+          "SLEEP_LAY": 3,
+          "WANDER": 1,
+          "WHINE": 1
+        },
+        "completed": true,
+        "episode": 9,
+        "steps": 20,
+        "stimulus_aligned_actions": 16,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 1,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 5,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_response_alignment_rate": 0.8,
+        "total_reward": 10.53413200378418,
+        "unique_states_visited": 17
+      }
+    ],
+    "mean_reward": 12.130926322937011,
+    "mean_reward_per_step": 0.6157830620780209,
+    "mean_steps_per_episode": 19.7,
+    "mean_total_reward_per_episode": 12.130926322937011,
+    "stimulus_aligned_actions": 171,
+    "stimulus_checks": 197,
+    "stimulus_response_alignment_rate": 0.868020304568528,
+    "stimulus_response_audit_by_type": {
+      "disturbance": {
+        "aligned": 18,
+        "alignment_rate": 0.9473684210526315,
+        "checks": 19
+      },
+      "fetch_far": {
+        "aligned": 23,
+        "alignment_rate": 0.8846153846153846,
+        "checks": 26
+      },
+      "fetch_near": {
+        "aligned": 22,
+        "alignment_rate": 0.5238095238095238,
+        "checks": 42
+      },
+      "fetch_with_food": {
+        "aligned": 3,
+        "alignment_rate": 1.0,
+        "checks": 3
+      },
+      "food_offer": {
+        "aligned": 17,
+        "alignment_rate": 1.0,
+        "checks": 17
+      },
+      "negative_feedback": {
+        "aligned": 9,
+        "alignment_rate": 0.9,
+        "checks": 10
+      },
+      "play_invitation": {
+        "aligned": 10,
+        "alignment_rate": 1.0,
+        "checks": 10
+      },
+      "quiet_rest": {
+        "aligned": 19,
+        "alignment_rate": 1.0,
+        "checks": 19
+      },
+      "social_contact": {
+        "aligned": 50,
+        "alignment_rate": 0.9803921568627451,
+        "checks": 51
+      }
+    }
+  },
+  "environment_seed": 1000047,
+  "episodes": 10,
+  "max_steps_per_episode": 20,
+  "mode": "validate",
+  "note": "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.",
+  "proposed": {
+    "completion_rate": 1.0,
+    "episodes": [
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "BARK": 2,
+          "EAT": 2,
+          "FETCH": 5,
+          "GREETING": 2,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 0,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 3,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 4,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 13.853571891784668,
+        "unique_states_visited": 20
+      },
+      {
+        "action_counts": {
+          "BARK": 2,
+          "EAT": 1,
+          "FETCH": 5,
+          "GREETING": 4,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 1,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 3,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 4,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 12.929287910461426,
+        "unique_states_visited": 20
+      },
+      {
+        "action_counts": {
+          "BARK": 2,
+          "EAT": 1,
+          "FETCH": 6,
+          "GREETING": 3,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 3,
+          "WANDER": 2
+        },
+        "completed": true,
+        "episode": 2,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 4,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 4
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 5,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 4
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 12.728219985961914,
+        "unique_states_visited": 19
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "BARK": 2,
+          "EAT": 2,
+          "FETCH": 5,
+          "GREETING": 2,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 3
+        },
+        "completed": true,
+        "episode": 3,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 3,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 3,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 6
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 14.503528594970703,
+        "unique_states_visited": 18
+      },
+      {
+        "action_counts": {
+          "BARK": 2,
+          "EAT": 1,
+          "FETCH": 6,
+          "GREETING": 3,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 4,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 4,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 4,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 4
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 4,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 13.151456832885742,
+        "unique_states_visited": 20
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "BARK": 1,
+          "EAT": 2,
+          "FETCH": 6,
+          "GREETING": 2,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 4
+        },
+        "completed": true,
+        "episode": 5,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 1,
+          "fetch_far": 2,
+          "fetch_near": 4,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 4,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 12.612517356872559,
+        "unique_states_visited": 18
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "BARK": 2,
+          "EAT": 1,
+          "FETCH": 4,
+          "GREETING": 4,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 3
+        },
+        "completed": true,
+        "episode": 6,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 1,
+          "fetch_near": 3,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 6
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 3,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 7
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 14.230377197265625,
+        "unique_states_visited": 16
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 1,
+          "BARK": 2,
+          "EAT": 2,
+          "FETCH": 4,
+          "GREETING": 4,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 7,
+        "steps": 20,
+        "stimulus_aligned_actions": 19,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 1,
+          "fetch_near": 3,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 7
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 3,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 7
+        },
+        "stimulus_response_alignment_rate": 0.95,
+        "total_reward": 15.009578704833984,
+        "unique_states_visited": 17
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "BARK": 2,
+          "EAT": 2,
+          "FETCH": 5,
+          "GREETING": 2,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 3
+        },
+        "completed": true,
+        "episode": 8,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 3,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 3,
+          "food_offer": 2,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 6
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 14.549924850463867,
+        "unique_states_visited": 18
+      },
+      {
+        "action_counts": {
+          "ACT_CONFUSED": 2,
+          "BARK": 2,
+          "EAT": 2,
+          "FETCH": 5,
+          "GREETING": 2,
+          "HIDE_AVOID": 1,
+          "NUZZLE": 2,
+          "PLAY": 1,
+          "SLEEP_LAY": 2,
+          "WANDER": 1
+        },
+        "completed": true,
+        "episode": 9,
+        "steps": 20,
+        "stimulus_aligned_actions": 18,
+        "stimulus_aligned_by_type": {
+          "disturbance": 2,
+          "fetch_far": 2,
+          "fetch_near": 3,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_checks": 20,
+        "stimulus_checks_by_type": {
+          "disturbance": 2,
+          "fetch_far": 3,
+          "fetch_near": 4,
+          "fetch_with_food": 1,
+          "food_offer": 1,
+          "negative_feedback": 1,
+          "play_invitation": 1,
+          "quiet_rest": 2,
+          "social_contact": 5
+        },
+        "stimulus_response_alignment_rate": 0.9,
+        "total_reward": 13.583881378173828,
+        "unique_states_visited": 20
+      }
+    ],
+    "mean_reward": 13.715234470367431,
+    "mean_reward_per_step": 0.6857617235183716,
+    "mean_steps_per_episode": 20.0,
+    "mean_total_reward_per_episode": 13.715234470367431,
+    "stimulus_aligned_actions": 181,
+    "stimulus_checks": 200,
+    "stimulus_response_alignment_rate": 0.905,
+    "stimulus_response_audit_by_type": {
+      "disturbance": {
+        "aligned": 19,
+        "alignment_rate": 0.95,
+        "checks": 20
+      },
+      "fetch_far": {
+        "aligned": 18,
+        "alignment_rate": 0.6428571428571429,
+        "checks": 28
+      },
+      "fetch_near": {
+        "aligned": 33,
+        "alignment_rate": 0.8918918918918919,
+        "checks": 37
+      },
+      "fetch_with_food": {
+        "aligned": 3,
+        "alignment_rate": 1.0,
+        "checks": 3
+      },
+      "food_offer": {
+        "aligned": 17,
+        "alignment_rate": 1.0,
+        "checks": 17
+      },
+      "negative_feedback": {
+        "aligned": 10,
+        "alignment_rate": 1.0,
+        "checks": 10
+      },
+      "play_invitation": {
+        "aligned": 10,
+        "alignment_rate": 1.0,
+        "checks": 10
+      },
+      "quiet_rest": {
+        "aligned": 20,
+        "alignment_rate": 1.0,
+        "checks": 20
+      },
+      "social_contact": {
+        "aligned": 51,
+        "alignment_rate": 0.9272727272727272,
+        "checks": 55
+      }
+    }
+  },
+  "resume_training_requested": false,
+  "reward_model": "synthetic_v4_graded_context_fit",
+  "scenario_pattern": [
+    "social",
+    "fetch_near",
+    "fetch_near_follow_up",
+    "disturbance",
+    "rest",
+    "positive_social",
+    "fetch_far",
+    "fetch_far_follow_up",
+    "fetch_far_retry",
+    "food_offer",
+    "play_invitation",
+    "negative_feedback",
+    "ignored_request",
+    "fetch_at_feeding_time"
+  ],
+  "seed": 44,
+  "simulated_seconds_between_decisions_max": 5.0,
+  "simulated_seconds_between_decisions_min": 0.5,
+  "stimulus_alignment_note": "Heuristic engineering diagnostic for broad stimulus/action compatibility only; not a validated animal-behaviour model or measure of perceived believability.",
+  "temporal_model": "Each non-terminal decision uses a seeded elapsed-time interval sampled uniformly from 0.5 to 5 simulated seconds. Paired agents share intervals. Physical energy receives action effort costs and passive time-based drain (0.0025 per second normally; 0.0008 while resting). The shared energy value is observable to both agents and included in both state representations. Proposed-agent affect decays over the interval before the next state is built for Q-learning.",
+  "training_initialization": "loaded_evaluation_checkpoint"
+}
