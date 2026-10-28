@@ -169,6 +169,7 @@ int main(int argc, char **argv)
     {
         CompanionUI simulation(policyDirectory, "artifacts/simulation", false);
         simulation.run();
+        return 0;
     }
 
     if (!runTrainingExperiment(mode, episodes, steps, static_cast<unsigned int>(seed), outputDirectory,
