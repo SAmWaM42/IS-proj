@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <cstdint>
+#include <system_error>
 #include <fstream>
 #include <iostream>
 #include <map>
