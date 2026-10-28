@@ -107,6 +107,7 @@ public:
 
     void setEpsilon(float epsilon);
     double getQValue(const state& stateRef, const std::string& action) const;
+    bool hasState(const state& stateRef) const;
     bool hasStoredValidActionValue(const state& stateRef, const std::vector<std::string>& validActions) const;
 
     void loadQTable(const std::string& path);
