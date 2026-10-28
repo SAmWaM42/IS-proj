@@ -636,10 +636,19 @@ def main() -> int:
     print(f"Training window size: {args.training_window} episodes per window")
     print(f"Active-request SLEEP_LAY candidates: {len(sleep_candidates)}")
     for row in window_report:
+        coverage_text = (
+            f", states={row['unique_states_visited']}, "
+            f"state-action pairs={row['unique_state_action_pairs']}, "
+            f"fallback rate={row['fallback_decision_rate']:.2%}"
+            if row["q_table_coverage_fields_available"] else
+            f", states={row['unique_states_visited']}, "
+            f"state-action pairs={row['unique_state_action_pairs']}, Q coverage unavailable"
+        )
         print(
             f"{row['agent'].title()} {row['window']} window "
             f"(episodes {row['start_episode']}-{row['end_episode']}): "
             f"mean={row['mean_total_reward']:.3f}, SD={row['std_total_reward']:.3f}"
+            f"{coverage_text}"
         )
     print("  final_episode_behaviour_trace.png")
     print("  final_episode_behaviour_trace.dot")
