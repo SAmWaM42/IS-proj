@@ -214,15 +214,20 @@ def plot_policy_coverage(rows_by_agent: dict[str, list[dict[str, Any]]],
                          pair_out_path: Path,
                          top_n: int = 20) -> dict[str, dict[str, int]]:
     """Plot how often decisions had stored Q-values, and most-visited state/action pairs."""
-    coverage: dict[str, dict[str, int]] = {}
+    coverage: dict[str, dict[str, Any]] = {}
     pair_counts: dict[str, Counter[str]] = {}
     for agent, rows in rows_by_agent.items():
+        has_policy_coverage_fields = bool(rows) and all(
+            "q_table_has_valid_action_values" in row and "decision_used_fallback" in row
+            for row in rows
+        )
         supported = sum(bool(row.get("q_table_has_valid_action_values", False)) for row in rows)
-        fallback = sum(bool(row.get("decision_used_fallback", not row.get("q_table_has_valid_action_values", False))) for row in rows)
+        fallback = sum(bool(row.get("decision_used_fallback", False)) for row in rows)
         coverage[agent] = {
+            "coverage_fields_available": has_policy_coverage_fields,
             "decisions": len(rows),
-            "q_table_supported_decisions": supported,
-            "fallback_decisions": fallback,
+            "q_table_supported_decisions": supported if has_policy_coverage_fields else None,
+            "fallback_decisions": fallback if has_policy_coverage_fields else None,
             "unique_states": len({safe_state(row.get("encoded_state")) for row in rows}),
             "unique_state_action_pairs": len({
                 f"{safe_state(row.get('encoded_state'))}|{row.get('action', 'UNKNOWN')}"
@@ -236,17 +241,23 @@ def plot_policy_coverage(rows_by_agent: dict[str, list[dict[str, Any]]],
 
     fig, ax = plt.subplots(figsize=(8, 5.5))
     positions = list(range(len(AGENTS)))
-    supported_values = [coverage.get(agent, {}).get("q_table_supported_decisions", 0) for agent in AGENTS]
-    fallback_values = [coverage.get(agent, {}).get("fallback_decisions", 0) for agent in AGENTS]
-    ax.bar(positions, supported_values, label="Stored valid Q-values available")
-    ax.bar(positions, fallback_values, bottom=supported_values, label="No stored valid Q-values")
-    ax.set_title("Training decision coverage")
+    coverage_available = all(coverage.get(agent, {}).get("coverage_fields_available", False) for agent in AGENTS)
+    supported_values = [coverage.get(agent, {}).get("q_table_supported_decisions") or 0 for agent in AGENTS]
+    fallback_values = [coverage.get(agent, {}).get("fallback_decisions") or 0 for agent in AGENTS]
+    if coverage_available:
+        ax.bar(positions, supported_values, label="Stored valid Q-values available")
+        ax.bar(positions, fallback_values, bottom=supported_values, label="No stored valid Q-values")
+        ax.legend()
+        ax.set_title("Training decision coverage")
+    else:
+        ax.text(0.5, 0.5, "Coverage fields missing. Rebuild and rerun --train.", 
+                ha="center", va="center", transform=ax.transAxes)
+        ax.set_title("Training decision coverage — unavailable for older logs")
     ax.set_xlabel("Agent")
     ax.set_ylabel("Decision count")
     ax.set_xticks(positions)
     ax.set_xticklabels([agent.title() for agent in AGENTS])
     ax.grid(axis="y", alpha=0.25)
-    ax.legend()
     fig.tight_layout()
     fig.savefig(out_path, dpi=160)
     plt.close(fig)
