@@ -1428,8 +1428,13 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
     observedState.food_available = observation.food_available;
     observedState.play_available = observation.play_available;
     current_state = observedState;
+    last_contextual_fallback = contextualAction(observation);
+    const auto validActions = validActionsForObservation(observation);
+    last_decision_q_table_state_present = q_policy.hasState(observedState);
+    last_decision_q_table_has_valid_action_values =
+        q_policy.hasStoredValidActionValue(observedState, validActions);
     session_context.current_action = q_policy.chooseAction(
-        observedState, contextualAction(observation), validActionsForObservation(observation));
+        observedState, last_contextual_fallback, validActions);
     return session_context.current_action;
 }
 
@@ -1504,6 +1509,18 @@ const SessionContext& BaselineAgent::getSessionContext() const {
 
 const std::vector<InteractionEvent>& BaselineAgent::getInteractionHistory() const {
     return interaction_history;
+}
+
+bool BaselineAgent::lastDecisionHadQTableState() const {
+    return last_decision_q_table_state_present;
+}
+
+bool BaselineAgent::lastDecisionHadValidQAction() const {
+    return last_decision_q_table_has_valid_action_values;
+}
+
+const std::string& BaselineAgent::getLastContextualFallback() const {
+    return last_contextual_fallback;
 }
 
 ProposedAgent::ProposedAgent(const EnvironmentConfig& configValue)
