@@ -90,7 +90,7 @@ Paths:
 - Tracking spec: [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md)
 - Environment/comparison contracts: [Docs/14-pre-simulation-environment-contract.md](14-pre-simulation-environment-contract.md), [Docs/15-proposed-agent-comparison-spec.md](15-proposed-agent-comparison-spec.md), [Docs/16-baseline-agent-comparison-spec.md](16-baseline-agent-comparison-spec.md)
 
-**Energy fairness decision:** physical energy is shared environment state, not a treatment difference. Both agents observe its low/medium/high category and share action effort plus passive time-based drain. The proposed agent additionally maps environment energy into its affective-energy category. Retrain both policies after this state-encoding change.
+**Energy fairness and survival model:** physical energy is shared environment state, not a treatment difference. Both agents observe its low/medium/high category and share action effort plus passive time-based drain. Below 35% energy, training rewards recovery and penalises non-recovery actions; at or below 20%, both policies are restricted to available recovery actions. Reaching zero is terminal and applies a −1 penalty without Q-value bootstrapping. The UI ends the session after depletion and ignores further interactions until reset. The proposed agent additionally maps environment energy into its affective-energy category. Retrain both policies after this state-encoding change.
 
 ### 2.4 Headless training, validation, and comparison
 
@@ -167,6 +167,9 @@ Prioritised order reflects the next useful engineering gates, not a claim that t
 - [ ] Verify impossible actions are not selected and do not contribute to next-state Q-value bootstrapping.
 - [ ] Verify approach/far-fetch changes distance, and fetch logs show successful and failed outcomes under the intended distance/energy conditions.
 - [ ] Verify rest/eating restore energy and do not bypass task/action constraints.
+- [ ] Verify critical energy restricts both policies to feasible recovery actions.
+- [ ] Verify zero energy terminates a training episode with a death penalty and no next-state bootstrap.
+- [ ] Verify the UI stops actions and ignores further interaction after energy depletion.
 - [ ] Verify food/play availability is encoded consistently in observations and state.
 - [x] Resolve baseline/proposed energy-observation fairness: both agents observe the shared physical energy state; proposed affect remains an additional representation.
 - [ ] Confirm terminal transitions do not bootstrap from next-state Q-values.
