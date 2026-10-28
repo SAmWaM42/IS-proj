@@ -347,6 +347,7 @@ void CompanionUI::resetScene() {
     const SceneLayout L = sceneLayout();
     totalSimulationElapsedSeconds = 0.0f;
     environmentEnergy = 0.8f;
+    environmentDepleted = false;
     behaviourPlan.clear();
     stepIndex = 0;
     stepTime = 0.0f;
@@ -477,6 +478,7 @@ void CompanionUI::finishStep() {
 }
 
 void CompanionUI::startBehaviour(const std::string& action, const std::string& sceneEvent) {
+    if (environmentDepleted) return;
     const SceneLayout L = sceneLayout();
     // Apply the physical consequence of the action actually executed by the
     // selected condition. Both policies observe the same resulting energy.
@@ -496,6 +498,15 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
     if (action == "SLEEP_LAY") environmentEnergy = std::min(1.0f, environmentEnergy + 0.28f);
     else if (action == "EAT" && latestObservation.food_available) environmentEnergy = std::min(1.0f, environmentEnergy + 0.24f);
     else environmentEnergy = std::max(0.0f, environmentEnergy - effort * 1.5f);
+    if (environmentEnergy <= 0.0f) {
+        environmentEnergy = 0.0f;
+        environmentDepleted = true;
+        behaviourPlan.clear();
+        behaviourActive = false;
+        restingPose = "lay";
+        appendLog("Energy depleted: companion entered terminal state.");
+        return;
+    }
     behaviourPlan.clear();
     stepIndex = 0;
     restingPose = (action == "SLEEP_LAY") ? "sleep" : "idle";
@@ -649,8 +660,19 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
     if (screen == Screen::Simulation) {
         totalSimulationElapsedSeconds += elapsedSeconds;
         const float passiveDrainPerSecond = restingPose == "sleep" ? 0.0008f : 0.0025f;
-        environmentEnergy = std::max(0.0f, environmentEnergy - passiveDrainPerSecond * elapsedSeconds);
-        proposed.advanceTime(elapsedSeconds);
+        if (!environmentDepleted) {
+            environmentEnergy = std::max(0.0f, environmentEnergy - passiveDrainPerSecond * elapsedSeconds);
+            if (environmentEnergy <= 0.0f) {
+                environmentEnergy = 0.0f;
+                environmentDepleted = true;
+                behaviourActive = false;
+                behaviourPlan.clear();
+                restingPose = "lay";
+                autonomousDecisionTimer = 0.0f;
+                appendLog("Energy depleted: companion entered terminal state.");
+            }
+            proposed.advanceTime(elapsedSeconds);
+        }
     }
     if (throwTimer > 0.0f) throwTimer = std::max(0.0f, throwTimer - elapsedSeconds);
 
@@ -704,7 +726,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
         // only the selected A/B condition is rendered. No synthetic user reward
         // or memory event is recorded for this autonomous decision.
         autonomousDecisionTimer += elapsedSeconds;
-        if (autonomousDecisionTimer >= autonomousDecisionInterval &&
+        if (!environmentDepleted && autonomousDecisionTimer >= autonomousDecisionInterval &&
             screen == Screen::Simulation) {
             const float idleSecondsBeforeDecision = autonomousDecisionTimer;
             autonomousDecisionTimer = 0.0f;
@@ -1021,6 +1043,10 @@ void CompanionUI::processInteraction(const std::string& label,
                                      const std::string& preference,
                                      bool preferencePositive,
                                      const std::string& sceneEvent) {
+    if (environmentDepleted) {
+        appendLog("Interaction ignored: the companion is depleted; start a new session.");
+        return;
+    }
     interactionBuffer.push_back(QueuedInteraction{label, observation, feedbackRewardValue, preference,
                                                   preferencePositive, sceneEvent});
     appendLog("Queued interaction (" + std::to_string(interactionBuffer.size()) + " waiting): " + label);
@@ -1032,6 +1058,10 @@ void CompanionUI::executeInteraction(const std::string& label,
                                      const std::string& preference,
                                      bool preferencePositive,
                                      const std::string& sceneEvent) {
+    if (environmentDepleted) {
+        appendLog("Interaction ignored: the companion is depleted; start a new session.");
+        return;
+    }
     if (!preference.empty()) proposed.recordUserPreference(preference, preferencePositive);
     const auto affectBefore = proposed.getAffectiveState();
     const std::size_t memoryCountBefore = proposed.getMemoryRecords().size();
@@ -1207,6 +1237,10 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
 }
 
 void CompanionUI::processTextInteraction(const std::string& text) {
+    if (environmentDepleted) {
+        appendLog("Input ignored: the companion is depleted; start a new session.");
+        return;
+    }
     std::string lower = text;
     std::transform(lower.begin(), lower.end(), lower.begin(),
         [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
@@ -1595,13 +1629,25 @@ void CompanionUI::drawSimulationScreen() {
     drawText("YOU", L.userX - 14.0f, L.groundY + 14.0f, 13, kInk);
     drawText(std::string("Companion ") + selectedAgentCode, agentX - 46.0f, L.groundY + 14.0f, 13, kInk);
 
+    if (environmentDepleted) {
+        sf::RectangleShape notice({690.0f, 112.0f});
+        notice.setPosition({295.0f, 235.0f});
+        notice.setFillColor(sf::Color(255, 248, 244, 238));
+        notice.setOutlineColor(sf::Color(160, 55, 45));
+        notice.setOutlineThickness(2.0f);
+        window.draw(notice);
+        drawText("ENERGY DEPLETED - SIMULATION ENDED", 330.0f, 258.0f, 22, sf::Color(160, 45, 40));
+        drawText("Return to agent selection to start a new session.", 330.0f, 300.0f, 16, kInk);
+    }
+
     if (researcherMode) {
         const std::string visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
         drawText(std::string("Agent ") + selectedAgentCode + " action: " + visibleAction, 50, 150, 16, kGreen);
         drawText("Input interpretation: " + nlpMethod, 50, 172, 14, kMuted);
     }
     if (!controlsVisible) {
-        drawText("Controls hidden - use Show Controls to interact", 50, 200, 16, kInk);
+        drawText(environmentDepleted ? "Simulation ended - select Change Agent for a new session."
+                                     : "Controls hidden - use Show Controls to interact", 50, 200, 16, kInk);
         drawHover();
         return;
     }
