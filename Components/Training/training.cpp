@@ -41,7 +41,7 @@ namespace
         std::filesystem::rename(currentPath, backupPath, ec);
         if (ec)
             std::cerr << "Warning: unable to preserve previous artifact " << currentPath
-                      << " as " << backupPath << ": " << ec.message() << '\\n';
+                      << " as " << backupPath << ": " << ec.message() << '\n';
     }
 
     struct EpisodeMetrics
