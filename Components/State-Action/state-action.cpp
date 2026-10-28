@@ -970,6 +970,10 @@ double QLearning::getQValue(const state& stateRef, const std::string& action) co
     return q_table.getQValue(stateRef.encode(), action);
 }
 
+bool QLearning::hasState(const state& stateRef) const {
+    return q_table.table.find(stateRef.encode()) != q_table.table.end();
+}
+
 bool QLearning::hasStoredValidActionValue(const state& stateRef,
                                           const std::vector<std::string>& validActions) const {
     const auto stateIt = q_table.table.find(stateRef.encode());
@@ -1572,10 +1576,7 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     last_decision_trace.encoded_state = current_state.encode();
     last_decision_trace.contextual_fallback = fallback;
     last_decision_trace.policy_action = selected;
-    last_decision_trace.q_table_state_present = q_policy.hasStoredValidActionValue(current_state, validActions) ||
-        std::any_of(validActions.begin(), validActions.end(), [&](const std::string& action) {
-            return q_policy.getQValue(current_state, action) != 0.0;
-        });
+    last_decision_trace.q_table_state_present = q_policy.hasState(current_state);
     last_decision_trace.q_table_has_valid_action_values =
         q_policy.hasStoredValidActionValue(current_state, validActions);
     last_decision_trace.memory_record_count = memory_records.size();
