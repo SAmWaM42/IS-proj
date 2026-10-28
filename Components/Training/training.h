@@ -4,6 +4,10 @@
 
 bool runTrainingSelfTests();
 
+bool runTemporalStimulusDiagnostics(const std::string& policyDirectory,
+                                    const std::string& outputDirectory,
+                                    unsigned int seed);
+
 bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
                               const std::string& outputDirectory,
                               unsigned int seed);
