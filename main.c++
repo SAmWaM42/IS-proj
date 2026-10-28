@@ -35,7 +35,7 @@ namespace
             << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
             << "  " << executable << " --diagnose-idle [--policy-dir DIR] [--out DIR] [--seed N]\n"
             << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
-            << "Run --train before --validate, --compare, or --study. Evaluation disables policy updates.\n";
+            << "Run --train before --validate, --compare, --study, or --diagnose-idle. Evaluation disables policy updates.\\n";
     }
 } // namespace
 
