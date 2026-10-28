@@ -19,6 +19,7 @@ namespace
 {
     // Sample varied but bounded elapsed time between decisions. Paired agents
     // receive the same interval sequence within each episode.
+    constexpr int kDetailedStepLogEpisodes = 2;
     constexpr float kMinSecondsPerTrainingStep = 0.5f;
     constexpr float kMaxSecondsPerTrainingStep = 5.0f;
 
@@ -639,7 +640,8 @@ namespace
                               float epsilon,
                               std::ofstream &stepLog,
                               const std::string &agentName,
-                              int episodeIndex)
+                              int episodeIndex,
+                              bool recordDetailedSteps)
     {
         agent.reset();
         agent.setLearningEnabled(learning);
@@ -793,7 +795,10 @@ namespace
             row["energy_depleted"] = energyDepleted;
             row["completed"] = transition.completed;
             row["fetch_succeeded"] = transition.completed;
-            stepLog << row.dump() << '\n';
+            // Keep full episode-level metrics in the summary, but retain verbose
+            // per-step diagnostics only for the final few episodes to control artifact size.
+            if (recordDetailedSteps)
+                stepLog << row.dump() << '\n';
 
             currentObservation = nextObservation;
             if (terminal) break;
@@ -937,10 +942,13 @@ bool runTrainingExperiment(const std::string &mode,
                                   : 0.0f;
         const bool learning = trainingMode;
 
+        const bool recordDetailedSteps = episode >= std::max(0, episodes - kDetailedStepLogEpisodes);
         const EpisodeMetrics baselineMetrics = runEpisode(
-            baseline, observations, elapsedIntervals, learning, epsilon, baselineLog, "baseline", episode);
+            baseline, observations, elapsedIntervals, learning, epsilon, baselineLog, "baseline", episode,
+            recordDetailedSteps);
         const EpisodeMetrics proposedMetrics = runEpisode(
-            proposed, observations, elapsedIntervals, learning, epsilon, proposedLog, "proposed", episode);
+            proposed, observations, elapsedIntervals, learning, epsilon, proposedLog, "proposed", episode,
+            recordDetailedSteps);
 
         baselineRewardSum += baselineMetrics.total_reward;
         proposedRewardSum += proposedMetrics.total_reward;
