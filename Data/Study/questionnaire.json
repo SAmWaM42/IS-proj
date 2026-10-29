@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "questionnaire_version": "believability-v1",
+  "scale": {
+    "min": 1,
+    "max": 5,
+    "anchors": {
+      "1": "Strongly disagree",
+      "2": "Disagree",
+      "3": "Neither agree nor disagree",
+      "4": "Agree",
+      "5": "Strongly agree"
+    }
+  },
+  "primary_score": {
+    "key": "believability_score",
+    "method": "arithmetic_mean",
+    "requires_all_items": true,
+    "higher_is": "greater perceived believability"
+  },
+  "items": [
+    {
+      "key": "plausibility",
+      "question": "The companion's behaviour seemed plausible for the situation."
+    },
+    {
+      "key": "coherence",
+      "question": "The companion's responses were coherent across the interactions."
+    },
+    {
+      "key": "responsiveness",
+      "question": "The companion appeared to respond appropriately to what had happened earlier."
+    },
+    {
+      "key": "consistency",
+      "question": "The companion's behaviour felt consistent rather than arbitrary."
+    },
+    {
+      "key": "continuity",
+      "question": "The companion's behaviour gave the impression of an individual with a continuing interaction history."
+    }
+  ]
+}
