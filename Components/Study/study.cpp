@@ -264,9 +264,14 @@ bool runParticipantStudy(const std::string& policyDirectory,
     studyData["questionnaire_version"] = questionnaireVersion;
     studyData["software_revision"] = IS2_GIT_REVISION;
     studyData["policy_initialisation"] = {
-        {"baseline", "copied baseline Q-table; no memory sidecar imported"},
-        {"proposed", "copied proposed Q-table; no memory/affect sidecars imported"}
+        {"baseline_source", baselinePolicy.string()},
+        {"baseline_session_copy", sessionBaselinePolicy.string()},
+        {"proposed_source", proposedPolicy.string()},
+        {"proposed_session_copy", sessionProposedPolicy.string()},
+        {"rule", "copy Q-table files only; do not import training-time memory or affect sidecars"}
     };
+    studyData["started_at_epoch_ms"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
     studyData["exploration_rate"] = 0.0;
     studyData["learning_rate_updates"] = "enabled on observed participant feedback";
     studyData["conditions"] = nlohmann::json::array();
@@ -286,6 +291,26 @@ bool runParticipantStudy(const std::string& policyDirectory,
         out << studyData.dump(2) << '\n';
         if (!out) {
             std::cerr << "Failed while writing study data to " << path << '\n';
+            return false;
+        }
+        std::ofstream events(fs::path(outputDirectory) / (sessionId + ".jsonl"));
+        if (!events) {
+            std::cerr << "Unable to write study event log for session " << sessionId << '\n';
+            return false;
+        }
+        for (const auto& condition : studyData["conditions"]) {
+            for (const auto& trial : condition["trials"]) {
+                nlohmann::json event = trial;
+                event["schema_version"] = 1;
+                event["run_id"] = sessionId;
+                event["condition_code"] = condition["condition_code"];
+                event["condition"] = studyData["condition_key"][condition["condition_code"].get<std::string>()];
+                event["questionnaire_version"] = studyData["questionnaire_version"];
+                events << event.dump() << '\n';
+            }
+        }
+        if (!events) {
+            std::cerr << "Failed while writing study event log for session " << sessionId << '\n';
             return false;
         }
         return true;
@@ -347,9 +372,11 @@ bool runParticipantStudy(const std::string& policyDirectory,
                     };
                     if (currentAgentKind == "proposed") {
                         const auto& trace = proposed.getLastDecisionTrace();
+                        row["state_key_before"] = trace.encoded_state;
                         row["memory_count_before"] = trace.memory_record_count;
                         row["affect_before"] = affectToJson(trace.affect);
                     } else {
+                        row["state_key_before"] = nullptr;
                         row["memory_count_before"] = 0;
                         row["affect_before"] = nullptr;
                     }
@@ -387,6 +414,7 @@ bool runParticipantStudy(const std::string& policyDirectory,
                     row["response_observed"] = responseObserved;
                     row["feedback_reward_used_for_state_update"] =
                         responseObserved ? nlohmann::json(reward) : nlohmann::json(nullptr);
+                    row["reward"] = responseObserved ? nlohmann::json(reward) : nlohmann::json(nullptr);
                     row["state_update_applied"] = responseObserved;
                     row["affect_memory_update_applied"] =
                         responseObserved && currentAgentKind == "proposed";
@@ -481,7 +509,7 @@ bool runParticipantStudy(const std::string& policyDirectory,
                 drawFrame(window, font, "Instructions", {
                     "You will experience two versions labelled A and B.",
                     "Their order is randomised; the interface does not identify which is which.",
-                    "Each version responds to the same five short scenarios.",
+                    "Each version responds to the same nine scripted scenarios.",
                     "After each behaviour, rate your response: 1 positive, 2 neutral,",
                     "3 negative, or 4 no response. Your ratings are not policy-training data.",
                     "At the end of each version, rate five statements from 1 to 5.",
