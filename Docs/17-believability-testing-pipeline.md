@@ -1,7 +1,7 @@
 # Believability Testing Pipeline Specification
 
 **Document type:** Research evaluation and implementation specification  
-**Status:** Draft for review before implementation  
+**Status:** Revised draft incorporating initial design decisions; implementation still requires verification  
 **Target branch:** test/believability-evaluation-modelling  
 **Authority:** Subordinate to Docs/project-context.md; complements Docs/15-proposed-agent-comparison-spec.md and Docs/16-baseline-agent-comparison-spec.md.  
 **Purpose:** Define a reproducible pipeline for checking that the baseline/proposed conditions are comparable, collecting evidence about believability, and analysing behavioural consistency and adaptability.
@@ -20,13 +20,20 @@ The pipeline must support these research questions:
 
 This is an evaluation specification, not a claim that the proposed condition will perform better. Null, mixed, or negative results must remain reportable.
 
-### 1.1 Conditions
+### 1.1 Conditions, trials, and sessions
 
-- **Baseline condition:** Uses the baseline environmental state and learning/policy path. It must not receive the proposed condition's semantic-memory or affect-derived state inputs.
-- **Proposed condition:** Uses the memory-and-affect-augmented state path defined by the current project specifications.
-- Both conditions use the same simulation, action vocabulary, scenario definitions, reward semantics, and interaction opportunities.
+A **condition** is the agent configuration being evaluated, not a different physical or conscious agent.
 
-The interface may label conditions A and B and vary which implementation is assigned to each label. The recorded data must preserve the actual condition mapping for analysis.
+- **Condition A — Baseline:** Uses the baseline state/policy path without semantic-memory retrieval or affect-derived decision inputs.
+- **Condition B — Proposed:** Uses the proposed memory-and-affect state path defined by the project specifications.
+
+A **trial** is one defined interaction or scenario run under one condition. A **session** is a collection of trials and/or the interaction block completed by a participant.
+
+The same simulator can run both configurations, but each condition must have its own isolated runtime state. Both use the same action vocabulary, scenario definition, environment rules, reward semantics, and interaction opportunities.
+
+Where practical, use a within-participant design: each participant experiences both conditions, with condition order counterbalanced across participants. If the interface uses labels A/B, preserve the actual label-to-condition mapping in the data. Do not claim blinding if the visual or behavioural differences make the condition apparent.
+
+Q-tables may be initialised from the same compatible snapshot when the aim is to compare the added memory/affect mechanisms from a common learning starting point. The live Q-tables must then be copied and updated independently; they must not be a shared mutable table during a trial. See Section 4.1.
 
 ### 1.2 What “believability” means in this study
 
@@ -131,30 +138,40 @@ Record the following for every run:
 - whether policy updates were enabled;
 - reset/load status and any setup deviations.
 
-### 4.1 Learning during evaluation
+### 4.1 Active Q-learning during evaluation
 
-For the primary participant evaluation, policy updates should be disabled unless the approved protocol explicitly studies online learning. This avoids a participant's earlier actions changing the policy in a way that makes later trials incomparable.
+**Decision: learning remains active.** Q-table updates are part of the agent behaviour being studied, so the pipeline must allow them and log them rather than assuming policy updates are disabled.
 
-The existing UI manifest has used the field policy_updates_enabled: false. Keep the manifest truthful and verify the actual runtime behaviour rather than treating the field alone as proof.
+To keep runs interpretable:
+- Record the initial Q-table source/version, learning rate, discount factor, exploration settings, random seed, and whether updates were enabled.
+- If both conditions can validly use the same state/action encoding, initialise each from a copy of the same Q-table snapshot for a matched comparison. Each condition then updates its own copy independently.
+- Do not share a live mutable Q-table between conditions. That would allow one condition's experience to change the other condition's policy and would confound the comparison.
+- If the baseline and proposed state encodings are incompatible, do not force a shared table. Use separately trained tables with the same documented training budget, environment/reward rules, and reproducible seeds, and report this limitation.
+- Within a participant study, give both conditions equivalent interaction opportunities and use the same update rules where technically applicable. Record the sequence and count of updates.
+- Save a table snapshot or version identifier at the start and end of each evaluation block. Preserve enough information to reproduce or inspect how the policy changed.
 
-If the project later decides to evaluate online learning, treat that as a separate protocol with explicit initialisation and update rules.
+The field policy_updates_enabled must reflect the actual runtime. Its value should be true for a run in which Q-learning updates are applied. A fixed evaluation policy may be useful as a separate diagnostic, but it is not the primary protocol specified here.
 
-### 4.2 Memory and persistence controls
+### 4.2 Memory isolation and persistence controls
 
-For each scenario, specify whether it starts with:
+Memory records and affective state are **not shared between agents or participants**. In particular, the proposed agent's semantic memories must not be exposed to the baseline or copied from one participant's run into another participant's run.
+
+For each scenario, explicitly declare whether the proposed agent starts with:
 1. a clean memory state;
-2. a standardised preloaded memory state; or
-3. memory accumulated during earlier interactions in the same trial sequence.
+2. a standardised, non-personal test fixture; or
+3. memory accumulated from earlier interactions in that same evaluation block.
 
-Do not mix these modes without recording them. For a repeated-interaction memory test, start from a defined initial state, introduce the same relevant fact/event, and then test recall or behaviour in a later interaction. If persistence across process restart is being tested, explicitly record the restart boundary.
+Use a clean or standardised state when comparing initial responses. Use within-block accumulated memory when testing memory-driven continuity. Record which mode is used in the manifest. If restart persistence is tested, record the restart boundary and verify only the intended agent's own state is restored.
 
-The baseline must not be given hidden access to the proposed agent's memory records. Shared environmental history may be logged for analysis but must not leak into the baseline's decision state.
+Q-table initialisation is a separate concern from semantic memory. A common Q-table snapshot may be copied to both conditions only when the state/action encodings are compatible and the protocol calls for a common starting policy. The resulting copies must remain independent. Never use a common Q-table as a reason to share memory or affect state.
+
+If the application handles actual user-provided personal preferences, do not use those records as research data unless the study protocol explicitly permits it. The planned evaluation should use scripted/non-identifying test inputs.
 
 ---
 
 ## 5. Scenario suite
 
-The first implementation should support a small, deterministic scenario suite rather than an open-ended benchmark. Exact scenario wording and coordinates should be versioned in a scenario file or test fixture.
+The first implementation should support a small, deterministic scenario suite rather than an open-ended benchmark. Use versioned JSON scenario fixtures, consistent with the project's existing JSON-based configuration/persistence approach. Before adding a new fixture format, inspect the current scenario/configuration code and extend an existing format if one already serves this purpose. Keep fixture definitions separate from raw trial logs and participant rating data.
 
 | Scenario ID | Purpose | Procedure | Evidence to capture |
 |---|---|---|---|
@@ -190,7 +207,9 @@ Candidate items for review:
 
 Use the same items and order rules for both conditions. These are **project-specific draft items**, not a claim to use a validated psychometric instrument. Keep item-level responses so internal consistency and item patterns can be inspected; do not present a custom scale as validated without evidence.
 
-Predefine the primary score before analysing data. A reasonable candidate is the mean of the completed believability items for a condition, provided the questionnaire and missing-item rule are fixed in advance. Report item-level results as well.
+**Proposed decision: use the arithmetic mean of the five items above as the primary believability score for each participant-condition block**, provided all five responses are present. Each item is scored from 1 to 5; higher values indicate greater perceived believability. If any item is missing, leave the primary score missing for that block rather than silently averaging a different set of items; report the missing response. Report item-level results as well.
+
+Treat this as a project-specific exploratory measure, not a validated psychometric scale. Before the main study, pilot the wording for clarity and confirm that participants understand “companion” and “behaviour” consistently. Do not remove or change items after inspecting which condition scores better; any wording revision should happen before the main data collection and be documented as a new questionnaire version.
 
 Optional secondary ratings, if the study needs them:
 - perceived consistency;
@@ -267,7 +286,7 @@ Minimum logical fields:
 }
 ~~~
 
-This is an illustrative contract, not a requirement to copy the sample values literally. Use valid timestamps and actual runtime values. Add participant IDs only as pseudonymous study codes; do not place names, emails, or other direct identifiers in analysis logs.
+This is an illustrative contract, not a requirement to copy the sample values literally. Use valid timestamps and actual runtime values. Do not place names, email addresses, phone numbers, account handles, IP addresses, or other direct identifiers in research logs. Because the intended form is anonymous, use no participant identifier unless a non-identifying random code is genuinely needed to pair a participant's A/B responses. If pairing is needed, let the form generate or ask for a random code that does not encode identity; explain this in the participant information. Disable collection of email addresses and other platform metadata where the form platform permits it.
 
 ### 7.2 Per-interaction event
 
@@ -292,7 +311,7 @@ Do not log full private free-text unnecessarily. For participant study data, sto
 ### 7.3 Rating record
 
 Store one row/JSON object per participant-condition rating block with:
-- pseudonymous participant code;
+- optional random, non-identifying response-pairing code (only if needed for within-participant analysis);
 - run/session ID;
 - condition and condition order;
 - scenario block/version;
@@ -381,10 +400,12 @@ The pipeline is ready for a pilot only when all applicable criteria below pass.
 - [ ] Consistency and adaptability metrics can be calculated from the exported data with documented rules.
 
 ### D. Human evaluation readiness
+- [ ] The anonymous form's first question is the consent question. If the participant does not consent, the form ends without collecting rating responses.
+- [ ] The form does not request names, emails, contact details, or other identifying information; collection of platform metadata is disabled where possible.
 - [ ] The questionnaire wording, scale anchors, primary score, missing-item rule, and condition order procedure are fixed before recruitment.
 - [ ] Participants receive the same instructions and comparable interaction opportunities across conditions.
 - [ ] The pilot confirms that instructions, interactions, and ratings can be completed without researcher intervention that differs by condition.
-- [ ] Consent, data retention, pseudonymisation, and any institutional/departmental approval requirements are addressed before collecting participant data.
+- [ ] Data storage and retention are documented. Confirm any departmental/supervisor requirements for consent and research approval before collection; collecting no PII does not automatically remove those requirements.
 
 ### E. Reproducible analysis
 - [ ] A single documented command or script validates/export logs into analysis-ready tables, or the manual process is documented.
@@ -427,11 +448,11 @@ This specification does not:
 
 Resolve these decisions before implementing the participant-facing portion:
 
-1. **Trial design:** will every participant experience both conditions, or will conditions be between participants? Recommended initial design: within-participant with counterbalanced order, if practical.
-2. **Memory initialisation:** clean memory per condition, standardised preload, or accumulated interaction history? This depends on whether the trial is measuring immediate plausibility or long-term continuity.
-3. **Primary believability score:** approve/revise the draft items and decide whether to use their mean as the primary outcome.
-4. **Scenario source of truth:** should scenarios be represented as JSON fixtures, C++ test definitions, or a documented table initially?
-5. **Evaluation updates:** confirm policy updates are disabled for participant evaluation.
-6. **Data handling:** confirm consent, pseudonymous IDs, storage location, access, and retention requirements with the relevant academic supervisor/department.
+1. **Trial design — proposed:** compare baseline and proposed configurations, preferably within-participant with counterbalanced order where practical.
+2. **Memory isolation — decided:** semantic memory and affective state are not shared between agents/participants. A compatible Q-table may be copied as an initialisation snapshot, but live learning remains independent.
+3. **Primary believability score — proposed:** arithmetic mean of the five draft items, requiring all five responses for the primary score; pilot the wording before the main study.
+4. **Scenario source of truth — proposed:** versioned JSON scenario fixtures, after checking whether the current implementation already has a fixture/config format to extend.
+5. **Evaluation updates — decided:** Q-learning remains active. Record update settings and initial/final Q-table versions; isolate table updates by condition and participant/session.
+6. **Data handling — decided in principle:** use an anonymous form with consent as the first question; do not collect PII, and end the form if consent is declined. Confirm storage/retention and any supervisor/department requirements before collection.
 
-Until these decisions are approved, the document should be treated as a reviewable draft, not an instruction to implement every proposed field or questionnaire item unchanged.
+These decisions narrow the implementation target but do not remove the need to verify the current code paths and logging schema before implementation.
