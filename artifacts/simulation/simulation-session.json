@@ -1,22 +1,12 @@
 {
-  "baseline_action": "APPROACH_FOLLOW",
-  "condition_code": "B",
-  "interaction_count": 6,
+  "baseline_action": "IDLE",
+  "condition_code": "A",
+  "interaction_count": 0,
   "interactions": [
-    "Queued interaction (1 waiting): Ask the companion to fetch the ball",
-    "You: Ask the companion to fetch the ball",
-    "Baseline: Approaches or follows",
-    "Proposed: Attempts to retrieve the requested object",
-    "Queued interaction (1 waiting): Ask the companion to fetch the ball",
-    "You: Ask the companion to fetch the ball",
-    "Baseline: Approaches or follows",
-    "Proposed: Attempts to retrieve the requested object",
-    "Queued interaction (1 waiting): Ask the companion to fetch the ball",
-    "You: Ask the companion to fetch the ball",
-    "Baseline: Approaches or follows",
-    "Proposed: Attempts to retrieve the requested object"
+    "Loaded backyard atlas (free.png)",
+    "Simulation ready. Select an interaction or enter a short message."
   ],
-  "latest_stimulus": "Ask the companion to fetch the ball",
-  "proposed_action": "FETCH",
-  "run_id": "run-1793273900467"
+  "latest_stimulus": "Welcome. Choose an interaction to begin.",
+  "proposed_action": "IDLE",
+  "run_id": "run-1793274131407"
 }
