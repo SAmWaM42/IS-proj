@@ -148,7 +148,7 @@ void appendConditionResult(nlohmann::json& root,
                            const std::string& conditionCode,
                            const std::string& agentKind,
                            const nlohmann::json& trials,
-                           const std::vector<SurveyItem>& survey {
+                           const std::vector<SurveyItem>& survey) {
     nlohmann::json condition;
     condition["condition_code"] = conditionCode;
     condition["trials"] = trials;
@@ -511,7 +511,8 @@ bool runParticipantStudy(const std::string& policyDirectory,
                     "Their order is randomised; the interface does not identify which is which.",
                     "Each version responds to the same nine scripted scenarios.",
                     "After each behaviour, rate your response: 1 positive, 2 neutral,",
-                    "3 negative, or 4 no response. Your ratings are not policy-training data.",
+                    "3 negative, or 4 no response. Per-action feedback updates learning;",
+                    "but the end-of-condition questionnaire is evaluation data only.",
                     "At the end of each version, rate five statements from 1 to 5.",
                     "Press Enter to begin."
                 });
