@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from analyze_believability_study import read_sessions, score_condition  # noqa: E402
+from analyze_believability_study import behaviour_metrics, read_sessions, score_condition  # noqa: E402
 
 
 class BelievabilityPipelineTests(unittest.TestCase):
@@ -31,6 +31,28 @@ class BelievabilityPipelineTests(unittest.TestCase):
         score, errors = score_condition(condition)
         self.assertIsNone(score)
         self.assertTrue(errors)
+
+    def test_repeated_scenario_consistency_is_reported_when_available(self):
+        baseline = {"trials": [
+            {"scenario_id": "BEL-X", "action_internal": "SIT"},
+            {"scenario_id": "BEL-X", "action_internal": "SIT"},
+        ]}
+        proposed = {"trials": [
+            {"scenario_id": "BEL-X", "action_internal": "NUZZLE"},
+            {"scenario_id": "BEL-X", "action_internal": "NUZZLE"},
+        ]}
+        metrics = behaviour_metrics(baseline, proposed)
+        self.assertEqual(metrics["baseline_repeated_scenario_consistency"]["score"], 1.0)
+        self.assertEqual(metrics["proposed_repeated_scenario_consistency"]["score"], 1.0)
+        self.assertEqual(metrics["cross_condition_action_agreement"], 0.0)
+
+    def test_adaptation_is_not_claimed_without_matched_control(self):
+        metrics = behaviour_metrics(
+            {"trials": [{"scenario_id": "BEL-01", "action_internal": "SIT"}]},
+            {"trials": [{"scenario_id": "BEL-01", "action_internal": "NUZZLE"}]},
+        )
+        self.assertEqual(metrics["adaptation"]["status"],
+                         "not_estimable_missing_matched_event_control_pairs")
 
     def test_paired_sessions_are_mapped_by_condition_not_label(self):
         with tempfile.TemporaryDirectory() as tmp:
