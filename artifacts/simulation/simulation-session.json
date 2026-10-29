@@ -1,22 +1,22 @@
 {
-  "baseline_action": "SLEEP_LAY",
+  "baseline_action": "APPROACH_FOLLOW",
   "condition_code": "B",
-  "interaction_count": 4,
+  "interaction_count": 6,
   "interactions": [
-    "You: A sudden loud noise occurs",
-    "Baseline: Vocalises",
-    "Proposed: Vocalises",
-    "Queued interaction (1 waiting): hi [greeting / spacy]",
-    "You: hi [greeting / spacy]",
-    "Baseline: Offers a greeting",
-    "Proposed: Offers a greeting",
-    "Autonomous environment-driven action: PLAY",
-    "Queued interaction (1 waiting): Go to sleep [rest / spacy]",
-    "You: Go to sleep [rest / spacy]",
-    "Baseline: Lies down to rest",
-    "Proposed: Lies down to rest"
+    "Queued interaction (1 waiting): Ask the companion to fetch the ball",
+    "You: Ask the companion to fetch the ball",
+    "Baseline: Approaches or follows",
+    "Proposed: Attempts to retrieve the requested object",
+    "Queued interaction (1 waiting): Ask the companion to fetch the ball",
+    "You: Ask the companion to fetch the ball",
+    "Baseline: Approaches or follows",
+    "Proposed: Attempts to retrieve the requested object",
+    "Queued interaction (1 waiting): Ask the companion to fetch the ball",
+    "You: Ask the companion to fetch the ball",
+    "Baseline: Approaches or follows",
+    "Proposed: Attempts to retrieve the requested object"
   ],
-  "latest_stimulus": "Go to sleep [rest / spacy]",
-  "proposed_action": "SLEEP_LAY",
-  "run_id": "run-1793173983067"
+  "latest_stimulus": "Ask the companion to fetch the ball",
+  "proposed_action": "FETCH",
+  "run_id": "run-1793273900467"
 }

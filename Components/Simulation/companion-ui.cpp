@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstdlib>
 #include <memory>
 #include <json.hpp>
 #include <filesystem>
@@ -28,33 +29,6 @@
 
 namespace {
 using nlohmann::json;
-
-void rotateOutputDirectoryForComparison(const std::filesystem::path& directory) {
-    std::filesystem::create_directories(directory);
-    std::vector<std::filesystem::path> currentFiles;
-
-    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
-        if (!entry.is_regular_file())
-            continue;
-        const auto filename = entry.path().filename().string();
-        if (filename.rfind("compare_", 0) == 0) {
-            std::error_code ec;
-            std::filesystem::remove(entry.path(), ec);
-        } else {
-            currentFiles.push_back(entry.path());
-        }
-    }
-
-    for (const auto& currentPath : currentFiles) {
-        const auto backupPath = currentPath.parent_path() /
-            ("compare_" + currentPath.filename().string());
-        std::error_code ec;
-        std::filesystem::rename(currentPath, backupPath, ec);
-        if (ec)
-            std::cerr << "Warning: unable to preserve previous simulation artifact "
-                      << currentPath << " as " << backupPath << ": " << ec.message() << '\n';
-    }
-}
 
 class PersistentNlpClient {
 public:
@@ -159,12 +133,13 @@ PersistentNlpClient& nlpClient() {
 std::string callNlp(const std::string& input) {
     return nlpClient().request(input);
 }
-const sf::Color kBackground(239, 243, 247);
-const sf::Color kPanel(255, 255, 255);
-const sf::Color kInk(35, 42, 52);
-const sf::Color kMuted(105, 115, 128);
-const sf::Color kBlue(58, 112, 170);
-const sf::Color kGreen(71, 145, 106);
+// Cosy palette: cream paper, cocoa ink, terracotta accent, sage green.
+const sf::Color kBackground(250, 241, 225);
+const sf::Color kPanel(255, 250, 240);
+const sf::Color kInk(84, 58, 44);
+const sf::Color kMuted(150, 118, 96);
+const sf::Color kAccent(196, 112, 84);
+const sf::Color kGreen(118, 150, 92);
 
 std::string describeAction(const std::string& action) {
     return actionLabel(action);
@@ -192,7 +167,7 @@ constexpr float kSceneY = 135.0f;
 constexpr float kSceneW = 1218.0f;
 constexpr float kSceneHControls = 430.0f;
 constexpr float kSceneHFull = 710.0f;
-constexpr float kDogScale = 6.0f;  // the supplied dog frames are 16 px tall
+constexpr float kDogScale = 4.5f;  // the supplied dog frames are 16 px tall
 constexpr float kPi = 3.14159265f;
 constexpr float kButtonW = 215.0f;
 constexpr float kButtonH = 44.0f;
@@ -201,7 +176,61 @@ constexpr float kButtonX0 = 40.0f;
 constexpr float kButtonRowStep = 52.0f;
 constexpr float kInputY = 692.0f;
 constexpr float kInputH = 48.0f;
-const sf::Color kShadow(0, 0, 0, 60);
+const sf::Color kShadow(70, 45, 30, 70);
+constexpr float kMouthOffset = 26.0f;    // distance from the dog's centre to its mouth
+constexpr float kPlayerSpeed = 230.0f;   // player walking speed in px/s
+// Same three-level classes as before (0 close, 1 medium, 2 far), now fed by real scene distances.
+int proximityBucket(float distance) { return distance < 120.0f ? 0 : distance < 300.0f ? 1 : 2; }
+
+// ---- Cosy theme helpers --------------------------------------------------------
+const sf::Color kShadowSoft(88, 56, 40, 46);        // warm drop shadow under panels
+const sf::Color kAccentDark(150, 78, 54);           // text on selected accent surfaces
+const sf::Color kAccentSoft(247, 218, 192);         // selected / highlighted surface
+const sf::Color kBorder(228, 204, 174);             // soft panel border
+const sf::Color kCream(255, 246, 228);              // bubbles and key caps
+
+// Rounded rectangle built from a convex polygon (SFML has no native rounded shape).
+void drawRoundedBox(sf::RenderTarget& target, float x, float y, float w, float h, float radius,
+                    sf::Color fill, sf::Color outline = sf::Color::Transparent,
+                    float outlineThickness = 0.0f) {
+    radius = std::min(radius, std::min(w, h) * 0.5f);
+    const int segments = 6;
+    sf::ConvexShape shape;
+    shape.setPointCount(static_cast<std::size_t>(4 * (segments + 1)));
+    const float cx[4] = {x + w - radius, x + w - radius, x + radius, x + radius};
+    const float cy[4] = {y + radius, y + h - radius, y + h - radius, y + radius};
+    std::size_t index = 0;
+    for (int corner = 0; corner < 4; ++corner) {
+        for (int s = 0; s <= segments; ++s) {
+            const float degrees = -90.0f + 90.0f * static_cast<float>(corner) +
+                                  90.0f * static_cast<float>(s) / static_cast<float>(segments);
+            const float angle = degrees * kPi / 180.0f;
+            shape.setPoint(index++, {cx[corner] + radius * std::cos(angle), cy[corner] + radius * std::sin(angle)});
+        }
+    }
+    shape.setFillColor(fill);
+    shape.setOutlineColor(outline);
+    shape.setOutlineThickness(outlineThickness);
+    target.draw(shape);
+}
+
+// Two-colour gradient rectangle (vertical: c1 at the top, c2 at the bottom; otherwise c1 left, c2 right).
+void drawGradient(sf::RenderTarget& target, float x, float y, float w, float h,
+                  sf::Color c1, sf::Color c2, bool vertical) {
+    sf::VertexArray strip(sf::PrimitiveType::TriangleStrip, 4);
+    if (vertical) {
+        strip[0].position = {x, y};         strip[0].color = c1;
+        strip[1].position = {x + w, y};     strip[1].color = c1;
+        strip[2].position = {x, y + h};     strip[2].color = c2;
+        strip[3].position = {x + w, y + h}; strip[3].color = c2;
+    } else {
+        strip[0].position = {x, y};         strip[0].color = c1;
+        strip[1].position = {x, y + h};     strip[1].color = c1;
+        strip[2].position = {x + w, y};     strip[2].color = c2;
+        strip[3].position = {x + w, y + h}; strip[3].color = c2;
+    }
+    target.draw(strip);
+}
 
 // Named arguments avoid the user_status / task_status mix-up that positional
 // aggregate initialisation allows (member order is goal, proximity, USER, TASK).
@@ -228,18 +257,19 @@ struct ControlButton {
     bool food, play;
     float reward;
     const char* sceneEvent;
+    const char* basis;   // what proximity is measured to: user, ball, bowl, or "" for the preset value
 };
 const std::array<ControlButton, 10> kControls{{
-    {"Greet",      "Greet the companion",                  0, 1, 0, 0, 0.55f, false, false,  0.65f, ""},
-    {"Feed",       "Offer the companion food",             2, 0, 1, 0, 0.30f, true,  false,  0.50f, "feed"},
-    {"Play",       "Invite the companion to play",         0, 1, 1, 0, 0.70f, false, true,   0.50f, ""},
-    {"Praise",     "Praise the companion",                 0, 0, 1, 0, 0.75f, false, false,  1.00f, ""},
-    {"Scold",      "Scold the companion",                  0, 1, 2, 0, 0.45f, false, false, -1.00f, ""},
-    {"Explore",    "Let the companion explore",            2, 1, 0, 0, 0.30f, false, false,  0.25f, ""},
-    {"Rest",       "The companion should rest",            2, 2, 0, 0, 0.20f, false, false,  0.25f, ""},
-    {"Loud noise", "A sudden loud noise occurs",           2, 0, 0, 0, 0.95f, false, false, -0.15f, ""},
-    {"Fetch ball", "Ask the companion to fetch the ball",  1, 1, 1, 1, 0.85f, false, false,  0.85f, "fetch_ball"},
-    {"Throw ball", "Throw the ball for the companion",     1, 1, 1, 1, 0.85f, false, false,  0.85f, "throw_ball"},
+    {"Greet",      "Greet the companion",                  0, 1, 0, 0, 0.55f, false, false,  0.65f, "",           "user"},
+    {"Feed",       "Offer the companion food",             2, 0, 1, 0, 0.30f, true,  false,  0.50f, "feed",       "bowl"},
+    {"Play",       "Invite the companion to play",         0, 1, 1, 0, 0.70f, false, true,   0.50f, "",           "user"},
+    {"Praise",     "Praise the companion",                 0, 0, 1, 0, 0.75f, false, false,  1.00f, "",           "user"},
+    {"Scold",      "Scold the companion",                  0, 1, 2, 0, 0.45f, false, false, -1.00f, "",           "user"},
+    {"Explore",    "Let the companion explore",            2, 1, 0, 0, 0.30f, false, false,  0.25f, "",           ""},
+    {"Rest",       "The companion should rest",            2, 2, 0, 0, 0.20f, false, false,  0.25f, "",           ""},
+    {"Loud noise", "A sudden loud noise occurs",           2, 0, 0, 0, 0.95f, false, false, -0.15f, "",           ""},
+    {"Fetch ball", "Ask the companion to fetch the ball",  1, 1, 1, 1, 0.85f, false, false,  0.85f, "fetch_ball", "ball"},
+    {"Throw ball", "Throw the ball for the companion",     1, 1, 1, 1, 0.85f, false, false,  0.85f, "throw_ball", "ball"},
 }};
 }
 
@@ -261,7 +291,8 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     runId = "run-" + std::to_string(runTicks);
     std::random_device conditionRandom;
     agentAIsProposed = (conditionRandom() % 2u) == 0u;
-    if (!font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
+    if (!font.openFromFile("Data/Fonts/UIFont.ttf") &&
+        !font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
         throw std::runtime_error("Unable to load DejaVuSans.ttf. Install DejaVu fonts or update companion-ui.cpp.");
     }
     window.setFramerateLimit(60);
@@ -281,7 +312,7 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     loadFrames(sleepFrames, {"sleep1.png", "sleep2.png"});
     loadFrames(barkFrames, {"bark1.png", "bark2.png"});
     if (idleFrames.empty()) appendLog("Dog frames missing (Data/Assets/white_dog_by_Brysia); using a placeholder companion.");
-    rotateOutputDirectoryForComparison(outputDirectory);
+    std::filesystem::create_directories(outputDirectory);
     std::filesystem::create_directories(policyDirectory);
     const auto basePath = std::filesystem::path(policyDirectory) / "baseline.qtable";
     const auto proposedPath = std::filesystem::path(policyDirectory) / "proposed.qtable";
@@ -332,32 +363,65 @@ CompanionUI::SceneLayout CompanionUI::sceneLayout() const {
     L.y = kSceneY;
     L.w = kSceneW;
     L.h = controlsVisible ? kSceneHControls : kSceneHFull;
-    L.groundY = L.y + L.h * 0.80f;   // the line every character and object stands on
-    L.userX = L.x + 160.0f;
-    L.bedX = L.x + 390.0f;
-    L.ballHomeX = L.x + 560.0f;
-    L.bowlX = L.x + 720.0f;
-    L.treeX = L.x + 820.0f;          // left edge of the tree sprite
-    L.houseX = L.x + 975.0f;         // left edge of the house sprite
-    L.minX = L.userX + 80.0f;        // the dog never walks through the player
-    L.maxX = L.x + 900.0f;
+    // Feet stay inside this rectangle; the band above it is the house, tree and hedge.
+    L.minX = L.x + 70.0f;
+    L.maxX = L.x + L.w - 70.0f;
+    L.minY = L.y + L.h * 0.50f;
+    L.maxY = L.y + L.h - 26.0f;
+    L.bedX = L.x + L.w * 0.14f;
+    L.bedY = L.y + L.h * 0.76f;
+    L.bowlX = L.x + L.w * 0.74f;
+    L.bowlY = L.y + L.h * 0.68f;
+    L.ballHomeX = L.x + L.w * 0.50f;
+    L.ballHomeY = L.y + L.h * 0.86f;
+    L.treeX = L.x + 330.0f;
+    L.houseX = L.x + L.w - 260.0f;
     return L;
 }
 
 std::vector<CompanionUI::SceneObject> CompanionUI::sceneObjects() const {
     const SceneLayout L = sceneLayout();
     std::vector<SceneObject> objects;
-    // Background first; the LAST match wins when hovering, so foreground items go last.
-    objects.push_back(SceneObject{"House", sf::FloatRect({L.houseX, L.groundY - 30.0f - 219.0f}, {192.0f, 219.0f})});
-    objects.push_back(SceneObject{"Tree", sf::FloatRect({L.treeX, L.groundY - 20.0f - 128.0f}, {128.0f, 128.0f})});
-    objects.push_back(SceneObject{"Dog bed", sf::FloatRect({L.bedX - 62.0f, L.groundY - 30.0f}, {124.0f, 40.0f})});
+    objects.push_back(SceneObject{"House", sf::FloatRect({L.houseX, L.minY - 16.0f - 168.0f}, {147.0f, 168.0f})});
+    objects.push_back(SceneObject{"Tree", sf::FloatRect({L.treeX, L.minY - 8.0f - 102.0f}, {102.0f, 102.0f})});
+    objects.push_back(SceneObject{"Dog bed", sf::FloatRect({L.bedX - 62.0f, L.bedY - 26.0f}, {124.0f, 44.0f})});
     objects.push_back(SceneObject{foodPresent ? "Food bowl (full)" : "Food bowl (empty)",
-                                  sf::FloatRect({L.bowlX - 30.0f, L.groundY - 26.0f}, {60.0f, 32.0f})});
-    objects.push_back(SceneObject{"You", sf::FloatRect({L.userX - 22.0f, L.groundY - 122.0f}, {44.0f, 122.0f})});
-    objects.push_back(SceneObject{"Companion", sf::FloatRect({agentX - 48.0f, L.groundY - 96.0f}, {96.0f, 96.0f})});
+                                  sf::FloatRect({L.bowlX - 30.0f, L.bowlY - 20.0f}, {60.0f, 34.0f})});
+    objects.push_back(SceneObject{"You", sf::FloatRect({userX - 22.0f, userY - 100.0f}, {44.0f, 100.0f})});
+    objects.push_back(SceneObject{"Companion", sf::FloatRect({agentX - 36.0f, agentY - 72.0f}, {72.0f, 72.0f})});
     if (!ballCarried)
-        objects.push_back(SceneObject{"Ball", sf::FloatRect({ballX - 15.0f, L.groundY - ballHeight - 26.0f}, {30.0f, 30.0f})});
+        objects.push_back(SceneObject{"Ball", sf::FloatRect({ballX - 15.0f, ballY - ballHeight - 26.0f}, {30.0f, 30.0f})});
     return objects;
+}
+
+void CompanionUI::resetScene() {
+    const SceneLayout L = sceneLayout();
+    behaviourPlan.clear();
+    stepIndex = 0;
+    stepTime = 0.0f;
+    behaviourActive = false;
+    restingPose = "idle";
+    animationFrame = 0;
+    frameTimer = 0.0f;
+    userX = L.x + L.w * 0.30f;
+    userY = L.y + L.h * 0.82f;
+    playerFacingRight = true;
+    playerMoving = false;
+    agentX = L.x + L.w * 0.58f;
+    agentY = L.y + L.h * 0.70f;
+    facingRight = false;
+    ballX = L.ballHomeX;
+    ballY = L.ballHomeY;
+    ballLandX = ballX;
+    ballLandY = ballY;
+    ballHeight = 0.0f;
+    ballCarried = false;
+    ballFlying = false;
+    throwTimer = 0.0f;
+    foodPresent = false;
+    pendingCue.clear();
+    autonomousDecisionTimer = 0.0f;
+    interactionBuffer.clear();
 }
 
 const std::vector<std::unique_ptr<sf::Texture>>& CompanionUI::framesForPose(const std::string& pose) const {
@@ -367,30 +431,6 @@ const std::vector<std::unique_ptr<sf::Texture>>& CompanionUI::framesForPose(cons
     if (pose == "sleep") return sleepFrames;
     if (pose == "bark") return barkFrames;
     return idleFrames;
-}
-
-void CompanionUI::resetScene() {
-    const SceneLayout L = sceneLayout();
-    totalSimulationElapsedSeconds = 0.0f;
-    environmentEnergy = 0.8f;
-    environmentDepleted = false;
-    behaviourPlan.clear();
-    stepIndex = 0;
-    stepTime = 0.0f;
-    behaviourActive = false;
-    restingPose = "idle";
-    animationFrame = 0;
-    frameTimer = 0.0f;
-    agentX = L.userX + 360.0f;
-    facingRight = false;
-    ballX = L.ballHomeX;
-    ballLandX = L.ballHomeX;
-    ballHeight = 0.0f;
-    ballCarried = false;
-    ballFlying = false;
-    throwTimer = 0.0f;
-    foodPresent = false;
-    interactionBuffer.clear();
 }
 
 void CompanionUI::startNewParticipant() {
@@ -457,18 +497,42 @@ void CompanionUI::applySceneEvent(const std::string& sceneEvent) {
         ballFlying = false;
         ballHeight = 0.0f;
         ballX = L.ballHomeX;
-        ballLandX = L.ballHomeX;
+        ballY = L.ballHomeY;
+        ballLandX = ballX;
+        ballLandY = ballY;
     } else if (sceneEvent == "throw_ball") {
-        std::uniform_real_distribution<float> landing(L.userX + 380.0f, L.maxX);
+        // The ball is thrown in the direction the player is facing.
+        std::uniform_real_distribution<float> distance(240.0f, 520.0f);
+        std::uniform_real_distribution<float> lane(L.minY + 20.0f, L.maxY - 10.0f);
+        const float dir = playerFacingRight ? 1.0f : -1.0f;
         ballCarried = false;
-        ballStartX = L.userX + 30.0f;
-        ballLandX = landing(sceneRng);
+        ballStartX = userX + dir * 26.0f;
+        ballStartY = userY;
+        ballLandX = std::clamp(userX + dir * distance(sceneRng), L.minX + 10.0f, L.maxX - 10.0f);
+        ballLandY = lane(sceneRng);
         ballX = ballStartX;
-        ballHeight = 105.0f;
+        ballY = ballStartY;
+        ballHeight = 85.0f;
         ballFlightTime = 0.0f;
         ballFlying = true;
         throwTimer = 0.5f;
     }
+}
+
+// Maps a real distance in the scene onto the existing three-level proximity
+// classes (close / medium / far) used by the policies.
+void CompanionUI::applyGeometryProximity(EnvironmentObservation& observation, const std::string& basis) const {
+    if (basis.empty()) return;
+    const SceneLayout L = sceneLayout();
+    float targetX = userX, targetY = userY;
+    if (basis == "ball") {
+        targetX = ballFlying ? ballLandX : ballX;
+        targetY = ballFlying ? ballLandY : ballY;
+    } else if (basis == "bowl") {
+        targetX = L.bowlX;
+        targetY = L.bowlY;
+    }
+    observation.target_proximity = proximityBucket(std::hypot(agentX - targetX, agentY - targetY));
 }
 
 void CompanionUI::beginStep() {
@@ -477,16 +541,18 @@ void CompanionUI::beginStep() {
     animationFrame = 0;
     frameTimer = 0.0f;
     if (s.faceDir != 0) facingRight = s.faceDir > 0;
+    if (s.trackUser) s.trackSide = (agentX >= userX) ? 1 : -1;   // choose the side the dog is on NOW
     if (s.pickUpBall) {
         ballCarried = true;
         ballFlying = false;
         ballHeight = 0.0f;
     }
     if (s.dropBall) {
-        const SceneLayout L = sceneLayout();
         ballCarried = false;
-        ballX = std::max(L.userX + 45.0f, agentX + (facingRight ? 34.0f : -34.0f));
+        ballX = agentX + (facingRight ? kMouthOffset : -kMouthOffset);
+        ballY = agentY;
         ballLandX = ballX;
+        ballLandY = ballY;
         ballHeight = 0.0f;
     }
 }
@@ -504,46 +570,27 @@ void CompanionUI::finishStep() {
 }
 
 void CompanionUI::startBehaviour(const std::string& action, const std::string& sceneEvent) {
-    if (environmentDepleted) return;
     const SceneLayout L = sceneLayout();
-    // Apply the physical consequence of the action actually executed by the
-    // selected condition. Both policies observe the same resulting energy.
-    const float energyBeforeAction = environmentEnergy;
-    float effort = 0.012f;
-    if (action == "FETCH") {
-        const int proximity = std::clamp(latestObservation.target_proximity, 0, 2);
-        const float distanceCost[] = {0.035f, 0.085f, 0.16f};
-        effort = distanceCost[proximity] * (1.0f + 0.8f * (1.0f - energyBeforeAction));
-    } else if (action == "APPROACH_FOLLOW") {
-        effort = 0.045f * (1.0f + 0.8f * (1.0f - energyBeforeAction));
-    } else if (action == "PLAY" && latestObservation.play_available) {
-        effort = 0.055f * (1.0f + 0.8f * (1.0f - energyBeforeAction));
-    } else if (action == "SNIFF" || action == "WANDER") {
-        effort = action == "WANDER" ? 0.025f : 0.018f;
-    }
-    if (action == "SLEEP_LAY") environmentEnergy = std::min(1.0f, environmentEnergy + 0.28f);
-    else if (action == "EAT" && latestObservation.food_available) environmentEnergy = std::min(1.0f, environmentEnergy + 0.24f);
-    else environmentEnergy = std::max(0.0f, environmentEnergy - effort * 1.5f);
-    if (environmentEnergy <= 0.0f) {
-        environmentEnergy = 0.0f;
-        environmentDepleted = true;
-        behaviourPlan.clear();
-        behaviourActive = false;
-        restingPose = "lay";
-        appendLog("Energy depleted: companion entered terminal state.");
-        return;
-    }
     behaviourPlan.clear();
     stepIndex = 0;
     restingPose = (action == "SLEEP_LAY") ? "sleep" : "idle";
-    const float nearPlayerX = L.userX + 120.0f;
 
-    auto walkTo = [&](float x, float speed, float frameInterval) {
+    auto walkTo = [&](float x, float y, float speed, float frameInterval) {
         BehaviourStep s;
         s.pose = "walk";
+        s.hasTarget = true;
         s.targetX = std::clamp(x, L.minX, L.maxX);
+        s.targetY = std::clamp(y, L.minY, L.maxY);
         s.speed = speed;
         s.frameInterval = frameInterval;
+        return s;
+    };
+    // Walk to the player and keep following while the player moves.
+    auto toPlayer = [&](float offset, float speed, float frameInterval) {
+        BehaviourStep s = walkTo(userX, userY, speed, frameInterval);
+        s.trackUser = true;
+        s.userOffsetX = offset;
+        s.trackSide = (agentX >= userX) ? 1 : -1;
         return s;
     };
     auto stay = [&](const std::string& pose, float seconds, const std::string& cue) {
@@ -555,52 +602,68 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
     };
 
     if (action == "FETCH") {
-        // Ball position: where it will land (throw) or where it currently lies.
-        const float ballTarget = ballFlying ? ballLandX : ballX;
+        const float ballTx = ballFlying ? ballLandX : ballX;
+        const float ballTy = ballFlying ? ballLandY : ballY;
         if (sceneEvent == "throw_ball") {
             BehaviourStep watch = stay("idle", 0.55f, "!");   // watch the ball leave the hand
-            watch.faceDir = 1;
+            watch.faceDir = playerFacingRight ? 1 : -1;
             behaviourPlan.push_back(watch);
         }
-        const float mouthOffset = (ballTarget >= agentX) ? -34.0f : 34.0f;   // stop so the mouth reaches the ball
-        behaviourPlan.push_back(walkTo(ballTarget + mouthOffset, 300.0f, 0.08f));
+        const float mouth = (ballTx >= agentX) ? -kMouthOffset : kMouthOffset;   // stop so the mouth reaches the ball
+        behaviourPlan.push_back(walkTo(ballTx + mouth, ballTy, 300.0f, 0.08f));
         BehaviourStep pick = stay("idle", 0.35f, "");
         pick.pickUpBall = true;
         behaviourPlan.push_back(pick);
-        behaviourPlan.push_back(walkTo(L.userX + 95.0f, 240.0f, 0.09f));
-        BehaviourStep drop = stay("sit", 1.0f, "Got it!");   // ball is placed at the player's feet
+        behaviourPlan.push_back(toPlayer(70.0f, 240.0f, 0.09f));     // carry it back to wherever the player is now
+        BehaviourStep drop = stay("sit", 1.0f, "Got it!");           // ball is placed at the player's feet
         drop.dropBall = true;
-        drop.faceDir = -1;
+        drop.faceUser = true;
         behaviourPlan.push_back(drop);
     } else if (action == "SNIFF") {
-        const float target = (!ballCarried && ballX > L.userX + 150.0f) ? ballX : L.bowlX;
-        const float stand = (target >= agentX) ? target - 55.0f : target + 55.0f;
-        BehaviourStep w = walkTo(stand, 70.0f, 0.22f);
+        const float ballDistance = std::hypot(agentX - ballX, agentY - ballY);
+        const float bowlDistance = std::hypot(agentX - L.bowlX, agentY - L.bowlY);
+        const bool ballCloser = !ballCarried && ballDistance <= bowlDistance;
+        const float tx = ballCloser ? ballX : L.bowlX;
+        const float ty = ballCloser ? ballY : L.bowlY;
+        const float standX = (tx >= agentX) ? tx - 50.0f : tx + 50.0f;
+        BehaviourStep w = walkTo(standX, ty, 70.0f, 0.22f);
         w.tiltBias = 6.0f;
         behaviourPlan.push_back(w);
         BehaviourStep s = stay("idle", 1.2f, "sniff");
         s.tiltBias = 9.0f;
         s.tilt = 3.0f;
         s.tiltRate = 2.0f;
-        s.faceDir = (target >= stand) ? 1 : -1;
+        s.faceDir = (tx >= standX) ? 1 : -1;
         behaviourPlan.push_back(s);
     } else if (action == "WANDER") {
-        std::uniform_real_distribution<float> pick(L.minX, L.maxX);
-        float target = pick(sceneRng);
-        if (std::fabs(target - agentX) < 140.0f)
-            target = (agentX < (L.minX + L.maxX) * 0.5f) ? agentX + 220.0f : agentX - 220.0f;
-        behaviourPlan.push_back(walkTo(target, 85.0f, 0.18f));
+        std::uniform_real_distribution<float> px(L.minX, L.maxX);
+        std::uniform_real_distribution<float> py(L.minY, L.maxY);
+        float tx = px(sceneRng), ty = py(sceneRng);
+        for (int attempt = 0; attempt < 6 && std::hypot(tx - agentX, ty - agentY) < 140.0f; ++attempt) {
+            tx = px(sceneRng);
+            ty = py(sceneRng);
+        }
+        behaviourPlan.push_back(walkTo(tx, ty, 85.0f, 0.18f));
         BehaviourStep look = stay("idle", 0.7f, "");
         look.tilt = 5.0f;
         look.tiltRate = 1.0f;
         behaviourPlan.push_back(look);
     } else if (action == "APPROACH_FOLLOW") {
-        behaviourPlan.push_back(walkTo(nearPlayerX, 150.0f, 0.12f));
+        behaviourPlan.push_back(toPlayer(110.0f, 150.0f, 0.12f));
         BehaviourStep s = stay("idle", 0.5f, "");
-        s.faceDir = -1;
+        s.faceUser = true;
         behaviourPlan.push_back(s);
     } else if (action == "HIDE_AVOID") {
-        BehaviourStep run = walkTo(L.maxX, 210.0f, 0.09f);
+        // Run to the corner of the yard that is farthest from the player.
+        const float cornersX[4] = {L.minX + 20.0f, L.maxX - 20.0f, L.minX + 20.0f, L.maxX - 20.0f};
+        const float cornersY[4] = {L.minY + 10.0f, L.minY + 10.0f, L.maxY - 10.0f, L.maxY - 10.0f};
+        int best = 0;
+        float bestDistance = -1.0f;
+        for (int i = 0; i < 4; ++i) {
+            const float d = std::hypot(cornersX[i] - userX, cornersY[i] - userY);
+            if (d > bestDistance) { bestDistance = d; best = i; }
+        }
+        BehaviourStep run = walkTo(cornersX[best], cornersY[best], 210.0f, 0.09f);
         run.crouch = 0.10f;
         run.tint = sf::Color(205, 205, 225);
         behaviourPlan.push_back(run);
@@ -608,28 +671,28 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
         cower.shiver = 2.0f;
         cower.crouch = 0.12f;
         cower.tint = sf::Color(205, 205, 225);
-        cower.faceDir = -1;
+        cower.faceUser = true;
         behaviourPlan.push_back(cower);
     } else if (action == "WHINE") {
         BehaviourStep s = stay("sit", 1.7f, "*whine*");
         s.shiver = 1.5f;
         s.crouch = 0.08f;
         s.tint = sf::Color(215, 215, 235);
-        s.faceDir = -1;
+        s.faceUser = true;
         behaviourPlan.push_back(s);
     } else if (action == "BARK") {
         BehaviourStep s = stay("bark", 1.1f, "WOOF!");
         s.frameInterval = 0.12f;
-        s.hop = 14.0f;
+        s.hop = 12.0f;
         s.hopRate = 3.5f;
         behaviourPlan.push_back(s);
     } else if (action == "INSIST") {
-        behaviourPlan.push_back(walkTo(nearPlayerX, 200.0f, 0.10f));
+        behaviourPlan.push_back(toPlayer(95.0f, 200.0f, 0.10f));
         BehaviourStep s = stay("bark", 1.7f, "!!");
         s.frameInterval = 0.14f;
-        s.hop = 22.0f;
+        s.hop = 18.0f;
         s.hopRate = 2.5f;
-        s.faceDir = -1;
+        s.faceUser = true;
         behaviourPlan.push_back(s);
     } else if (action == "ACT_CONFUSED") {
         BehaviourStep s = stay("idle", 1.5f, "?");
@@ -637,28 +700,28 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
         s.tiltRate = 0.9f;
         behaviourPlan.push_back(s);
     } else if (action == "GREETING") {
-        behaviourPlan.push_back(walkTo(nearPlayerX, 170.0f, 0.12f));
+        behaviourPlan.push_back(toPlayer(100.0f, 170.0f, 0.12f));
         BehaviourStep s = stay("sit", 0.9f, "Hi!");
-        s.hop = 8.0f;
+        s.hop = 7.0f;
         s.hopRate = 2.5f;
-        s.faceDir = -1;
+        s.faceUser = true;
         behaviourPlan.push_back(s);
     } else if (action == "NUZZLE") {
-        behaviourPlan.push_back(walkTo(L.userX + 85.0f, 150.0f, 0.14f));
+        behaviourPlan.push_back(toPlayer(60.0f, 150.0f, 0.14f));
         BehaviourStep s = stay("sit", 1.2f, "<3");
         s.tilt = 5.0f;
         s.tiltRate = 1.0f;
-        s.faceDir = -1;
+        s.faceUser = true;
         behaviourPlan.push_back(s);
     } else if (action == "PLAY") {
-        behaviourPlan.push_back(walkTo(nearPlayerX + 40.0f, 210.0f, 0.09f));
+        behaviourPlan.push_back(toPlayer(130.0f, 210.0f, 0.09f));
         BehaviourStep s = stay("idle", 2.0f, "yay!");
-        s.hop = 30.0f;
+        s.hop = 24.0f;
         s.hopRate = 2.0f;
-        s.faceDir = -1;
+        s.faceUser = true;
         behaviourPlan.push_back(s);
     } else if (action == "EAT") {
-        behaviourPlan.push_back(walkTo(L.bowlX - 75.0f, 130.0f, 0.14f));
+        behaviourPlan.push_back(walkTo(L.bowlX - 52.0f, L.bowlY + 4.0f, 130.0f, 0.14f));
         BehaviourStep eat = stay("idle", 2.0f, "yum!");
         eat.faceDir = 1;
         eat.tiltBias = 13.0f;
@@ -667,7 +730,7 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
         eat.consumeFood = true;
         behaviourPlan.push_back(eat);
     } else if (action == "SLEEP_LAY") {
-        behaviourPlan.push_back(walkTo(L.bedX, 100.0f, 0.20f));
+        behaviourPlan.push_back(walkTo(L.bedX, L.bedY + 2.0f, 100.0f, 0.20f));
         behaviourPlan.push_back(stay("lay", 0.6f, ""));
         BehaviourStep z = stay("sleep", 2.6f, "Zzz");
         z.frameInterval = 0.9f;
@@ -680,36 +743,46 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
     beginStep();
 }
 
+void CompanionUI::updatePlayer(float elapsedSeconds) {
+    playerMoving = false;
+    if (screen != Screen::Simulation || textInputFocused || !window.hasFocus()) return;
+    auto held = [](sf::Keyboard::Key a, sf::Keyboard::Key b) {
+        return sf::Keyboard::isKeyPressed(a) || sf::Keyboard::isKeyPressed(b);
+    };
+    float dx = 0.0f, dy = 0.0f;
+    if (held(sf::Keyboard::Key::W, sf::Keyboard::Key::Up)) dy -= 1.0f;
+    if (held(sf::Keyboard::Key::S, sf::Keyboard::Key::Down)) dy += 1.0f;
+    if (held(sf::Keyboard::Key::A, sf::Keyboard::Key::Left)) dx -= 1.0f;
+    if (held(sf::Keyboard::Key::D, sf::Keyboard::Key::Right)) dx += 1.0f;
+    if (dx == 0.0f && dy == 0.0f) return;
+    const float length = std::hypot(dx, dy);
+    dx /= length;
+    dy /= length;
+    const SceneLayout L = sceneLayout();
+    userX = std::clamp(userX + dx * kPlayerSpeed * elapsedSeconds, L.minX, L.maxX);
+    userY = std::clamp(userY + dy * kPlayerSpeed * elapsedSeconds, L.minY, L.maxY);
+    if (dx != 0.0f) playerFacingRight = dx > 0.0f;
+    playerMoving = true;
+}
+
 void CompanionUI::updateAnimation(float elapsedSeconds) {
     elapsedSeconds = std::min(elapsedSeconds, 0.1f);   // avoid jumps after the window is dragged
     sceneTime += elapsedSeconds;
-    if (screen == Screen::Simulation) {
-        totalSimulationElapsedSeconds += elapsedSeconds;
-        const float passiveDrainPerSecond = restingPose == "sleep" ? 0.0008f : 0.0025f;
-        if (!environmentDepleted) {
-            environmentEnergy = std::max(0.0f, environmentEnergy - passiveDrainPerSecond * elapsedSeconds);
-            if (environmentEnergy <= 0.0f) {
-                environmentEnergy = 0.0f;
-                environmentDepleted = true;
-                behaviourActive = false;
-                behaviourPlan.clear();
-                restingPose = "lay";
-                autonomousDecisionTimer = 0.0f;
-                appendLog("Energy depleted: companion entered terminal state.");
-            }
-            proposed.advanceTime(elapsedSeconds);
-        }
-    }
+    proposed.advanceTime(elapsedSeconds);
     if (throwTimer > 0.0f) throwTimer = std::max(0.0f, throwTimer - elapsedSeconds);
+    updatePlayer(elapsedSeconds);
+    const SceneLayout L = sceneLayout();
 
     if (ballFlying) {
         ballFlightTime += elapsedSeconds;
         const float p = std::min(1.0f, ballFlightTime / 0.85f);
         ballX = ballStartX + (ballLandX - ballStartX) * p;
-        ballHeight = 105.0f * (1.0f - p) + 150.0f * 4.0f * p * (1.0f - p);
+        ballY = ballStartY + (ballLandY - ballStartY) * p;
+        ballHeight = 85.0f * (1.0f - p) + 120.0f * 4.0f * p * (1.0f - p);
         if (p >= 1.0f) {
             ballFlying = false;
             ballX = ballLandX;
+            ballY = ballLandY;
             ballHeight = 0.0f;
         }
     }
@@ -723,20 +796,29 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
             ++animationFrame;
         }
         bool done = false;
-        if (s.targetX >= 0.0f) {
-            const float dx = s.targetX - agentX;
-            if (s.faceDir == 0 && std::fabs(dx) > 1.0f) facingRight = dx > 0.0f;
+        if (s.hasTarget) {
+            float tx = s.targetX, ty = s.targetY;
+            if (s.trackUser) {
+                tx = std::clamp(userX + static_cast<float>(s.trackSide) * s.userOffsetX, L.minX, L.maxX);
+                ty = std::clamp(userY + 4.0f, L.minY, L.maxY);
+            }
+            const float dx = tx - agentX, dy = ty - agentY;
+            const float distance = std::hypot(dx, dy);
+            if (s.faceDir == 0 && !s.faceUser && std::fabs(dx) > 1.0f) facingRight = dx > 0.0f;
             const float move = s.speed * elapsedSeconds;
-            if (std::fabs(dx) <= move) {
-                agentX = s.targetX;
+            if (distance <= move) {
+                agentX = tx;
+                agentY = ty;
                 done = true;
             } else {
-                agentX += (dx > 0.0f) ? move : -move;
+                agentX += dx / distance * move;
+                agentY += dy / distance * move;
             }
             if (stepTime > 10.0f) done = true;   // safety net
         } else if (stepTime >= s.duration) {
             done = true;
         }
+        if (s.faceUser) facingRight = userX > agentX;
         if (done) finishStep();   // s may be invalid after this call
     }
 
@@ -744,7 +826,11 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
         const auto next = interactionBuffer.front();
         interactionBuffer.pop_front();
         autonomousDecisionTimer = 0.0f;
-        executeInteraction(next.label, next.observation, next.reward, next.preference,
+        // Apply the scene change first, then derive proximity from the real positions.
+        applySceneEvent(next.sceneEvent);
+        EnvironmentObservation observation = next.observation;
+        applyGeometryProximity(observation, next.proximityBasis);
+        executeInteraction(next.label, observation, next.reward, next.preference,
                            next.preferencePositive, next.sceneEvent);
     } else if (!behaviourActive && interactionBuffer.empty()) {
         // The environment continues to evolve when the user is idle. Refresh
@@ -752,9 +838,8 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
         // only the selected A/B condition is rendered. No synthetic user reward
         // or memory event is recorded for this autonomous decision.
         autonomousDecisionTimer += elapsedSeconds;
-        if (!environmentDepleted && autonomousDecisionTimer >= autonomousDecisionInterval &&
+        if (autonomousDecisionTimer >= autonomousDecisionInterval &&
             screen == Screen::Simulation) {
-            const float idleSecondsBeforeDecision = autonomousDecisionTimer;
             autonomousDecisionTimer = 0.0f;
             EnvironmentObservation ambient = latestObservation;
             ambient.goal_state = 2;       // no new user request: ambient context
@@ -763,68 +848,10 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
             ambient.signal_strength = 0.0f;
             ambient.food_available = foodPresent;
             ambient.play_available = !ballCarried && !ballFlying;
-            ambient.energy = environmentEnergy;
-            const float targetDistance = std::fabs(agentX - ballX);
-            ambient.target_proximity = targetDistance < 120.0f ? 0 :
-                                       targetDistance < 300.0f ? 1 : 2;
+            ambient.target_proximity = proximityBucket(std::hypot(agentX - ballX, agentY - ballY));
 
             latestBaselineAction = baseline.selectAction(ambient);
             latestProposedAction = proposed.selectAction(ambient);
-
-            // Researcher-only trace of the real UI idle loop. Unlike the
-            // fixed-context sweep, this records the actual scene-derived
-            // observation after the previous behaviour has completed.
-            if (researcherMode) {
-                const ActionDecisionTrace& trace = proposed.getLastDecisionTrace();
-                nlohmann::json qValues = nlohmann::json::array();
-                for (const auto& item : trace.valid_action_q_values) {
-                    qValues.push_back({{"action", item.first}, {"q_value", item.second}});
-                }
-                nlohmann::json row;
-                row["event"] = "autonomous_policy_decision";
-                row["run_id"] = runId;
-                row["simulation_elapsed_seconds"] = totalSimulationElapsedSeconds;
-                row["idle_seconds_before_decision"] = idleSecondsBeforeDecision;
-                row["idle_threshold_seconds"] = autonomousDecisionInterval;
-                row["selected_condition"] = selectedAgentIsProposed ? "proposed" : "baseline";
-                row["baseline_action"] = latestBaselineAction;
-                row["proposed_action"] = latestProposedAction;
-                row["environment_energy"] = environmentEnergy;
-                row["observation"] = {
-                    {"goal_state", ambient.goal_state},
-                    {"target_proximity", ambient.target_proximity},
-                    {"user_status", ambient.user_status},
-                    {"task_status", ambient.task_status},
-                    {"signal_strength", ambient.signal_strength},
-                    {"food_available", ambient.food_available},
-                    {"play_available", ambient.play_available}
-                };
-                row["proposed"] = {
-                    {"encoded_state", trace.encoded_state},
-                    {"contextual_fallback", trace.contextual_fallback},
-                    {"policy_action_before_overrides", trace.policy_action},
-                    {"q_table_state_present", trace.q_table_state_present},
-                    {"q_table_has_valid_action_values", trace.q_table_has_valid_action_values},
-                    {"final_action_after_overrides", trace.final_action},
-                    {"general_preference_override", trace.general_preference_override},
-                    {"rejection_override_applied", trace.rejection_override_applied},
-                    {"memory_record_count", trace.memory_record_count},
-                    {"affect", {
-                        {"valence", static_cast<int>(trace.affect.valence)},
-                        {"energy", static_cast<int>(trace.affect.energy)},
-                        {"arousal", trace.affect.arousal},
-                        {"stress", trace.affect.stress},
-                        {"engagement", trace.affect.engagement},
-                        {"affinity", trace.affect.affinity}
-                    }},
-                    {"valid_action_q_values", qValues}
-                };
-                std::ofstream diagnostic(
-                    std::filesystem::path(outputDirectory) / "idle-runtime-diagnostics.jsonl",
-                    std::ios::app);
-                if (diagnostic) diagnostic << row.dump() << '\n';
-            }
-
             latestObservation = ambient;
             latestStimulus = "The companion responds to its surroundings.";
             startBehaviour(selectedAgentIsProposed ? latestProposedAction : latestBaselineAction, "");
@@ -840,45 +867,42 @@ void CompanionUI::drawBubble(const std::string& value, float x, float bottomY) {
     sf::Text label(font, value, 20);
     label.setFillColor(kInk);
     const sf::FloatRect bounds = label.getLocalBounds();
-    const float padX = 12.0f, padY = 7.0f;
+    const float padX = 13.0f, padY = 7.0f;
     const float w = bounds.size.x + padX * 2.0f;
     const float h = bounds.size.y + padY * 2.0f;
     const float top = bottomY - h - 10.0f;
-    sf::RectangleShape box({w, h});
-    box.setPosition({x - w * 0.5f, top});
-    box.setFillColor(sf::Color(255, 255, 255, 240));
-    box.setOutlineColor(kInk);
-    box.setOutlineThickness(2.0f);
-    window.draw(box);
+    drawRoundedBox(window, x - w * 0.5f, top + 3.0f, w, h, 12.0f, kShadowSoft);
+    drawRoundedBox(window, x - w * 0.5f, top, w, h, 12.0f, kCream, sf::Color(196, 150, 112), 2.0f);
     sf::ConvexShape tail;
     tail.setPointCount(3);
-    tail.setPoint(0, {x - 7.0f, top + h});
-    tail.setPoint(1, {x + 7.0f, top + h});
+    tail.setPoint(0, {x - 7.0f, top + h - 1.0f});
+    tail.setPoint(1, {x + 7.0f, top + h - 1.0f});
     tail.setPoint(2, {x, bottomY});
-    tail.setFillColor(sf::Color(255, 255, 255, 240));
+    tail.setFillColor(kCream);
     window.draw(tail);
     label.setPosition({x - w * 0.5f + padX - bounds.position.x, top + padY - bounds.position.y});
     window.draw(label);
 }
 
-void CompanionUI::drawCompanion(float x, float groundY) {
+void CompanionUI::drawCompanion(float x, float y) {
     const BehaviourStep* step =
         (behaviourActive && stepIndex < behaviourPlan.size()) ? &behaviourPlan[stepIndex] : nullptr;
     const std::string pose = step ? step->pose : restingPose;
     const auto& frames = framesForPose(pose);
+    pendingCue.clear();
 
-    sf::CircleShape shadow(40.0f);
-    shadow.setOrigin({40.0f, 40.0f});
-    shadow.setScale({1.0f, 0.18f});
-    shadow.setPosition({x, groundY + 2.0f});
+    sf::CircleShape shadow(30.0f);
+    shadow.setOrigin({30.0f, 30.0f});
+    shadow.setScale({1.0f, 0.28f});
+    shadow.setPosition({x, y + 2.0f});
     shadow.setFillColor(kShadow);
     window.draw(shadow);
 
     if (frames.empty()) {
-        sf::CircleShape placeholder(30.0f);
-        placeholder.setOrigin({30.0f, 60.0f});
-        placeholder.setPosition({x, groundY});
-        placeholder.setFillColor(kBlue);
+        sf::CircleShape placeholder(24.0f);
+        placeholder.setOrigin({24.0f, 48.0f});
+        placeholder.setPosition({x, y});
+        placeholder.setFillColor(kAccent);
         window.draw(placeholder);
         return;
     }
@@ -911,14 +935,14 @@ void CompanionUI::drawCompanion(float x, float groundY) {
     dog.setScale({kDogScale * (facingRight ? -1.0f : 1.0f), kDogScale * (1.0f - crouch)});
     dog.setRotation(sf::degrees(angle));
     dog.setColor(tint);
-    dog.setPosition({std::round(x + shiver), std::round(groundY - hopOffset)});
+    dog.setPosition({std::round(x + shiver), std::round(y - hopOffset)});
     window.draw(dog);
 
     if (ballCarried) {
-        const float mouthX = x + (facingRight ? 34.0f : -34.0f);
-        const float mouthY = groundY - hopOffset - 36.0f;
-        sf::CircleShape ball(11.0f);
-        ball.setOrigin({11.0f, 11.0f});
+        const float mouthX = x + (facingRight ? kMouthOffset : -kMouthOffset);
+        const float mouthY = y - hopOffset - 27.0f;
+        sf::CircleShape ball(9.0f);
+        ball.setOrigin({9.0f, 9.0f});
         ball.setPosition({mouthX, mouthY});
         ball.setFillColor(sf::Color(204, 62, 56));
         ball.setOutlineColor(sf::Color(110, 30, 28));
@@ -930,106 +954,142 @@ void CompanionUI::drawCompanion(float x, float groundY) {
     if (!cue.empty()) {
         if (cue == "Zzz") cue = std::string("Zzz").substr(0, 1 + static_cast<std::size_t>(sceneTime * 1.5f) % 3);
         const float visiblePx = (pose == "sleep") ? 10.0f : (pose == "lay") ? 11.0f : 15.0f;
-        drawBubble(cue, x, groundY - hopOffset - visiblePx * kDogScale * (1.0f - crouch) - 4.0f);
+        pendingCue = cue;
+        pendingCueX = x;
+        pendingCueY = y - hopOffset - visiblePx * kDogScale * (1.0f - crouch) - 4.0f;
     }
 }
 
-void CompanionUI::drawPlayer(float x, float groundY) {
+void CompanionUI::drawPlayer(float x, float y) {
     // Simple silhouette; swap this function for a sprite-sheet player later.
-    const sf::Color body(46, 52, 64);
-    sf::RectangleShape leg({11.0f, 38.0f});
+    const float dir = playerFacingRight ? 1.0f : -1.0f;
+    const sf::Color body(96, 72, 92);
+
+    sf::CircleShape shadow(26.0f);
+    shadow.setOrigin({26.0f, 26.0f});
+    shadow.setScale({1.0f, 0.28f});
+    shadow.setPosition({x, y + 2.0f});
+    shadow.setFillColor(kShadow);
+    window.draw(shadow);
+
+    const float swing = playerMoving ? std::sin(sceneTime * 12.0f) * 5.0f : 0.0f;
+    sf::RectangleShape leg({10.0f, 32.0f});
     leg.setFillColor(body);
-    leg.setPosition({x - 13.0f, groundY - 38.0f});
+    leg.setPosition({x - 12.0f, y - 32.0f + std::max(0.0f, swing)});
     window.draw(leg);
-    leg.setPosition({x + 2.0f, groundY - 38.0f});
+    leg.setPosition({x + 2.0f, y - 32.0f + std::max(0.0f, -swing)});
     window.draw(leg);
-    sf::RectangleShape torso({30.0f, 50.0f});
+    sf::RectangleShape torso({28.0f, 44.0f});
     torso.setFillColor(body);
-    torso.setPosition({x - 15.0f, groundY - 88.0f});
+    torso.setPosition({x - 14.0f, y - 76.0f});
     window.draw(torso);
-    sf::CircleShape head(14.0f);
+    sf::CircleShape head(12.0f);
     head.setFillColor(body);
-    head.setPosition({x - 14.0f, groundY - 116.0f});
+    head.setPosition({x - 12.0f, y - 102.0f});
     window.draw(head);
+
     float armAngle = 6.0f;
     if (throwTimer > 0.0f) {
         const float p = 1.0f - throwTimer / 0.5f;
         armAngle = 6.0f - 170.0f * std::sin(kPi * p);   // swing up and forward when throwing
     }
-    sf::RectangleShape arm({9.0f, 40.0f});
-    arm.setFillColor(sf::Color(62, 69, 82));
-    arm.setOrigin({4.5f, 4.0f});
-    arm.setPosition({x + 10.0f, groundY - 82.0f});
-    arm.setRotation(sf::degrees(armAngle));
+    sf::RectangleShape arm({8.0f, 36.0f});
+    arm.setFillColor(sf::Color(116, 90, 108));
+    arm.setOrigin({4.0f, 4.0f});
+    arm.setPosition({x + dir * 9.0f, y - 72.0f});
+    arm.setRotation(sf::degrees(dir * armAngle));
     window.draw(arm);
 }
 
 void CompanionUI::drawSceneObjects() {
     const SceneLayout L = sceneLayout();
 
-    // Dog bed
+    // Dog bed (seen from above at an angle)
     sf::CircleShape bedOuter(62.0f);
     bedOuter.setOrigin({62.0f, 62.0f});
-    bedOuter.setScale({1.0f, 0.30f});
-    bedOuter.setPosition({L.bedX, L.groundY + 2.0f});
+    bedOuter.setScale({1.0f, 0.34f});
+    bedOuter.setPosition({L.bedX, L.bedY});
     bedOuter.setFillColor(sf::Color(121, 82, 64));
     window.draw(bedOuter);
     sf::CircleShape bedInner(48.0f);
     bedInner.setOrigin({48.0f, 48.0f});
-    bedInner.setScale({1.0f, 0.26f});
-    bedInner.setPosition({L.bedX, L.groundY});
+    bedInner.setScale({1.0f, 0.28f});
+    bedInner.setPosition({L.bedX, L.bedY - 2.0f});
     bedInner.setFillColor(sf::Color(176, 128, 98));
     window.draw(bedInner);
 
     // Food bowl
-    sf::ConvexShape bowl;
-    bowl.setPointCount(4);
-    bowl.setPoint(0, {L.bowlX - 28.0f, L.groundY - 22.0f});
-    bowl.setPoint(1, {L.bowlX + 28.0f, L.groundY - 22.0f});
-    bowl.setPoint(2, {L.bowlX + 20.0f, L.groundY + 2.0f});
-    bowl.setPoint(3, {L.bowlX - 20.0f, L.groundY + 2.0f});
-    bowl.setFillColor(sf::Color(96, 120, 150));
-    bowl.setOutlineColor(sf::Color(60, 76, 98));
-    bowl.setOutlineThickness(2.0f);
-    window.draw(bowl);
-    sf::RectangleShape rim({60.0f, 5.0f});
-    rim.setPosition({L.bowlX - 30.0f, L.groundY - 25.0f});
-    rim.setFillColor(sf::Color(130, 155, 185));
-    window.draw(rim);
+    sf::CircleShape bowlOuter(28.0f);
+    bowlOuter.setOrigin({28.0f, 28.0f});
+    bowlOuter.setScale({1.0f, 0.5f});
+    bowlOuter.setPosition({L.bowlX, L.bowlY});
+    bowlOuter.setFillColor(sf::Color(96, 120, 150));
+    bowlOuter.setOutlineColor(sf::Color(60, 76, 98));
+    bowlOuter.setOutlineThickness(2.0f);
+    window.draw(bowlOuter);
+    sf::CircleShape bowlInner(21.0f);
+    bowlInner.setOrigin({21.0f, 21.0f});
+    bowlInner.setScale({1.0f, 0.46f});
+    bowlInner.setPosition({L.bowlX, L.bowlY - 1.0f});
+    bowlInner.setFillColor(foodPresent ? sf::Color(150, 98, 60) : sf::Color(70, 88, 112));
+    window.draw(bowlInner);
     if (foodPresent) {
-        for (int i = 0; i < 8; ++i) {
-            sf::CircleShape kibble(4.0f);
-            kibble.setOrigin({4.0f, 4.0f});
-            kibble.setPosition({L.bowlX - 21.0f + static_cast<float>(i) * 6.0f,
-                                L.groundY - 27.0f - static_cast<float>((i * 3) % 4)});
-            kibble.setFillColor(sf::Color(150, 98, 60));
+        for (int i = 0; i < 6; ++i) {
+            sf::CircleShape kibble(3.0f);
+            kibble.setOrigin({3.0f, 3.0f});
+            kibble.setPosition({L.bowlX - 12.0f + static_cast<float>(i) * 4.8f,
+                                L.bowlY - 4.0f - static_cast<float>((i * 3) % 4)});
+            kibble.setFillColor(sf::Color(190, 130, 80));
             window.draw(kibble);
         }
     }
 
     // Ball on the ground or in flight (the carried ball is drawn with the dog)
     if (!ballCarried) {
-        if (ballHeight > 1.0f) {
-            sf::CircleShape ballShadow(10.0f);
-            ballShadow.setOrigin({10.0f, 10.0f});
-            ballShadow.setScale({1.0f, 0.3f});
-            ballShadow.setPosition({ballX, L.groundY + 2.0f});
-            ballShadow.setFillColor(kShadow);
-            window.draw(ballShadow);
-        }
-        sf::CircleShape ball(11.0f);
-        ball.setOrigin({11.0f, 11.0f});
-        ball.setPosition({ballX, L.groundY - ballHeight - 11.0f});
+        sf::CircleShape ballShadow(9.0f);
+        ballShadow.setOrigin({9.0f, 9.0f});
+        ballShadow.setScale({1.0f, 0.32f});
+        ballShadow.setPosition({ballX, ballY + 2.0f});
+        ballShadow.setFillColor(kShadow);
+        window.draw(ballShadow);
+        sf::CircleShape ball(9.0f);
+        ball.setOrigin({9.0f, 9.0f});
+        ball.setPosition({ballX, ballY - ballHeight - 9.0f});
         ball.setFillColor(sf::Color(204, 62, 56));
         ball.setOutlineColor(sf::Color(110, 30, 28));
         ball.setOutlineThickness(2.0f);
         window.draw(ball);
-        sf::CircleShape shine(3.0f);
-        shine.setOrigin({3.0f, 3.0f});
-        shine.setPosition({ballX - 4.0f, L.groundY - ballHeight - 15.0f});
+        sf::CircleShape shine(2.5f);
+        shine.setOrigin({2.5f, 2.5f});
+        shine.setPosition({ballX - 3.0f, ballY - ballHeight - 12.0f});
         shine.setFillColor(sf::Color(255, 220, 215));
         window.draw(shine);
     }
+}
+
+void CompanionUI::drawControlHelper() {
+    const SceneLayout L = sceneLayout();
+    const float px = L.x + 14.0f, py = L.y + 14.0f;
+    const bool paused = textInputFocused;
+    drawRoundedBox(window, px, py + 3.0f, 252.0f, 106.0f, 14.0f, kShadowSoft);
+    drawRoundedBox(window, px, py, 252.0f, 106.0f, 14.0f, sf::Color(255, 248, 234, 232), kBorder, 1.5f);
+    drawText("MOVE", px + 12.0f, py + 6.0f, 13, kMuted);
+    auto key = [&](const std::string& label, float kx, float ky, bool down) {
+        const bool active = down && !paused && window.hasFocus();
+        drawRoundedBox(window, kx, ky, 30.0f, 30.0f, 8.0f, active ? kAccent : kCream,
+                       active ? kAccentDark : sf::Color(196, 150, 112), 1.5f);
+        drawText(label, kx + 9.0f, ky + 4.0f, 17, active ? sf::Color::White : kInk);
+    };
+    auto pressed = [](sf::Keyboard::Key a, sf::Keyboard::Key b) {
+        return sf::Keyboard::isKeyPressed(a) || sf::Keyboard::isKeyPressed(b);
+    };
+    key("W", px + 44.0f, py + 26.0f, pressed(sf::Keyboard::Key::W, sf::Keyboard::Key::Up));
+    key("A", px + 10.0f, py + 60.0f, pressed(sf::Keyboard::Key::A, sf::Keyboard::Key::Left));
+    key("S", px + 44.0f, py + 60.0f, pressed(sf::Keyboard::Key::S, sf::Keyboard::Key::Down));
+    key("D", px + 78.0f, py + 60.0f, pressed(sf::Keyboard::Key::D, sf::Keyboard::Key::Right));
+    drawText(paused ? "Typing: movement\npaused. Click the\nyard to move again."
+                    : "Arrow keys also work.\nWalk up to the dog\nto greet or pet it.",
+             px + 124.0f, py + 28.0f, 12, kInk);
 }
 
 void CompanionUI::drawHover() {
@@ -1042,39 +1102,30 @@ void CompanionUI::drawHover() {
         if (object.bounds.contains(mouse)) hovered = &object;
     if (hovered == nullptr) return;
 
-    sf::RectangleShape outline({hovered->bounds.size.x, hovered->bounds.size.y});
-    outline.setPosition(hovered->bounds.position);
-    outline.setFillColor(sf::Color(255, 255, 255, 30));
-    outline.setOutlineColor(sf::Color(255, 255, 255, 230));
-    outline.setOutlineThickness(2.0f);
-    window.draw(outline);
+    drawRoundedBox(window, hovered->bounds.position.x, hovered->bounds.position.y,
+                   hovered->bounds.size.x, hovered->bounds.size.y, 10.0f,
+                   sf::Color(255, 244, 220, 38), sf::Color(255, 244, 220, 235), 2.0f);
 
     sf::Text tip(font, hovered->label, 15);
     tip.setFillColor(kInk);
     const sf::FloatRect b = tip.getLocalBounds();
     const float px = mouse.x + 14.0f, py = mouse.y - 34.0f;
-    sf::RectangleShape panel({b.size.x + 18.0f, b.size.y + 14.0f});
-    panel.setPosition({px, py});
-    panel.setFillColor(sf::Color(255, 255, 255, 245));
-    panel.setOutlineColor(kMuted);
-    panel.setOutlineThickness(1.0f);
-    window.draw(panel);
-    tip.setPosition({px + 9.0f - b.position.x, py + 6.0f - b.position.y});
+    drawRoundedBox(window, px, py + 2.0f, b.size.x + 20.0f, b.size.y + 14.0f, 9.0f, kShadowSoft);
+    drawRoundedBox(window, px, py, b.size.x + 20.0f, b.size.y + 14.0f, 9.0f, kCream, sf::Color(196, 150, 112), 1.5f);
+    tip.setPosition({px + 10.0f - b.position.x, py + 7.0f - b.position.y});
     window.draw(tip);
 }
+
 
 void CompanionUI::processInteraction(const std::string& label,
                                      const EnvironmentObservation& observation,
                                      float feedbackRewardValue,
                                      const std::string& preference,
                                      bool preferencePositive,
-                                     const std::string& sceneEvent) {
-    if (environmentDepleted) {
-        appendLog("Interaction ignored: the companion is depleted; start a new session.");
-        return;
-    }
+                                     const std::string& sceneEvent,
+                                     const std::string& proximityBasis) {
     interactionBuffer.push_back(QueuedInteraction{label, observation, feedbackRewardValue, preference,
-                                                  preferencePositive, sceneEvent});
+                                                  preferencePositive, sceneEvent, proximityBasis});
     appendLog("Queued interaction (" + std::to_string(interactionBuffer.size()) + " waiting): " + label);
 }
 
@@ -1084,21 +1135,15 @@ void CompanionUI::executeInteraction(const std::string& label,
                                      const std::string& preference,
                                      bool preferencePositive,
                                      const std::string& sceneEvent) {
-    if (environmentDepleted) {
-        appendLog("Interaction ignored: the companion is depleted; start a new session.");
-        return;
-    }
     if (!preference.empty()) proposed.recordUserPreference(preference, preferencePositive);
     const auto affectBefore = proposed.getAffectiveState();
     const std::size_t memoryCountBefore = proposed.getMemoryRecords().size();
     const int interactionId = interactionCount + 1;
     lastActionInteractionId = interactionId;
-    EnvironmentObservation sharedObservation = observation;
-    sharedObservation.energy = environmentEnergy;
-    latestObservation = sharedObservation;
+    latestObservation = observation;
     latestStimulus = label;
-    latestBaselineAction = baseline.selectAction(sharedObservation);
-    latestProposedAction = proposed.selectAction(sharedObservation);
+    latestBaselineAction = baseline.selectAction(observation);
+    latestProposedAction = proposed.selectAction(observation);
     const std::size_t baselineStateBeforeOutcome = baseline.getCurrentState().encode();
     const std::size_t proposedStateBeforeOutcome = proposed.getCurrentState().encode();
     nlohmann::json memoryCandidates = nlohmann::json::array();
@@ -1116,7 +1161,7 @@ void CompanionUI::executeInteraction(const std::string& label,
         }
     }
     // Show the visible companion's chosen action in the scene.
-    applySceneEvent(sceneEvent);
+    // The scene event was already applied (and proximity derived) before this call.
     startBehaviour(selectedAgentIsProposed ? latestProposedAction : latestBaselineAction, sceneEvent);
 
     ActionOutcome baselineOutcome;
@@ -1125,12 +1170,8 @@ void CompanionUI::executeInteraction(const std::string& label,
     baselineOutcome.outcome_tag = "simulation_" + (feedbackRewardValue > 0 ? std::string("positive") :
                                                     feedbackRewardValue < 0 ? std::string("negative") : std::string("neutral"));
     ActionOutcome proposedOutcome = baselineOutcome;
-    baselineOutcome.energy_after = environmentEnergy;
-    proposedOutcome.energy_after = environmentEnergy;
-    EnvironmentObservation nextSharedObservation = sharedObservation;
-    nextSharedObservation.energy = environmentEnergy;
-    baseline.applyOutcome(sharedObservation, latestBaselineAction, baselineOutcome, nextSharedObservation);
-    proposed.applyOutcome(sharedObservation, latestProposedAction, proposedOutcome, nextSharedObservation);
+    baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome);
+    proposed.applyOutcome(observation, latestProposedAction, proposedOutcome);
 
     baselineRewards.push_back(feedbackRewardValue);
     proposedRewards.push_back(feedbackRewardValue);
@@ -1149,8 +1190,6 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["condition_code"] = std::string(1, selectedAgentCode);
         row["input_summary"] = label;
         row["observation"] = {
-            {"energy_before_action", sharedObservation.energy},
-            {"energy_after_action", environmentEnergy},
             {"goal_state", observation.goal_state},
             {"target_proximity", observation.target_proximity},
             {"user_status", observation.user_status},
@@ -1183,8 +1222,7 @@ void CompanionUI::executeInteraction(const std::string& label,
                 {"engagement", proposed.getAffectiveState().engagement},
                 {"valence", static_cast<int>(proposed.getAffectiveState().valence)}
             }}
-        };
-        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+        };        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
         if (log) log << row.dump() << '\n';
         else appendLog("WARNING: interaction event log could not be written.");
     }
@@ -1264,10 +1302,6 @@ std::string CompanionUI::interpretIntent(const std::string& text, EnvironmentObs
 }
 
 void CompanionUI::processTextInteraction(const std::string& text) {
-    if (environmentDepleted) {
-        appendLog("Input ignored: the companion is depleted; start a new session.");
-        return;
-    }
     std::string lower = text;
     std::transform(lower.begin(), lower.end(), lower.begin(),
         [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
@@ -1433,7 +1467,12 @@ void CompanionUI::processTextInteraction(const std::string& text) {
                                      lower.find("bring") != std::string::npos)) sceneEvent = "fetch_ball";
     else if (intent == "feeding") sceneEvent = "feed";
 
-    processInteraction(text + " [" + intent + " / " + nlpMethod + "]", observation, reward, "", true, sceneEvent);
+    std::string proximityBasis;
+    if (sceneEvent == "fetch_ball" || sceneEvent == "throw_ball") proximityBasis = "ball";
+    else if (sceneEvent == "feed") proximityBasis = "bowl";
+    else if (intent == "praise" || intent == "negative_feedback" || intent == "greeting" || intent == "play") proximityBasis = "user";
+
+    processInteraction(text + " [" + intent + " / " + nlpMethod + "]", observation, reward, "", true, sceneEvent, proximityBasis);
 }
 
 void CompanionUI::handleClick(sf::Vector2f point) {
@@ -1513,7 +1552,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
             processInteraction(control.stimulus,
                                makeObservation(control.goal, control.proximity, control.user, control.task,
                                                control.signal, control.food, control.play),
-                               control.reward, "", true, control.sceneEvent);
+                               control.reward, "", true, control.sceneEvent, control.basis);
             return;
         }
     }
@@ -1533,25 +1572,20 @@ void CompanionUI::drawText(const std::string& value, float x, float y, unsigned 
 }
 
 void CompanionUI::drawButton(const std::string& label, float x, float y, float width, float height, bool selected) {
-    sf::RectangleShape rect({width, height});
-    rect.setPosition({x, y});
-    rect.setFillColor(selected ? sf::Color(218, 233, 247) : kPanel);
-    rect.setOutlineColor(selected ? kBlue : sf::Color(215, 222, 230));
-    rect.setOutlineThickness(1.0f);
-    window.draw(rect);
-    drawText(label, x + 12, y + 12, 16, selected ? kBlue : kInk);
+    const sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    const bool hover = mouse.x >= x && mouse.x < x + width && mouse.y >= y && mouse.y < y + height;
+    drawRoundedBox(window, x, y + 3.0f, width, height, 12.0f, kShadowSoft);
+    drawRoundedBox(window, x, y, width, height, 12.0f,
+                   selected ? kAccentSoft : (hover ? sf::Color(255, 240, 214) : kPanel),
+                   selected ? kAccent : kBorder, selected ? 2.0f : 1.5f);
+    drawText(label, x + 14, y + 12, 16, selected ? kAccentDark : kInk);
 }
 
 void CompanionUI::drawBar(const std::string& label, float value, float x, float y, float width) {
     drawText(label + "  " + levelText(value), x, y, 15, kInk);
-    sf::RectangleShape track({width, 10});
-    track.setPosition({x, y + 25});
-    track.setFillColor(sf::Color(225, 230, 235));
-    window.draw(track);
-    sf::RectangleShape fill({width * clamp01(value), 10});
-    fill.setPosition({x, y + 25});
-    fill.setFillColor(kBlue);
-    window.draw(fill);
+    drawRoundedBox(window, x, y + 25, width, 10, 5.0f, sf::Color(238, 224, 204));
+    const float fillWidth = width * clamp01(value);
+    if (fillWidth >= 2.0f) drawRoundedBox(window, x, y + 25, fillWidth, 10, 5.0f, kAccent);
 }
 
 void CompanionUI::appendLog(const std::string& value) {
@@ -1598,26 +1632,61 @@ void CompanionUI::drawNavigation() {
 }
 
 void CompanionUI::drawBackdrop(float x, float y, float width, float height) {
-    // Side-on yard: sky, lawn, a dirt strip that every character stands on, then
-    // atlas sprites. Source rectangles were measured from free.png (the house is
-    // 64x73 starting at y=55; the earlier crop cut the door off).
+    // Warm top-down yard: sun-washed grass with tufts and flowers, a hedge that fades
+    // into the lawn, the house and tree at the back, a softly edged dirt path and a crop bed.
     const SceneLayout L = sceneLayout();
-    const float horizon = y + height * 0.42f;
 
-    sf::RectangleShape sky({width, horizon - y});
-    sky.setPosition({x, y});
-    sky.setFillColor(sf::Color(158, 205, 232));
-    window.draw(sky);
-
-    sf::RectangleShape lawn({width, y + height - horizon});
-    lawn.setPosition({x, horizon});
-    lawn.setFillColor(sf::Color(122, 145, 78));
+    sf::RectangleShape lawn({width, height});
+    lawn.setPosition({x, y});
+    lawn.setFillColor(sf::Color(141, 156, 80));      // plain grass tile colour, warmed slightly
     window.draw(lawn);
 
-    sf::RectangleShape track({width, 44.0f});
-    track.setPosition({x, L.groundY - 10.0f});
-    track.setFillColor(sf::Color(160, 135, 83));
-    window.draw(track);
+    // Hedge that fades into the lawn instead of ending in a hard line.
+    sf::RectangleShape hedgeTop({width, height * 0.09f});
+    hedgeTop.setPosition({x, y});
+    hedgeTop.setFillColor(sf::Color(96, 122, 66));
+    window.draw(hedgeTop);
+    drawGradient(window, x, y + height * 0.09f, width, height * 0.12f,
+                 sf::Color(96, 122, 66, 255), sf::Color(96, 122, 66, 0), true);
+
+    // Deterministic grass tufts and flowers (same positions every frame).
+    unsigned int seed = 20260101u;
+    auto rnd = [&seed]() {
+        seed = seed * 1664525u + 1013904223u;
+        return static_cast<float>((seed >> 8) & 0xFFFFu) / 65535.0f;
+    };
+    const float pathLeft = L.houseX + 147.0f * 0.5f - 48.0f;
+    for (int i = 0; i < 110; ++i) {
+        const float tx = x + 18.0f + rnd() * (width - 36.0f);
+        const float ty = y + height * 0.22f + rnd() * (height * 0.76f);
+        const bool lighter = rnd() > 0.5f;
+        if (tx > pathLeft - 6.0f && tx < pathLeft + 102.0f && ty > L.minY - 20.0f) continue;   // keep the path clear
+        for (int blade = 0; blade < 3; ++blade) {
+            sf::RectangleShape grass({2.0f, 6.0f});
+            grass.setOrigin({1.0f, 6.0f});
+            grass.setPosition({tx + static_cast<float>(blade - 1) * 3.0f, ty});
+            grass.setRotation(sf::degrees(static_cast<float>(blade - 1) * 22.0f));
+            grass.setFillColor(lighter ? sf::Color(168, 182, 98, 200) : sf::Color(112, 134, 66, 200));
+            window.draw(grass);
+        }
+    }
+    const sf::Color petals[3] = {sf::Color(255, 244, 214), sf::Color(240, 176, 176), sf::Color(250, 214, 110)};
+    for (int i = 0; i < 26; ++i) {
+        const float fx = x + 24.0f + rnd() * (width - 48.0f);
+        const float fy = y + height * 0.26f + rnd() * (height * 0.70f);
+        const int colour = static_cast<int>(rnd() * 2.99f);
+        if (fx > pathLeft - 10.0f && fx < pathLeft + 106.0f && fy > L.minY - 20.0f) continue;
+        sf::CircleShape flower(3.0f);
+        flower.setOrigin({3.0f, 3.0f});
+        flower.setPosition({fx, fy});
+        flower.setFillColor(petals[colour]);
+        window.draw(flower);
+        sf::CircleShape centre(1.2f);
+        centre.setOrigin({1.2f, 1.2f});
+        centre.setPosition({fx, fy});
+        centre.setFillColor(sf::Color(214, 150, 70));
+        window.draw(centre);
+    }
 
     auto sprite = [&](sf::IntRect source, sf::Vector2f position, float scale) {
         if (!environmentTextureLoaded) return;
@@ -1628,11 +1697,33 @@ void CompanionUI::drawBackdrop(float x, float y, float width, float height) {
         window.draw(item);
     };
 
-    sprite(sf::IntRect({0, 55}, {64, 73}), {L.houseX, L.groundY - 30.0f - 73.0f * 3.0f}, 3.0f);
-    sprite(sf::IntRect({144, 48}, {32, 32}), {L.treeX, L.groundY - 20.0f - 32.0f * 4.0f}, 4.0f);
-    for (int i = 0; i < 4; ++i) {
-        sprite(sf::IntRect({160, 133}, {16, 26}),
-               {x + width - 250.0f + static_cast<float>(i) * 44.0f, y + height - 8.0f - 26.0f * 2.5f}, 2.5f);
+    // Dirt path from the house door down through the yard, with softened edges.
+    if (environmentTextureLoaded) {
+        const float tile = 48.0f;
+        const float pathX = pathLeft;
+        const float pathTop = L.minY - 16.0f;
+        int variant = 0;
+        for (float ty = pathTop; ty < y + height; ty += tile) {
+            for (int column = 0; column < 2; ++column) {
+                const float tileH = std::min(tile, y + height - ty);
+                sf::Sprite dirt(environmentTexture);
+                dirt.setTextureRect(sf::IntRect({80 + 16 * (variant % 3), 0}, {16, static_cast<int>(tileH / 3.0f)}));
+                dirt.setScale({3.0f, 3.0f});
+                dirt.setPosition({pathX + static_cast<float>(column) * tile, ty});
+                window.draw(dirt);
+                ++variant;
+            }
+        }
+        const sf::Color edge(141, 156, 80, 190), clear(141, 156, 80, 0);
+        drawGradient(window, pathX, pathTop, 12.0f, y + height - pathTop, edge, clear, false);
+        drawGradient(window, pathX + 2.0f * tile - 12.0f, pathTop, 12.0f, y + height - pathTop, clear, edge, false);
+    }
+
+    sprite(sf::IntRect({0, 55}, {64, 73}), {L.houseX, L.minY - 16.0f - 73.0f * 2.3f}, 2.3f);
+    sprite(sf::IntRect({144, 48}, {32, 32}), {L.treeX, L.minY - 8.0f - 32.0f * 3.2f}, 3.2f);
+    for (int i = 0; i < 5; ++i) {   // a row of mature plants from the crop-growth sprites
+        sprite(sf::IntRect({128 + 16 * (i % 2), 144}, {16, 16}),
+               {L.x + 90.0f + static_cast<float>(i) * 46.0f, L.minY - 6.0f - 16.0f * 2.8f}, 2.8f);
     }
 }
 
@@ -1640,41 +1731,46 @@ void CompanionUI::drawSimulationScreen() {
     const SceneLayout L = sceneLayout();
     drawText(researcherMode ? "MAIN SIMULATION" : "COMPANION SIMULATION", 30, 75, 26, kInk);
     drawText(researcherMode ? "Both policies receive the same interpreted interaction."
-                            : "Use the buttons or the message box to interact with the companion.",
+                            : "Move with W A S D, then use the buttons or the message box to interact with the companion.",
              30, 106, 15, kMuted);
 
-    sf::RectangleShape scene({L.w, L.h});
-    scene.setPosition({L.x, L.y});
-    scene.setFillColor(sf::Color(122, 145, 78));
-    scene.setOutlineColor(sf::Color(83, 104, 55));
-    scene.setOutlineThickness(1);
-    window.draw(scene);
+    // Wooden-style rounded frame around the yard
+    drawRoundedBox(window, L.x - 8.0f, L.y - 5.0f, L.w + 16.0f, L.h + 16.0f, 16.0f, kShadowSoft);
+    drawRoundedBox(window, L.x - 7.0f, L.y - 7.0f, L.w + 14.0f, L.h + 14.0f, 14.0f, sf::Color(196, 150, 112),
+                   sf::Color(150, 106, 74), 2.0f);
     drawBackdrop(L.x, L.y, L.w, L.h);
     drawSceneObjects();
-    drawPlayer(L.userX, L.groundY);
-    drawCompanion(agentX, L.groundY);
-    drawText("YOU", L.userX - 14.0f, L.groundY + 14.0f, 13, kInk);
-    drawText(std::string("Companion ") + selectedAgentCode, agentX - 46.0f, L.groundY + 14.0f, 13, kInk);
 
-    if (environmentDepleted) {
-        sf::RectangleShape notice({690.0f, 112.0f});
-        notice.setPosition({295.0f, 235.0f});
-        notice.setFillColor(sf::Color(255, 248, 244, 238));
-        notice.setOutlineColor(sf::Color(160, 55, 45));
-        notice.setOutlineThickness(2.0f);
-        window.draw(notice);
-        drawText("ENERGY DEPLETED - SIMULATION ENDED", 330.0f, 258.0f, 22, sf::Color(160, 45, 40));
-        drawText("Return to agent selection to start a new session.", 330.0f, 300.0f, 16, kInk);
+    // Characters further up the screen are drawn first so nearer ones overlap them.
+    if (userY <= agentY) {
+        drawPlayer(userX, userY);
+        drawCompanion(agentX, agentY);
+    } else {
+        drawCompanion(agentX, agentY);
+        drawPlayer(userX, userY);
     }
+    // Golden-hour wash and soft vignette keep the yard warm and take the edge off its corners.
+    sf::RectangleShape wash({L.w, L.h});
+    wash.setPosition({L.x, L.y});
+    wash.setFillColor(sf::Color(255, 214, 150, 22));
+    window.draw(wash);
+    const sf::Color shade(74, 44, 30, 70), none(74, 44, 30, 0);
+    drawGradient(window, L.x, L.y, L.w, 46.0f, shade, none, true);
+    drawGradient(window, L.x, L.y + L.h - 46.0f, L.w, 46.0f, none, shade, true);
+    drawGradient(window, L.x, L.y, 46.0f, L.h, shade, none, false);
+    drawGradient(window, L.x + L.w - 46.0f, L.y, 46.0f, L.h, none, shade, false);
+    if (!pendingCue.empty()) drawBubble(pendingCue, pendingCueX, pendingCueY);
+    drawText("YOU", userX - 14.0f, userY + 12.0f, 13, kInk);
+    drawText(std::string("Companion ") + selectedAgentCode, agentX - 46.0f, agentY + 12.0f, 13, kInk);
+    drawControlHelper();
 
     if (researcherMode) {
         const std::string visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
-        drawText(std::string("Agent ") + selectedAgentCode + " action: " + visibleAction, 50, 150, 16, kGreen);
-        drawText("Input interpretation: " + nlpMethod, 50, 172, 14, kMuted);
+        drawText(std::string("Agent ") + selectedAgentCode + " action: " + visibleAction, L.x + 280.0f, L.y + 14.0f, 16, sf::Color::White);
+        drawText("Input interpretation: " + nlpMethod, L.x + 280.0f, L.y + 38.0f, 14, sf::Color::White);
     }
     if (!controlsVisible) {
-        drawText(environmentDepleted ? "Simulation ended - select Change Agent for a new session."
-                                     : "Controls hidden - use Show Controls to interact", 50, 200, 16, kInk);
+        drawText("Controls hidden - use Show Controls to interact", L.x + 280.0f, L.y + 64.0f, 16, sf::Color::White);
         drawHover();
         return;
     }
@@ -1685,7 +1781,7 @@ void CompanionUI::drawSimulationScreen() {
                    kButtonX0 + static_cast<float>(i % 5) * (kButtonW + kButtonGap),
                    firstRowY + static_cast<float>(i / 5) * kButtonRowStep, kButtonW, kButtonH);
     }
-    drawButton(textInput.empty() ? "Type a message here, then press Enter" : textInput,
+    drawButton(textInput.empty() ? "Click here to type a message, then press Enter" : textInput,
                35, kInputY, 980, kInputH, textInputFocused);
     drawButton("Send", 1030, kInputY, 120, kInputH);
     drawText("Enter to send | Esc to quit", 850, kInputY + 54.0f, 13, kMuted);
@@ -1698,6 +1794,7 @@ void CompanionUI::drawSimulationScreen() {
     }
     drawHover();
 }
+
 
 void CompanionUI::drawAgentStateScreen() {
     drawText("AGENT STATE", 30, 75, 26, kInk);
@@ -1716,10 +1813,10 @@ void CompanionUI::drawAgentStateScreen() {
     drawBar("Engagement", affect.engagement, 340, 270, 235);
     drawText("Valence", 50, 350, 15, kInk);
     drawText(affect.valence == AffectValence::POSITIVE ? "Positive" :
-             affect.valence == AffectValence::NEGATIVE ? "Negative" : "Neutral", 150, 350, 15, kBlue);
+             affect.valence == AffectValence::NEGATIVE ? "Negative" : "Neutral", 150, 350, 15, kAccent);
     drawText("Current action: " + latestProposedAction, 50, 380, 15, kInk);
 
-    drawText("Current interaction context", 660, 158, 19, kBlue);
+    drawText("Current interaction context", 660, 158, 19, kAccent);
     drawText("Stimulus: " + latestStimulus, 660, 200, 15);
     drawText("Intent code: " + std::to_string(latestObservation.goal_state), 660, 230, 15);
     drawText("Target proximity: " + std::to_string(latestObservation.target_proximity), 660, 260, 15);
@@ -1748,7 +1845,7 @@ void CompanionUI::drawComparisonScreen() {
     left.setOutlineColor(sf::Color(215, 222, 230)); left.setOutlineThickness(1); window.draw(left);
     sf::RectangleShape right({608, 260}); right.setPosition({640, 145}); right.setFillColor(kPanel);
     right.setOutlineColor(sf::Color(215, 222, 230)); right.setOutlineThickness(1); window.draw(right);
-    drawText("BASELINE AGENT", 55, 165, 20, kBlue);
+    drawText("BASELINE AGENT", 55, 165, 20, kAccent);
     drawText(describeAction(latestBaselineAction), 55, 220, 18, kInk);
     drawText("No persistent semantic memory / affect augmentation", 55, 265, 14, kMuted);
     drawText("Interactions observed: " + std::to_string(baseline.getInteractionHistory().size()), 55, 310, 15);
