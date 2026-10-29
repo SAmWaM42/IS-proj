@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstdlib>
 #include <memory>
+#include <limits>
 #include <json.hpp>
 #include <filesystem>
 #include <fstream>
@@ -179,8 +180,11 @@ constexpr float kInputH = 48.0f;
 const sf::Color kShadow(70, 45, 30, 70);
 constexpr float kMouthOffset = 26.0f;    // distance from the dog's centre to its mouth
 constexpr float kPlayerSpeed = 230.0f;   // player walking speed in px/s
-// Same three-level classes as before (0 close, 1 medium, 2 far), now fed by real scene distances.
-int proximityBucket(float distance) { return distance < 120.0f ? 0 : distance < 300.0f ? 1 : 2; }
+// Map measured scene-space distance into the existing 0=close, 1=medium, 2=far state.
+// Scale thresholds with the scene width so they remain meaningful if the UI is resized.
+int proximityBucket(float distance, float sceneWidth) {
+    return distance < sceneWidth * 0.10f ? 0 : distance < sceneWidth * 0.25f ? 1 : 2;
+}
 
 // ---- Cosy theme helpers --------------------------------------------------------
 const sf::Color kShadowSoft(88, 56, 40, 46);        // warm drop shadow under panels
@@ -265,9 +269,9 @@ const std::array<ControlButton, 10> kControls{{
     {"Play",       "Invite the companion to play",         0, 1, 1, 0, 0.70f, false, true,   0.50f, "",           "user"},
     {"Praise",     "Praise the companion",                 0, 0, 1, 0, 0.75f, false, false,  1.00f, "",           "user"},
     {"Scold",      "Scold the companion",                  0, 1, 2, 0, 0.45f, false, false, -1.00f, "",           "user"},
-    {"Explore",    "Let the companion explore",            2, 1, 0, 0, 0.30f, false, false,  0.25f, "",           ""},
-    {"Rest",       "The companion should rest",            2, 2, 0, 0, 0.20f, false, false,  0.25f, "",           ""},
-    {"Loud noise", "A sudden loud noise occurs",           2, 0, 0, 0, 0.95f, false, false, -0.15f, "",           ""},
+    {"Explore",    "Let the companion explore",            2, 1, 0, 0, 0.30f, false, false,  0.25f, "",           "nearest"},
+    {"Rest",       "The companion should rest",            2, 2, 0, 0, 0.20f, false, false,  0.25f, "",           "bed"},
+    {"Loud noise", "A sudden loud noise occurs",           2, 0, 0, 0, 0.95f, false, false, -0.15f, "",           "nearest"},
     {"Fetch ball", "Ask the companion to fetch the ball",  1, 1, 1, 1, 0.85f, false, false,  0.85f, "fetch_ball", "ball"},
     {"Throw ball", "Throw the ball for the companion",     1, 1, 1, 1, 0.85f, false, false,  0.85f, "throw_ball", "ball"},
 }};
@@ -522,17 +526,50 @@ void CompanionUI::applySceneEvent(const std::string& sceneEvent) {
 // Maps a real distance in the scene onto the existing three-level proximity
 // classes (close / medium / far) used by the policies.
 void CompanionUI::applyGeometryProximity(EnvironmentObservation& observation, const std::string& basis) const {
-    if (basis.empty()) return;
     const SceneLayout L = sceneLayout();
-    float targetX = userX, targetY = userY;
-    if (basis == "ball") {
-        targetX = ballFlying ? ballLandX : ballX;
-        targetY = ballFlying ? ballLandY : ballY;
-    } else if (basis == "bowl") {
-        targetX = L.bowlX;
-        targetY = L.bowlY;
+
+    struct Target {
+        const char* name;
+        float x;
+        float y;
+    };
+    std::array<Target, 4> targets{{
+        {"user", userX, userY},
+        {"bowl", L.bowlX, L.bowlY},
+        {"bed", L.bedX, L.bedY},
+        {"ball", ballFlying ? ballLandX : ballX, ballFlying ? ballLandY : ballY}
+    }};
+
+    // A carried ball is not a separate reachable target.
+    const bool ballIsAvailable = !ballCarried;
+    const Target* selected = nullptr;
+    if (!basis.empty() && basis != "nearest") {
+        for (const auto& target : targets) {
+            if (basis == target.name && (basis != "ball" || ballIsAvailable)) {
+                selected = &target;
+                break;
+            }
+        }
     }
-    observation.target_proximity = proximityBucket(std::hypot(agentX - targetX, agentY - targetY));
+
+    // Empty/unknown targets and carried-ball requests fall back to the nearest
+    // relevant scene target instead of leaving a theoretical/stale value in place.
+    if (!selected) {
+        float nearestDistance = std::numeric_limits<float>::max();
+        for (const auto& target : targets) {
+            if (std::string(target.name) == "ball" && !ballIsAvailable) continue;
+            const float distance = std::hypot(agentX - target.x, agentY - target.y);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                selected = &target;
+            }
+        }
+    }
+
+    if (selected) {
+        const float distance = std::hypot(agentX - selected->x, agentY - selected->y);
+        observation.target_proximity = proximityBucket(distance, L.w);
+    }
 }
 
 void CompanionUI::beginStep() {
@@ -848,7 +885,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
             ambient.signal_strength = 0.0f;
             ambient.food_available = foodPresent;
             ambient.play_available = !ballCarried && !ballFlying;
-            ambient.target_proximity = proximityBucket(std::hypot(agentX - ballX, agentY - ballY));
+            applyGeometryProximity(ambient, "nearest");
 
             latestBaselineAction = baseline.selectAction(ambient);
             latestProposedAction = proposed.selectAction(ambient);
@@ -1471,6 +1508,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
     if (sceneEvent == "fetch_ball" || sceneEvent == "throw_ball") proximityBasis = "ball";
     else if (sceneEvent == "feed") proximityBasis = "bowl";
     else if (intent == "praise" || intent == "negative_feedback" || intent == "greeting" || intent == "play") proximityBasis = "user";
+    else if (lower.find("rest") != std::string::npos || lower.find("sleep") != std::string::npos) proximityBasis = "bed";
+    else proximityBasis = "nearest";
 
     processInteraction(text + " [" + intent + " / " + nlpMethod + "]", observation, reward, "", true, sceneEvent, proximityBasis);
 }
