@@ -33,6 +33,70 @@ def score_condition(condition: dict[str, Any]) -> tuple[float | None, list[str]]
     return sum(values) / len(values), []
 
 
+def behaviour_metrics(baseline_condition: dict[str, Any], proposed_condition: dict[str, Any]) -> dict[str, Any]:
+    """Return honest diagnostics; do not equate action agreement with believability."""
+    def action_rows(condition: dict[str, Any]) -> list[dict[str, Any]]:
+        rows = condition.get("trials", [])
+        return [row for row in rows if isinstance(row, dict)]
+
+    baseline_rows = action_rows(baseline_condition)
+    proposed_rows = action_rows(proposed_condition)
+    baseline_by_scenario = {row.get("scenario_id"): row.get("action_internal")
+                            for row in baseline_rows if row.get("scenario_id")}
+    proposed_by_scenario = {row.get("scenario_id"): row.get("action_internal")
+                            for row in proposed_rows if row.get("scenario_id")}
+    shared_ids = sorted(set(baseline_by_scenario) & set(proposed_by_scenario))
+    agreement = (
+        sum(baseline_by_scenario[key] == proposed_by_scenario[key] for key in shared_ids) / len(shared_ids)
+        if shared_ids else None
+    )
+
+    def repeated_consistency(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        grouped: dict[str, list[str]] = {}
+        for row in rows:
+            sid, action = row.get("scenario_id"), row.get("action_internal")
+            if sid and isinstance(action, str):
+                grouped.setdefault(sid, []).append(action)
+        repeats = [actions for actions in grouped.values() if len(actions) > 1]
+        if not repeats:
+            return {"score": None, "repeated_scenario_groups": 0,
+                    "status": "not_estimable_no_repeated_scenario_ids"}
+        total = sum(len(actions) for actions in repeats)
+        modal = sum(max(actions.count(action) for action in set(actions)) for actions in repeats)
+        return {"score": modal / total, "repeated_scenario_groups": len(repeats),
+                "status": "descriptive_repeated_scenario_action_agreement"}
+
+    # A causal/directional adaptation metric needs an explicitly matched event/control pair.
+    all_rows = baseline_rows + proposed_rows
+    pair_groups: dict[str, dict[str, dict[str, Any]]] = {}
+    for row in all_rows:
+        pair_id, variant = row.get("adaptation_pair_id"), row.get("adaptation_variant")
+        if pair_id and variant in {"event", "control"}:
+            pair_groups.setdefault(str(pair_id), {})[variant] = row
+    valid_pairs = [pair for pair in pair_groups.values()
+                   if "event" in pair and "control" in pair]
+    if valid_pairs:
+        adaptation_change_rate = sum(
+            pair["event"].get("action_internal") != pair["control"].get("action_internal"]
+            for pair in valid_pairs
+        ) / len(valid_pairs)
+        adaptation = {"status": "matched_event_control_pairs_available",
+                      "matched_pairs": len(valid_pairs),
+                      "action_change_rate": adaptation_change_rate}
+    else:
+        adaptation = {"status": "not_estimable_missing_matched_event_control_pairs",
+                      "matched_pairs": 0, "action_change_rate": None}
+
+    return {
+        "cross_condition_action_agreement": agreement,
+        "matched_scenarios_compared": len(shared_ids),
+        "baseline_repeated_scenario_consistency": repeated_consistency(baseline_rows),
+        "proposed_repeated_scenario_consistency": repeated_consistency(proposed_rows),
+        "adaptation": adaptation,
+        "interpretation_note": "Cross-condition action agreement is not a believability score; adaptation requires matched event/control scenarios."
+    }
+
+
 def read_sessions(inputs: list[Path]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     sessions: list[dict[str, Any]] = []
     exclusions: list[dict[str, str]] = []
@@ -85,11 +149,17 @@ def read_sessions(inputs: list[Path]) -> tuple[list[dict[str, Any]], list[dict[s
                 exclusions.append({"file": str(path), "reason": "condition_mapping_incomplete"})
             continue
         baseline, proposed = by_kind["baseline"], by_kind["proposed"]
+        metrics = behaviour_metrics(baseline[0], proposed[0])
         sessions.append({
             "session_id": str(data["session_id"]),
             "baseline_score": baseline[1],
             "proposed_score": proposed[1],
             "difference_proposed_minus_baseline": proposed[1] - baseline[1],
+            "cross_condition_action_agreement": metrics["cross_condition_action_agreement"],
+            "baseline_repeat_consistency": metrics["baseline_repeated_scenario_consistency"]["score"],
+            "proposed_repeat_consistency": metrics["proposed_repeated_scenario_consistency"]["score"],
+            "adaptation_status": metrics["adaptation"]["status"],
+            "behaviour_metrics": metrics,
             "baseline_items": baseline[0]["questionnaire"],
             "proposed_items": proposed[0]["questionnaire"],
             "condition_order": data.get("condition_order", []),
@@ -111,8 +181,9 @@ def main() -> int:
     with (args.out / "paired_scores.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=[
             "session_id", "baseline_score", "proposed_score",
-            "difference_proposed_minus_baseline", "condition_order",
-            "scenario_version", "questionnaire_version", "software_revision"
+            "difference_proposed_minus_baseline", "cross_condition_action_agreement",
+            "baseline_repeat_consistency", "proposed_repeat_consistency", "adaptation_status",
+            "condition_order", "scenario_version", "questionnaire_version", "software_revision"
         ])
         writer.writeheader()
         for row in sessions:
@@ -127,8 +198,12 @@ def main() -> int:
         "excluded_records": len(exclusions),
         "mean_baseline_believability": statistics.mean(r["baseline_score"] for r in sessions) if sessions else None,
         "mean_proposed_believability": statistics.mean(r["proposed_score"] for r in sessions) if sessions else None,
-        "mean_paired_difference_proposed_minus_baseline": statistics.mean(differences) if differences else None,
         "median_paired_difference_proposed_minus_baseline": statistics.median(differences) if differences else None,
+        "mean_cross_condition_action_agreement": statistics.mean(
+            [r["cross_condition_action_agreement"] for r in sessions
+             if r["cross_condition_action_agreement"] is not None]
+        ) if any(r["cross_condition_action_agreement"] is not None for r in sessions) else None,
+        "behaviour_metric_note": "Repeated-scenario consistency and adaptation are marked not estimable when repeated scenario IDs or matched event/control pairs are absent.",
         "interpretation": "Descriptive pilot summary only; does not establish causality or statistical significance.",
         "exclusions": exclusions,
     }
