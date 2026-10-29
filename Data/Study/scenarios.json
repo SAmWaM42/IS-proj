@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "scenario_version": 1,
+  "description": "Versioned synthetic scenarios for the anonymous companion-agent believability pilot.",
+  "scenarios": [
+    {
+      "id": "BEL-01",
+      "prompt": "You greet the companion after entering the yard.",
+      "event_tags": [
+        "initial_response",
+        "greeting"
+      ],
+      "observation": {
+        "goal_state": 0,
+        "target_proximity": 1,
+        "user_status": 0,
+        "task_status": 0,
+        "signal_strength": 0.55,
+        "food_available": false,
+        "play_available": false,
+        "energy": 0.8
+      }
+    },
+    {
+      "id": "BEL-02",
+      "prompt": "You ask the companion to fetch a ball nearby.",
+      "event_tags": [
+        "fetch",
+        "task"
+      ],
+      "observation": {
+        "goal_state": 1,
+        "target_proximity": 1,
+        "user_status": 1,
+        "task_status": 1,
+        "signal_strength": 0.85,
+        "food_available": false,
+        "play_available": true,
+        "energy": 0.8
+      }
+    },
+    {
+      "id": "BEL-03",
+      "prompt": "A sudden loud noise occurs nearby.",
+      "event_tags": [
+        "negative_stimulus",
+        "affect"
+      ],
+      "observation": {
+        "goal_state": 2,
+        "target_proximity": 0,
+        "user_status": 0,
+        "task_status": 0,
+        "signal_strength": 0.9,
+        "food_available": false,
+        "play_available": false,
+        "energy": 0.75
+      }
+    },
+    {
+      "id": "BEL-04",
+      "prompt": "You sit quietly to rest; no task is pending.",
+      "event_tags": [
+        "rest",
+        "low_activity"
+      ],
+      "observation": {
+        "goal_state": 2,
+        "target_proximity": 2,
+        "user_status": 0,
+        "task_status": 0,
+        "signal_strength": 0.25,
+        "food_available": false,
+        "play_available": false,
+        "energy": 0.4
+      }
+    },
+    {
+      "id": "BEL-05",
+      "prompt": "You praise the companion after an interaction.",
+      "event_tags": [
+        "positive_feedback",
+        "affect"
+      ],
+      "observation": {
+        "goal_state": 0,
+        "target_proximity": 0,
+        "user_status": 1,
+        "task_status": 0,
+        "signal_strength": 0.75,
+        "food_available": false,
+        "play_available": false,
+        "energy": 0.8
+      }
+    },
+    {
+      "id": "BEL-06",
+      "prompt": "You offer the companion a bowl of food.",
+      "event_tags": [
+        "feeding",
+        "resource"
+      ],
+      "observation": {
+        "goal_state": 2,
+        "target_proximity": 0,
+        "user_status": 1,
+        "task_status": 0,
+        "signal_strength": 0.3,
+        "food_available": true,
+        "play_available": false,
+        "energy": 0.6
+      }
+    },
+    {
+      "id": "BEL-07",
+      "prompt": "You invite the companion to play.",
+      "event_tags": [
+        "play",
+        "social"
+      ],
+      "observation": {
+        "goal_state": 0,
+        "target_proximity": 1,
+        "user_status": 1,
+        "task_status": 0,
+        "signal_strength": 0.7,
+        "food_available": false,
+        "play_available": true,
+        "energy": 0.8
+      }
+    },
+    {
+      "id": "BEL-08",
+      "prompt": "You tell the companion to stop after an unwanted behaviour.",
+      "event_tags": [
+        "negative_feedback",
+        "adaptation"
+      ],
+      "observation": {
+        "goal_state": 0,
+        "target_proximity": 1,
+        "user_status": 2,
+        "task_status": 0,
+        "signal_strength": 0.45,
+        "food_available": false,
+        "play_available": false,
+        "energy": 0.8
+      }
+    },
+    {
+      "id": "BEL-09",
+      "prompt": "A task remains pending, but you do not respond to the companion's first attempt.",
+      "event_tags": [
+        "delayed_response",
+        "task_persistence"
+      ],
+      "observation": {
+        "goal_state": 1,
+        "target_proximity": 1,
+        "user_status": 1,
+        "task_status": 1,
+        "signal_strength": 0.82,
+        "food_available": false,
+        "play_available": true,
+        "energy": 0.8
+      }
+    }
+  ]
+}
