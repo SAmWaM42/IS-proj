@@ -125,6 +125,36 @@ def read_sessions(inputs: list[Path]) -> tuple[list[dict[str, Any]], list[dict[s
         if data.get("completed") is not True:
             exclusions.append({"file": str(path), "reason": "session_incomplete"})
             continue
+        if data.get("protocol_id") == "believability-v1":
+            event_path = path.with_suffix(".jsonl")
+            if not event_path.is_file():
+                exclusions.append({"file": str(path), "reason": "missing_jsonl_event_export"})
+                continue
+            try:
+                event_rows = [json.loads(line) for line in event_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            except (OSError, json.JSONDecodeError) as exc:
+                exclusions.append({"file": str(path), "reason": f"invalid_jsonl_event_export:{exc}"})
+                continue
+            expected_event_count = sum(
+                len(condition.get("trials", []))
+                for condition in data.get("conditions", [])
+                if isinstance(condition, dict)
+            )
+            event_error = None
+            if len(event_rows) != expected_event_count:
+                event_error = "jsonl_event_count_mismatch"
+            else:
+                for event in event_rows:
+                    if event.get("run_id") != data.get("session_id") or event.get("schema_version") != 1:
+                        event_error = "jsonl_event_run_or_schema_mismatch"
+                        break
+                    if not event.get("scenario_id") or not isinstance(event.get("action_internal"), str):
+                        event_error = "jsonl_event_missing_scenario_or_action"
+                        break
+            if event_error:
+                exclusions.append({"file": str(path), "reason": event_error})
+                continue
+
         conditions = data.get("conditions")
         mapping = data.get("condition_key", {})
         if not isinstance(conditions, list) or len(conditions) != 2:
