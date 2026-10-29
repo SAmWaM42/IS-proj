@@ -12,6 +12,7 @@
 #include <fstream>
 #include <iostream>
 #include <random>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -28,7 +29,9 @@ enum class Screen {
 };
 
 struct Scenario {
+    std::string id;
     std::string prompt;
+    std::vector<std::string> eventTags;
     EnvironmentObservation observation;
 };
 
@@ -38,33 +41,56 @@ struct SurveyItem {
     int rating = 0;
 };
 
-const std::array<Scenario, 9> kScenarios{{
-    {"You greet the companion after entering the yard.",
-     EnvironmentObservation{0, 1, 0, 0, 0.55f}},
-    {"You ask the companion to fetch a ball nearby.",
-     EnvironmentObservation{1, 1, 1, 1, 0.85f}},
-    {"A sudden loud noise occurs nearby.",
-     EnvironmentObservation{2, 0, 0, 0, 0.90f}},
-    {"You sit quietly to rest; no task is pending.",
-     EnvironmentObservation{2, 2, 0, 0, 0.25f}},
-    {"You praise the companion after an interaction.",
-     EnvironmentObservation{0, 0, 1, 0, 0.75f}},
-    {"You offer the companion a bowl of food.",
-     EnvironmentObservation{2, 0, 1, 0, 0.30f, true, false}},
-    {"You invite the companion to play.",
-     EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true}},
-    {"You tell the companion to stop after an unwanted behaviour.",
-     EnvironmentObservation{0, 1, 2, 0, 0.45f}},
-    {"A task remains pending, but you do not respond to the companion's first attempt.",
-     EnvironmentObservation{1, 1, 0, 1, 0.82f}}
-}};
+std::vector<Scenario> loadScenarios(const std::filesystem::path& path) {
+    std::ifstream input(path);
+    if (!input) throw std::runtime_error("Cannot open scenario fixture: " + path.string());
+    const nlohmann::json root = nlohmann::json::parse(input);
+    if (root.value("schema_version", 0) != 1 || !root.contains("scenarios") ||
+        !root["scenarios"].is_array() || root["scenarios"].empty())
+        throw std::runtime_error("Invalid or empty scenario fixture");
+    std::vector<Scenario> result;
+    for (const auto& item : root["scenarios"]) {
+        const auto& o = item.at("observation");
+        Scenario s;
+        s.id = item.at("id").get<std::string>();
+        s.prompt = item.at("prompt").get<std::string>();
+        s.eventTags = item.value("event_tags", std::vector<std::string>{});
+        s.observation.goal_state = o.at("goal_state").get<int>();
+        s.observation.target_proximity = o.at("target_proximity").get<int>();
+        s.observation.user_status = o.at("user_status").get<int>();
+        s.observation.task_status = o.at("task_status").get<int>();
+        s.observation.signal_strength = o.at("signal_strength").get<float>();
+        s.observation.food_available = o.value("food_available", false);
+        s.observation.play_available = o.value("play_available", false);
+        s.observation.energy = o.value("energy", 0.8f);
+        result.push_back(std::move(s));
+    }
+    return result;
+}
 
-const std::array<SurveyItem, 4> kSurveyTemplate{{
-    {"believability", "How believable did the companion's behaviour feel?", 0},
-    {"consistency", "How consistent did its behaviour feel across interactions?", 0},
-    {"adaptability", "How well did its behaviour seem to respond to your feedback?", 0},
-    {"continuity", "How much did it seem to retain useful context from earlier interactions?", 0}
-}};
+std::vector<SurveyItem> loadSurvey(const std::filesystem::path& path, std::string& version) {
+    std::ifstream input(path);
+    if (!input) throw std::runtime_error("Cannot open questionnaire fixture: " + path.string());
+    const nlohmann::json root = nlohmann::json::parse(input);
+    if (root.value("schema_version", 0) != 1 || !root.contains("items") ||
+        !root["items"].is_array() || root["items"].size() != 5)
+        throw std::runtime_error("Questionnaire fixture must contain exactly five items");
+    version = root.value("questionnaire_version", std::string("unspecified"));
+    std::vector<SurveyItem> result;
+    for (const auto& item : root["items"])
+        result.push_back({item.at("key").get<std::string>(), item.at("question").get<std::string>(), 0});
+    return result;
+}
+
+nlohmann::json affectToJson(const AffectiveState& a) {
+    const char* v = a.valence == AffectValence::POSITIVE ? "positive" :
+                    a.valence == AffectValence::NEGATIVE ? "negative" : "neutral";
+    const char* e = a.energy == AffectEnergy::LOW ? "low" :
+                    a.energy == AffectEnergy::HIGH ? "high" : "moderate";
+    return {{"valence",v},{"energy",e},{"arousal",a.arousal},{"engagement",a.engagement},
+            {"stress",a.stress},{"affinity",a.affinity}};
+}
+
 
 std::string makeSessionId() {
     const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -122,14 +148,22 @@ void appendConditionResult(nlohmann::json& root,
                            const std::string& conditionCode,
                            const std::string& agentKind,
                            const nlohmann::json& trials,
-                           const std::array<SurveyItem, 4>& survey) {
+                           const std::vector<SurveyItem>& survey {
     nlohmann::json condition;
     condition["condition_code"] = conditionCode;
     condition["trials"] = trials;
     condition["questionnaire"] = nlohmann::json::object();
+    int total = 0;
+    bool complete = survey.size() == 5;
     for (const auto& item : survey) {
         condition["questionnaire"][item.key] = item.rating;
+        if (item.rating < 1 || item.rating > 5) complete = false;
+        total += item.rating;
     }
+    condition["questionnaire_version"] = root.value("questionnaire_version", std::string("unspecified"));
+    condition["believability_score"] = complete
+        ? nlohmann::json(static_cast<double>(total) / static_cast<double>(survey.size()))
+        : nlohmann::json(nullptr);
     root["conditions"].push_back(condition);
     root["condition_key"][conditionCode] = agentKind;
 }
@@ -161,6 +195,17 @@ bool runParticipantStudy(const std::string& policyDirectory,
         return false;
     }
 
+    std::vector<Scenario> scenarios;
+    std::vector<SurveyItem> surveyTemplate;
+    std::string questionnaireVersion;
+    try {
+        const fs::path dataDirectory = fs::path(IS2_SOURCE_DIR) / "Data" / "Study";
+        scenarios = loadScenarios(dataDirectory / "scenarios.json");
+        surveyTemplate = loadSurvey(dataDirectory / "questionnaire.json", questionnaireVersion);
+    } catch (const std::exception& error) {
+        std::cerr << "Unable to load believability study fixtures: " << error.what() << '\n';
+        return false;
+    }
     sf::RenderWindow window(sf::VideoMode(sf::Vector2u(1120u, 760u)), "Companion Interaction Study");
     window.setFramerateLimit(60);
 
@@ -174,23 +219,38 @@ bool runParticipantStudy(const std::string& policyDirectory,
         ? std::array<std::string, 2>{"proposed", "baseline"}
         : std::array<std::string, 2>{"baseline", "proposed"};
 
+    const fs::path sessionPolicyDirectory = fs::path(outputDirectory) / sessionId / "policies";
+    fs::create_directories(sessionPolicyDirectory, directoryError);
+    if (directoryError) {
+        std::cerr << "Unable to create isolated study policy directory: " << directoryError.message() << '\n';
+        return false;
+    }
+    const fs::path sessionBaselinePolicy = sessionPolicyDirectory / "baseline.qtable";
+    const fs::path sessionProposedPolicy = sessionPolicyDirectory / "proposed.qtable";
+    try {
+        fs::copy_file(baselinePolicy, sessionBaselinePolicy, fs::copy_options::overwrite_existing);
+        fs::copy_file(proposedPolicy, sessionProposedPolicy, fs::copy_options::overwrite_existing);
+    } catch (const fs::filesystem_error& error) {
+        std::cerr << "Unable to initialise isolated study Q-tables: " << error.what() << '\n';
+        return false;
+    }
     EnvironmentConfig config;
     config.seed = static_cast<int>(std::chrono::system_clock::now().time_since_epoch().count() & 0x7fffffff);
     BaselineAgent baseline(config);
     ProposedAgent proposed(config);
-    baseline.loadPersistentState(baselinePolicy.string());
-    proposed.loadPersistentState(proposedPolicy.string());
+    baseline.loadPersistentState(sessionBaselinePolicy.string());
+    proposed.loadPersistentState(sessionProposedPolicy.string());
     baseline.setExplorationRate(0.0f);
     proposed.setExplorationRate(0.0f);
-    baseline.setLearningEnabled(false);
-    proposed.setLearningEnabled(false);
+    baseline.setLearningEnabled(true);
+    proposed.setLearningEnabled(true);
 
     Screen screen = Screen::Consent;
     std::string currentCondition;
     std::string currentAgentKind;
     int conditionIndex = 0;
     std::size_t scenarioIndex = 0;
-    std::array<SurveyItem, 4> survey = kSurveyTemplate;
+    std::vector<SurveyItem> survey = surveyTemplate;
     std::size_t surveyIndex = 0;
     nlohmann::json trialRows = nlohmann::json::array();
     bool studyDataSaved = false;
@@ -198,14 +258,22 @@ bool runParticipantStudy(const std::string& policyDirectory,
     studyData["schema_version"] = 1;
     studyData["session_id"] = sessionId;
     studyData["consent"] = true;
-    studyData["policy_updates_enabled"] = false;
+    studyData["policy_updates_enabled"] = true;
+    studyData["protocol_id"] = "believability-v1";
+    studyData["scenario_version"] = 1;
+    studyData["questionnaire_version"] = questionnaireVersion;
+    studyData["software_revision"] = IS2_GIT_REVISION;
+    studyData["policy_initialisation"] = {
+        {"baseline", "copied baseline Q-table; no memory sidecar imported"},
+        {"proposed", "copied proposed Q-table; no memory/affect sidecars imported"}
+    };
+    studyData["exploration_rate"] = 0.0;
+    studyData["learning_rate_updates"] = "enabled on observed participant feedback";
     studyData["conditions"] = nlohmann::json::array();
     studyData["condition_key"] = nlohmann::json::object();
     studyData["scenario_order"] = nlohmann::json::array();
-    for (std::size_t i = 0; i < kScenarios.size(); ++i) {
-        studyData["scenario_order"].push_back(i);
-    }
-    studyData["rating_scale"] = "1=not at all, 5=very much";
+    for (const auto& scenario : scenarios) studyData["scenario_order"].push_back(scenario.id);
+    studyData["rating_scale"] = "1=strongly disagree, 5=strongly agree";
     studyData["limitations"] = "Synthetic task and participant ratings are separate measures; ratings are not training rewards.";
 
     const auto saveStudyData = [&]() {
@@ -246,7 +314,7 @@ bool runParticipantStudy(const std::string& policyDirectory,
                     currentAgentKind = agentKinds[0];
                     scenarioIndex = 0;
                     trialRows = nlohmann::json::array();
-                    survey = kSurveyTemplate;
+                    survey = surveyTemplate;
                     if (currentAgentKind == "baseline") baseline.reset();
                     else proposed.reset();
                     screen = Screen::Scenario;
@@ -255,13 +323,16 @@ bool runParticipantStudy(const std::string& policyDirectory,
                 if (key == sf::Keyboard::Key::Escape) {
                     window.close();
                 } else if (key == sf::Keyboard::Key::Enter || key == sf::Keyboard::Key::Space) {
-                    const Scenario& scenario = kScenarios[scenarioIndex];
+                    const Scenario& scenario = scenarios[scenarioIndex];
                     const std::string action = currentAgentKind == "baseline"
                         ? baseline.selectAction(scenario.observation)
                         : proposed.selectAction(scenario.observation);
                     nlohmann::json row;
                     row["trial"] = scenarioIndex;
+                    row["scenario_id"] = scenario.id;
+                    row["scenario_version"] = studyData["scenario_version"];
                     row["scenario"] = scenario.prompt;
+                    row["event_tags"] = scenario.eventTags;
                     row["condition_code"] = currentCondition;
                     row["action_label"] = actionLabel(action);
                     row["action_internal"] = action;
@@ -274,6 +345,14 @@ bool runParticipantStudy(const std::string& policyDirectory,
                         {"food_available", scenario.observation.food_available},
                         {"play_available", scenario.observation.play_available}
                     };
+                    if (currentAgentKind == "proposed") {
+                        const auto& trace = proposed.getLastDecisionTrace();
+                        row["memory_count_before"] = trace.memory_record_count;
+                        row["affect_before"] = affectToJson(trace.affect);
+                    } else {
+                        row["memory_count_before"] = 0;
+                        row["affect_before"] = nullptr;
+                    }
                     studyData["pending_trial"] = row;
                     screen = Screen::Feedback;
                 }
@@ -284,12 +363,12 @@ bool runParticipantStudy(const std::string& policyDirectory,
                 else if (key == sf::Keyboard::Key::Num3) feedbackKey = 3;
                 else if (key == sf::Keyboard::Key::Num4) feedbackKey = 4;
                 if (feedbackKey != 0) {
-                    const Scenario& scenario = kScenarios[scenarioIndex];
+                    const Scenario& scenario = scenarios[scenarioIndex];
                     const float reward = feedbackReward(feedbackKey);
                     ActionOutcome outcome;
                     outcome.action_id = static_cast<int>(scenarioIndex);
                     outcome.reward = reward;
-                    outcome.terminal = scenarioIndex + 1 == kScenarios.size();
+                    outcome.terminal = scenarioIndex + 1 == scenarios.size();
                     outcome.outcome_tag = "participant_" + feedbackLabel(feedbackKey);
                     const std::string action = studyData["pending_trial"]["action_internal"].get<std::string>();
                     // "No response" is missing feedback, not a neutral judgement.
@@ -311,15 +390,23 @@ bool runParticipantStudy(const std::string& policyDirectory,
                     row["state_update_applied"] = responseObserved;
                     row["affect_memory_update_applied"] =
                         responseObserved && currentAgentKind == "proposed";
-                    row["policy_update_applied"] = false;
+                    row["policy_update_enabled"] = true;
+                    row["policy_update_applied"] = responseObserved;
+                    if (currentAgentKind == "proposed") {
+                        row["memory_count_after"] = proposed.getMemoryRecords().size();
+                        row["affect_after"] = affectToJson(proposed.getAffectiveState());
+                    } else {
+                        row["memory_count_after"] = 0;
+                        row["affect_after"] = nullptr;
+                    }
                     trialRows.push_back(row);
                     studyData.erase("pending_trial");
 
-                    if (scenarioIndex + 1 < kScenarios.size()) {
+                    if (scenarioIndex + 1 < scenarios.size()) {
                         ++scenarioIndex;
                         screen = Screen::Scenario;
                     } else {
-                        survey = kSurveyTemplate;
+                        survey = surveyTemplate;
                         surveyIndex = 0;
                         screen = Screen::Survey;
                     }
@@ -343,13 +430,24 @@ bool runParticipantStudy(const std::string& policyDirectory,
                             currentAgentKind = agentKinds[1];
                             scenarioIndex = 0;
                             trialRows = nlohmann::json::array();
-                            survey = kSurveyTemplate;
+                            survey = surveyTemplate;
                             if (currentAgentKind == "baseline") baseline.reset();
                             else proposed.reset();
                             screen = Screen::BetweenConditions;
                         } else {
                             studyData["completed"] = true;
                             studyData["condition_order"] = {conditionCodes[0], conditionCodes[1]};
+                            studyData["policy_snapshots"] = {
+                                {"baseline", sessionBaselinePolicy.string()},
+                                {"proposed", sessionProposedPolicy.string()}
+                            };
+                            try {
+                                baseline.savePersistentState(sessionBaselinePolicy.string());
+                                proposed.savePersistentState(sessionProposedPolicy.string());
+                            } catch (const std::exception& error) {
+                                std::cerr << "Unable to save isolated policy snapshots: " << error.what() << '\n';
+                                studyData["policy_snapshot_save_error"] = error.what();
+                            }
                             studyDataSaved = saveStudyData();
                             screen = Screen::Complete;
                         }
@@ -386,14 +484,14 @@ bool runParticipantStudy(const std::string& policyDirectory,
                     "Each version responds to the same five short scenarios.",
                     "After each behaviour, rate your response: 1 positive, 2 neutral,",
                     "3 negative, or 4 no response. Your ratings are not policy-training data.",
-                    "At the end of each version, rate four statements from 1 to 5.",
+                    "At the end of each version, rate five statements from 1 to 5.",
                     "Press Enter to begin."
                 });
                 break;
             case Screen::Scenario: {
-                const Scenario& scenario = kScenarios[scenarioIndex];
+                const Scenario& scenario = scenarios[scenarioIndex];
                 drawFrame(window, font, "Condition " + currentCondition,
-                    {"Scenario " + std::to_string(scenarioIndex + 1) + " of " + std::to_string(kScenarios.size()),
+                    {"Scenario " + std::to_string(scenarioIndex + 1) + " of " + std::to_string(scenarios.size()),
                      scenario.prompt,
                      "Press Enter to let the companion respond.",
                      "The same scenario sequence is used for both versions.",
@@ -416,12 +514,12 @@ bool runParticipantStudy(const std::string& policyDirectory,
                 drawFrame(window, font, "Short questionnaire",
                     {"Condition " + currentCondition + " — item " + std::to_string(surveyIndex + 1) + " of " + std::to_string(survey.size()),
                      survey[surveyIndex].question,
-                     "Rate from 1 (not at all) to 5 (very much).",
-                     "1 - Not at all",
-                     "2 - A little",
-                     "3 - Moderately",
-                     "4 - Quite a lot",
-                     "5 - Very much"});
+                     "Rate from 1 (strongly disagree) to 5 (strongly agree).",
+                     "1 - Strongly disagree",
+                     "2 - Disagree",
+                     "3 - Neither agree nor disagree",
+                     "4 - Agree",
+                     "5 - Strongly agree"});
                 break;
             case Screen::BetweenConditions:
                 drawFrame(window, font, "Condition A complete",
