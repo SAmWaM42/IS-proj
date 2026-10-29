@@ -198,6 +198,7 @@ def main() -> int:
         "excluded_records": len(exclusions),
         "mean_baseline_believability": statistics.mean(r["baseline_score"] for r in sessions) if sessions else None,
         "mean_proposed_believability": statistics.mean(r["proposed_score"] for r in sessions) if sessions else None,
+        "mean_paired_difference_proposed_minus_baseline": statistics.mean(differences) if differences else None,
         "median_paired_difference_proposed_minus_baseline": statistics.median(differences) if differences else None,
         "mean_cross_condition_action_agreement": statistics.mean(
             [r["cross_condition_action_agreement"] for r in sessions
