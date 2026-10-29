@@ -444,15 +444,19 @@ This specification does not:
 
 ---
 
-## 12. Open decisions for review before implementation
+## 12. Confirmed initial protocol decisions
 
-Resolve these decisions before implementing the participant-facing portion:
+The following choices were approved for the demonstrable pipeline implementation:
 
-1. **Trial design — proposed:** compare baseline and proposed configurations, preferably within-participant with counterbalanced order where practical.
-2. **Memory isolation — decided:** semantic memory and affective state are not shared between agents/participants. A compatible Q-table may be copied as an initialisation snapshot, but live learning remains independent.
-3. **Primary believability score — proposed:** arithmetic mean of the five draft items, requiring all five responses for the primary score; pilot the wording before the main study.
-4. **Scenario source of truth — proposed:** versioned JSON scenario fixtures, after checking whether the current implementation already has a fixture/config format to extend.
-5. **Evaluation updates — decided:** Q-learning remains active. Record update settings and initial/final Q-table versions; isolate table updates by condition and participant/session.
-6. **Data handling — decided in principle:** use an anonymous form with consent as the first question; do not collect PII, and end the form if consent is declined. Confirm storage/retention and any supervisor/department requirements before collection.
+1. **Trial design:** within-participant comparison of baseline and proposed conditions, with randomised A/B order.
+2. **Memory isolation:** semantic memory and affect state are not shared between conditions or sessions. The study copies the two existing, separately trained Q-table files into a session-specific directory and does not import training-time memory/affect sidecars. The live tables update independently.
+3. **Primary believability score:** arithmetic mean of five questionnaire items, with all five responses required. The item wording remains a project-specific draft measure and should be piloted before the main study.
+4. **Scenario source of truth:** versioned JSON fixtures under `Data/Study/`.
+5. **Evaluation updates:** Q-learning updates remain enabled on observed per-action participant feedback. Exploration is set to zero for the pilot so policy changes arise from updates rather than random action selection. End-of-condition questionnaire ratings are not used as training rewards.
+6. **Data handling:** the first screen is consent; declining ends the session without saving study responses. The study collects no names or contact details. It stores a generated session code and the scripted interaction/rating data. Confirm storage/retention and any supervisor/department requirements before formal data collection.
 
-These decisions narrow the implementation target but do not remove the need to verify the current code paths and logging schema before implementation.
+### Implementation caveats
+
+- Baseline and proposed Q-tables are initialised from their respective trained policy files because their state encodings may differ; this is not a claim that they start from identical Q-values.
+- The current nine-scenario participant fixture does not include repeated scenario IDs or matched event/control pairs. The analysis therefore reports cross-condition action agreement, but correctly marks within-condition repeated-scenario consistency and event/control adaptation as not estimable until suitable matched scenarios are added.
+- A successful build, interactive run, pilot, and data-integrity check are still required before the pipeline can be called fully verified.
