@@ -4,7 +4,7 @@
   "description": "Versioned synthetic scenarios for the anonymous companion-agent believability pilot.",
   "scenarios": [
     {
-      "id": "BEL-01",
+      "id": "STUDY-01",
       "prompt": "You greet the companion after entering the yard.",
       "event_tags": [
         "initial_response",
@@ -22,7 +22,7 @@
       }
     },
     {
-      "id": "BEL-02",
+      "id": "STUDY-02",
       "prompt": "You ask the companion to fetch a ball nearby.",
       "event_tags": [
         "fetch",
@@ -40,7 +40,7 @@
       }
     },
     {
-      "id": "BEL-03",
+      "id": "STUDY-03",
       "prompt": "A sudden loud noise occurs nearby.",
       "event_tags": [
         "negative_stimulus",
@@ -58,7 +58,7 @@
       }
     },
     {
-      "id": "BEL-04",
+      "id": "STUDY-04",
       "prompt": "You sit quietly to rest; no task is pending.",
       "event_tags": [
         "rest",
@@ -76,7 +76,7 @@
       }
     },
     {
-      "id": "BEL-05",
+      "id": "STUDY-05",
       "prompt": "You praise the companion after an interaction.",
       "event_tags": [
         "positive_feedback",
@@ -94,7 +94,7 @@
       }
     },
     {
-      "id": "BEL-06",
+      "id": "STUDY-06",
       "prompt": "You offer the companion a bowl of food.",
       "event_tags": [
         "feeding",
@@ -112,7 +112,7 @@
       }
     },
     {
-      "id": "BEL-07",
+      "id": "STUDY-07",
       "prompt": "You invite the companion to play.",
       "event_tags": [
         "play",
@@ -130,7 +130,7 @@
       }
     },
     {
-      "id": "BEL-08",
+      "id": "STUDY-08",
       "prompt": "You tell the companion to stop after an unwanted behaviour.",
       "event_tags": [
         "negative_feedback",
@@ -148,7 +148,7 @@
       }
     },
     {
-      "id": "BEL-09",
+      "id": "STUDY-09",
       "prompt": "A task remains pending, but you do not respond to the companion's first attempt.",
       "event_tags": [
         "delayed_response",
