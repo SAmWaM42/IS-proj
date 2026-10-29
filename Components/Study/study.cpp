@@ -274,6 +274,9 @@ bool runParticipantStudy(const std::string& policyDirectory,
     studyData["started_at_epoch_ms"] = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     studyData["exploration_rate"] = 0.0;
+    studyData["learning_rate"] = 0.25;
+    studyData["discount_factor"] = 0.8;
+    studyData["random_seed"] = config.seed;
     studyData["learning_rate_updates"] = "enabled on observed participant feedback";
     studyData["conditions"] = nlohmann::json::array();
     studyData["condition_key"] = nlohmann::json::object();
