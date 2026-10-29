@@ -46,6 +46,24 @@ class BelievabilityPipelineTests(unittest.TestCase):
         self.assertEqual(metrics["proposed_repeated_scenario_consistency"]["score"], 1.0)
         self.assertEqual(metrics["cross_condition_action_agreement"], 0.0)
 
+    def test_protocol_session_without_event_export_is_excluded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "session.json"
+            items = ["plausibility", "coherence", "responsiveness", "consistency", "continuity"]
+            payload = {
+                "session_id": "anonymous-test-session", "protocol_id": "believability-v1",
+                "consent": True, "completed": True,
+                "condition_key": {"A": "baseline", "B": "proposed"},
+                "conditions": [
+                    {"condition_code": "A", "questionnaire": {key: 3 for key in items}, "trials": []},
+                    {"condition_code": "B", "questionnaire": {key: 4 for key in items}, "trials": []}
+                ]
+            }
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            sessions, exclusions = read_sessions([path])
+            self.assertEqual(sessions, [])
+            self.assertEqual(exclusions[0]["reason"], "missing_jsonl_event_export")
+
     def test_adaptation_is_not_claimed_without_matched_control(self):
         metrics = behaviour_metrics(
             {"trials": [{"scenario_id": "BEL-01", "action_internal": "SIT"}]},
