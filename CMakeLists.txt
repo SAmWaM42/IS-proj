@@ -5,6 +5,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(SFML 3.0 REQUIRED COMPONENTS Graphics Window System)
 
+execute_process(
+   COMMAND git rev-parse --short HEAD
+   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+   OUTPUT_VARIABLE IS2_GIT_REVISION
+   OUTPUT_STRIP_TRAILING_WHITESPACE
+   ERROR_QUIET
+)
+if(NOT IS2_GIT_REVISION)
+   set(IS2_GIT_REVISION "unknown")
+endif()
+
 add_executable(IS-2
    main.c++
    Components/State-Action/state-action.cpp
@@ -15,7 +26,7 @@ add_executable(IS-2
    Components/Simulation/backyard-environment.cpp
 )
 
-target_compile_definitions(IS-2 PRIVATE IS2_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_compile_definitions(IS-2 PRIVATE IS2_SOURCE_DIR="${CMAKE_SOURCE_DIR}" IS2_GIT_REVISION="${IS2_GIT_REVISION}")
 
 target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}
@@ -81,3 +92,10 @@ target_include_directories(paired_agent_scenarios_test PRIVATE
 )
 target_compile_options(paired_agent_scenarios_test PRIVATE -Wall -Wextra)
 add_test(NAME paired_agent_scenarios_test COMMAND paired_agent_scenarios_test)
+
+add_test(NAME believability_fixture_validation
+   COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/validate_study_fixtures.py
+)
+add_test(NAME believability_study_pipeline_tests
+   COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_believability_pipeline.py
+)
