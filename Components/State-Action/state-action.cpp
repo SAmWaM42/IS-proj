@@ -1529,6 +1529,12 @@ ProposedAgent::ProposedAgent(const EnvironmentConfig& configValue)
     reset();
 }
 
+void ProposedAgent::resetForStudy() {
+    memory_records.clear();
+    affective_state = AffectiveState{};
+    reset();
+}
+
 void ProposedAgent::reset() {
     session_context = SessionContext{};
     session_context.current_action = "IDLE";
