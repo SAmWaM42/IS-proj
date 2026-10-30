@@ -1,82 +1,121 @@
 # Believability Pipeline Implementation Report
 
-**Branch:** `test/believability-evaluation-modelling`  
-**Status:** Implementation attempt committed; build/runtime verification pending.  
-**Purpose:** Record what was implemented, what remains partial, and how to demonstrate the pipeline locally.
+**Target branch:** `test/believability-evaluation-modelling`  
+**Authority:** `Docs/Believability Testing Pipeline Specification.md` and `Docs/Google Form Template Companion Believability Study.md`  
+**Status:** Specification-aligned implementation committed; compilation and interactive verification are still required.
 
 ## Summary
 
-The participant-study path has been updated to use JSON fixtures, the five-item questionnaire, active Q-learning updates, session-isolated policy copies, and machine-readable exports. Python validation and analysis utilities plus CTest registrations were added.
+The previous `--study` path launched a separate synthetic scenario/questionnaire exercise with five custom ratings. That did not match the intended experiment. The `--study` command now launches the existing animated `CompanionUI` in a guided-study mode and follows the 12-step participant script from the specification.
 
-This is not yet evidence of a successful end-to-end run: the code has not been compiled or executed in this environment. Treat it as a demonstrable implementation candidate until local build and pilot checks pass.
+The new analysis utility consumes the Google Forms CSV export and application logs. The previous five-item analysis remains as a legacy test; it is not the intended analysis for this study.
 
-## Implementation status
+## Implemented in source
 
-| Pipeline stage | Status | Evidence / limitation |
-|---|---|---|
-| 1. Audit current logging and study flow | **Partially complete** | Existing study UI, policy persistence, paired-agent tests, and interaction-log validator were inspected. The new study path is distinct from the existing simulation JSONL logger. |
-| 2. Versioned scenario definitions | **Implemented in source** | `Data/Study/scenarios.json` contains nine synthetic scenarios. `study.cpp` loads the fixture rather than hardcoding the scenarios. Fixture validation is registered with CTest. |
-| 3. Automated technical checks | **Partial** | Fixture validation and unit tests for score calculation, condition mapping, repeated-scenario metrics, and cautious adaptation reporting were added. Existing C++ paired-agent regression tests remain available. Dedicated automated BEL-03 memory persistence, BEL-05 affect response, BEL-06 geometry, and BEL-07 restart tests have not all been wired to this study pipeline. |
-| 4. Event validation and export | **Implemented in source; runtime unverified** | Completed sessions write a JSON session summary and a JSONL trial-event file. The event records include condition, scenario ID/tags, action, participant feedback/reward, learning-update status, and proposed-agent memory/affect snapshots. |
-| 5. Behaviour metrics | **Partial and deliberately conservative** | Analysis calculates paired believability scores and cross-condition action agreement. Repeated-scenario consistency is only calculated when scenario IDs repeat. Adaptation is marked not estimable unless matched event/control pairs exist; the current nine-scenario fixture does not provide those pairs. |
-| 6. Participant-rating capture | **Implemented in source; runtime unverified** | The first screen requests consent; declining exits without saving responses. The end-of-condition survey loads five JSON-defined items, and a primary mean score is produced only when all five ratings are valid. No names/contact details are requested. |
-| 7. Pilot | **Not run** | Requires a local build, trained policy files, an interactive display, and a human pilot. Do not collect formal study data until the UI and protocol have been checked. |
+| Specification requirement | Implementation |
+|---|---|
+| R1 — Guided script | Displays the 12 prompts, accepts only the expected control or statement at each guided step, and advances after the interaction is executed. Step 9 is a timed 30-second observation. |
+| R2 — Session phases | Records consent, warm-up, guided, free, rating, and finished phase events in per-run JSONL logs and updates the manifest. |
+| R3 — Traceable logs | Records participant code, session number, condition label and true condition, phase, step ID, software revision, timestamps, and policy checksums. Interaction and step logs are separate JSONL files. |
+| R4 — Free interaction | Offers an optional free-interaction period with a Finish button and a three-minute maximum, followed by the form prompt. |
+| R5 — Google Form linking | Opens the form using Google Forms `entry.<id>` parameters for session, condition code, and run ID. |
+| R6 — Condition switching | The second companion cannot be loaded through the study navigation until the Answer Form button has been used for the current companion. |
+| R7 — Counterbalancing and memory isolation | Persists a participant counter outside the repository and alternates the A/B mapping strictly by counter parity. Proposed memory and affect are reset in memory for each condition. |
+| R8 — Fixed throws | Both guided ball probes use the same fixed landing position. |
+| R9 — Autonomous actions | Autonomous decisions are suppressed during ordinary guided steps and enabled for the 30-second observation and free interaction. |
+| R11 — Read-only policies | Requires trained baseline/proposed Q-tables, disables learning and exploration, records policy checksums, and does not save participant state over the shared training policy files. |
+| R12 — Blinding | Participant mode hides internal action labels, memory, affect, statistics, and the A/B-to-model mapping. |
+| Analysis | Added a Google Forms CSV + JSONL analysis script for reverse-scored subscales, attention-check exclusions, paired comparisons, Wilcoxon tests when SciPy is installed, effect sizes, bootstrap intervals, Holm adjustment for secondary subscales, reliability estimates, direct comparisons, order summaries, and descriptive behavioural metrics. |
 
-## Key implementation decisions
+## Partial or not implemented
 
-- The study randomly assigns the baseline/proposed conditions to labels A/B.
-- The baseline and proposed agents load separate trained Q-table files. Their state encodings may differ, so this implementation does not claim that their initial Q-values are identical.
-- Only the Q-table files are copied into a unique session policy directory. Training-time memory and affect sidecars are not imported into the participant session.
-- Each live Q-table updates independently from per-action participant feedback. Exploration is set to zero during the study, so updates are enabled but random exploratory actions are not deliberately introduced.
-- The end-of-condition five-item questionnaire is evaluation data, not a learning reward. The UI now discloses that per-action feedback updates learning.
-- The session JSON and JSONL exports contain a generated session code but do not request direct identifiers. The code currently includes a timestamp component; it is not derived from participant identity.
-- Proposed-agent state snapshots are written only to that session's policy directory. They are not shared with the baseline or another session.
+- **R7:** Every `--study` launch allocates the next participant code and counterbalance assignment. There is no separate researcher UI for resetting the counter; use a fresh output directory for dry runs/pilots if you do not want them to consume the production counter.
+- **R10:** The automated scripted replay/distribution check has not been implemented.
+- **R13:** The application writes a manifest, step log, interaction log, and session summary outside the repository by default, but does not package them into a single archive bundle.
+- **Compliance rate:** Deliberately remains unestimated until the plausibility rule for justified deviations is specified.
+- **Behavioural interpretation:** Memory-probe shifts, action variety, latency, idle actions, and free-interaction use are descriptive supporting metrics. They do not replace participant ratings as the evidence for believability.
+- **Consent wording:** The application has a pre-interaction consent gate. The researcher must still provide the full approved information sheet beforehand; the Google Form also retains its consent question in the first submission path. Confirm this duplicated consent flow with the supervisor before formal recruitment.
 
-## Run locally
+## Data handling and condition isolation
 
-From the repository root on a machine with the required SFML 3 development dependencies and Python:
+The default study output path is `../companion-study-data`, a sibling directory outside the repository. Use a restricted local directory for real participant data and keep the Google Forms export there as well. Do not commit participant CSVs, logs, or session files.
+
+The study resets the proposed agent's in-memory memory/affect before each condition and does not delete or overwrite the shared training sidecar files. The baseline does not receive preference-memory writes. The two conditions are run sequentially under the same participant session, with independent condition state. Learning and exploration remain disabled during this participant study, in line with the newer specification.
+
+## Configure the Google Form
+
+Obtain the form's **Get pre-filled link** URL and entry IDs from Google Forms. Set:
+
+```bash
+export ANIMAL_AGENT_STUDY_FORM_URL='PASTE_BASE_PREFILLED_FORM_URL_HERE'
+export ANIMAL_AGENT_FORM_ENTRY_SESSION='SESSION_ENTRY_ID'
+export ANIMAL_AGENT_FORM_ENTRY_CONDITION='CONDITION_ENTRY_ID'
+export ANIMAL_AGENT_FORM_ENTRY_RUN='RUN_ID_ENTRY_ID'
+```
+
+The base URL should end before the three `entry.<id>` parameters. The application appends the correct session (1 or 2), companion code (A or B), and run ID. Test the link with a dummy form submission before any participant session.
+
+## Build and test locally
+
+From the repository root:
 
 ```bash
 python3 scripts/validate_study_fixtures.py
 python3 tests/test_believability_pipeline.py
+python3 tests/test_companion_believability_analysis.py
 
 cmake -S . -B build
 cmake --build build -j2
 ctest --test-dir build --output-on-failure
 ```
 
-If trained policies are not present, train them first using the project's supported training command. For example, review the CLI options with `./build/IS-2 --help`, then run a bounded training job that writes `baseline.qtable` and `proposed.qtable` to the selected policy directory.
+Let the C++ build finish; an interrupted build is not a pass or a compiler failure. These changes have not been compiled or run in this environment, so the first local build is still a required verification step.
 
-Launch the study only after checking the build and confirming those policy files exist:
+## Run the guided study
 
-```bash
-./build/IS-2 --study --policy-dir artifacts/training --study-out artifacts/study
-```
-
-After one or more completed, consented sessions, generate a descriptive analysis export:
+Ensure the trained files `artifacts/training/baseline.qtable` and `artifacts/training/proposed.qtable` exist. Launch:
 
 ```bash
-python3 scripts/analyze_believability_study.py artifacts/study --out artifacts/study-analysis
+./build/IS-2 --study \
+  --policy-dir artifacts/training \
+  --study-out ../companion-study-data
 ```
 
-The analysis command writes `paired_scores.csv` and `summary.json`. It excludes incomplete, unconsented, malformed, or unpaired sessions and records exclusion reasons. It is a descriptive pilot summary, not a statistical-significance or causal analysis.
+Expected participant flow:
 
-## Required verification before calling this complete
+1. Read the full study information sheet from the researcher and accept/decline the in-app gate.
+2. Warm up using WASD/arrow keys, then press Enter.
+3. Complete the 12 guided steps for Companion A.
+4. Optionally interact freely, then click **Finish Free Phase**.
+5. Click **Answer Form**, submit the first form path, return to the application, then click **Continue to Companion B**.
+6. Complete the same script for Companion B, optionally interact freely, and submit the second form path.
+7. Return to the application and click **Finish Study**.
 
-1. Compile the updated C++ study code and resolve any build errors.
-2. Run CTest and the two Python commands above; retain their actual output.
-3. Complete one consented test session and one declined-consent test; verify no response data are saved for the declined session.
-4. Inspect the session JSON, JSONL events, and session-specific policy files. Confirm no data are written into the shared training policy files and that memory/affect sidecars are scoped to the session.
-5. Confirm `policy_updates_enabled` is true and each observed per-action response has an accurate `policy_update_applied` value. A “no response” entry must not trigger a reward update.
-6. Run the analysis on the completed test session and confirm the condition mapping is correct even when proposed is assigned label A.
-7. Add matched event/control and repeated-context scenarios before interpreting adaptability or repeated-context consistency.
-8. Review the consent text, storage/retention, and department/supervisor requirements before recruiting participants for the actual study.
+The form link must be configured or the study cannot advance past the rating checkpoint. The policy files are required; the application now fails early if either trained Q-table is missing.
 
-## Known scientific limitations
+## Analyse collected data
 
-- The five items form a project-specific draft measure; they have not been validated as a psychometric scale.
-- The study uses scripted observations and participant feedback, not a naturalistic long-term animal interaction.
-- Active learning means actions later in a condition can depend on earlier participant feedback. The update count and condition order should be considered when interpreting ratings.
-- Because baseline and proposed Q-tables are currently loaded from their own trained files, differences cannot be attributed exclusively to memory/affect without accounting for their training history and state-encoding differences.
-- Cross-condition action agreement is not the same as believability. Behavioural consistency and adaptation need appropriately matched scenario designs.
+Export Google Forms responses to a CSV file in the restricted study-data directory, for example `../companion-study-data/form-responses.csv`. Then run:
 
+```bash
+python3 scripts/analyze_companion_believability_study.py \
+  --form-csv ../companion-study-data/form-responses.csv \
+  --logs-dir ../companion-study-data \
+  --out-dir ../companion-study-analysis
+```
+
+Outputs include valid companion ratings, paired participant comparisons, exclusions, and `summary.json`. The analysis requires the session/run/condition fields to join each form submission to its manifest and requires all 12 guided-step logs plus the matching interaction log. Attention-check failures and incomplete or mismatched records are excluded with a reason.
+
+Install SciPy in the analysis environment to calculate Wilcoxon p-values. The script reports a clear status if SciPy is unavailable. Results are exploratory; the five-item legacy believability score is no longer the primary analysis. The current form's primary hypothesis tests follow the specification: Adaptability (H1) and Overall believability (H2), with the other subscales treated as secondary.
+
+## Remaining readiness checks
+
+1. Compile the branch and fix any compiler errors.
+2. Run all CTest and Python checks and retain the actual output.
+3. Verify form prefill fields arrive correctly for both sessions and link to the correct manifest.
+4. Complete one consented dry run and one declined-consent run; verify no participant response logs are saved for the declined run.
+5. Check that the shared Q-table and sidecar files have unchanged checksums before and after a study session.
+6. Confirm step IDs 1–12, the fixed throw positions, idle-action logs, phase durations, and response-latency values.
+7. Confirm both condition mappings occur in strict alternating order over consecutive participant launches.
+8. Implement R10 and package the R13 bundle before claiming all requirements are complete.
+9. Resolve the outstanding plausibility rule, and obtain supervisor/ethics approval for the final consent, form, and procedure before formal data collection.
