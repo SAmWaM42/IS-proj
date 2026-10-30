@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <chrono>
 #include <deque>
 #include <random>
 #include <string>
@@ -16,12 +17,25 @@ public:
     // agent state, comparison, action labels and the event log are hidden.
     explicit CompanionUI(const std::string& policyDirectory = "artifacts/training",
                          const std::string& outputDirectory = "artifacts/simulation",
-                         bool researcherMode = false);
+                         bool researcherMode = false,
+                         bool guidedStudyMode = false);
     void run();
 
 private:
     enum class Screen { AgentSelection, Simulation, AgentState, Comparison };
     bool researcherMode = false;
+    bool guidedStudyMode = false;
+    bool studyFinished = false;
+    bool studyFormOpenedCurrentCondition = false;
+    bool studyGuidedComplete = false;
+    bool studyFreeFinished = false;
+    int studyParticipantCounter = 0;
+    int studySessionIndex = 1;
+    int studyStepIndex = 0;
+    float studyIdleElapsed = 0.0f;
+    float studyFreeElapsed = 0.0f;
+    std::string studyParticipantCode;
+    std::string studyPhase = "setup";
     bool agentAIsProposed = false;
     char selectedAgentCode = 'A';
     bool selectedAgentIsProposed = false;
@@ -149,6 +163,11 @@ private:
     const std::vector<std::unique_ptr<sf::Texture>>& framesForPose(const std::string& pose) const;
     void resetScene();
     void startNewParticipant();
+    void initialiseGuidedStudy();
+    void writeStudyManifest();
+    void completeStudyStep(const std::string& interaction);
+    bool studyInputMatches(const std::string& interaction, bool isText) const;
+    std::string currentStudyPrompt() const;
     void openStudyForm();
     void applySceneEvent(const std::string& sceneEvent);
     void applyGeometryProximity(EnvironmentObservation& observation, const std::string& basis) const;
