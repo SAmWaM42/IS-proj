@@ -6,6 +6,8 @@
 **Authority:** Subordinate to Docs/project-context.md; complements Docs/15-proposed-agent-comparison-spec.md and Docs/16-baseline-agent-comparison-spec.md.  
 **Purpose:** Define a reproducible pipeline for checking that the baseline/proposed conditions are comparable, collecting evidence about believability, and analysing behavioural consistency and adaptability.
 
+> **Superseded participant-study design:** For the current human study, use `Docs/Believability Testing Pipeline Specification.md` and `Docs/Google Form Template Companion Believability Study.md` as the sources of truth. This earlier draft's five-item questionnaire and synthetic `--study` flow are not the current participant protocol. Retained for historical design decisions only.
+
 ---
 
 ## 1. Purpose and research questions
