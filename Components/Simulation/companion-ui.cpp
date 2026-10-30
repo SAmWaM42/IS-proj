@@ -336,6 +336,9 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     std::filesystem::create_directories(policyDirectory);
     const auto basePath = std::filesystem::path(policyDirectory) / "baseline.qtable";
     const auto proposedPath = std::filesystem::path(policyDirectory) / "proposed.qtable";
+    if (guidedStudyMode && (!std::filesystem::exists(basePath) || !std::filesystem::exists(proposedPath))) {
+        throw std::runtime_error("Guided believability study requires trained baseline.qtable and proposed.qtable files in " + policyDirectory);
+    }
     if (std::filesystem::exists(basePath)) baseline.loadPersistentState(basePath.string());
     if (std::filesystem::exists(proposedPath)) proposed.loadPersistentState(proposedPath.string());
     latestObservation = EnvironmentObservation{0, 1, 0, 0, 0.35f};
@@ -1906,7 +1909,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                             writeStudyManifest();
                         } else {
                             studyFinished = true;
-                            studyPhase = "complete";
+                            studyPhase = "finished";
                             writeStudyManifest();
                             saveSession();
                         }
@@ -2203,7 +2206,7 @@ void CompanionUI::drawSimulationScreen() {
                          ? "Complete the form in your browser, then return and continue."
                          : "Guided interaction complete. Open Answer Form before continuing.",
                      L.x + 275.0f, L.y + 18.0f, 16, sf::Color::White);
-        } else if (studyPhase == "complete") {
+        } else if (studyPhase == "finished") {
             drawText("Study sessions complete. Thank you.", L.x + 275.0f, L.y + 18.0f, 17, sf::Color::White);
         }
     }
