@@ -77,7 +77,7 @@ def behaviour_metrics(baseline_condition: dict[str, Any], proposed_condition: di
                    if "event" in pair and "control" in pair]
     if valid_pairs:
         adaptation_change_rate = sum(
-            pair["event"].get("action_internal") != pair["control"].get("action_internal"]
+            pair["event"].get("action_internal") != pair["control"].get("action_internal")
             for pair in valid_pairs
         ) / len(valid_pairs)
         adaptation = {"status": "matched_event_control_pairs_available",
