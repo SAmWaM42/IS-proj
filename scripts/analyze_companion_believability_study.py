@@ -124,7 +124,8 @@ def parse_rating(value: str) -> int | None:
         n = int(float(value))
         return n if 1 <= n <= 5 else None
     except ValueError:
-        return None
+        leading = re.match(r"^\\s*([1-5])(?:\\s|[-–:.]|$)", value)
+        return int(leading.group(1)) if leading else None
 
 
 def read_jsonl(path: Path) -> tuple[list[dict[str, Any]], str | None]:
