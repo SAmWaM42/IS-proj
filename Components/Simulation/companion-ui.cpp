@@ -1420,6 +1420,14 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["timestamp"] = utcTimestamp();
         row["processing_status"] = "completed";
         row["condition_code"] = std::string(1, selectedAgentCode);
+        row["condition"] = selectedAgentIsProposed ? "proposed" : "baseline";
+        row["participant_code"] = guidedStudyMode ? studyParticipantCode : "";
+        row["session_index"] = guidedStudyMode ? studySessionIndex : 0;
+        row["phase"] = guidedStudyMode ? studyPhase : "simulation";
+        row["step_id"] = guidedStudyMode && studyPhase == "guided" ? studyStepIndex + 1 : 0;
+        row["software_revision"] = IS2_GIT_REVISION;
+        row["policy_updates_enabled"] = guidedStudyMode ? false : (baseline.isLearningEnabled() || proposed.isLearningEnabled());
+        row["selected_action"] = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
         row["input_summary"] = label;
         row["observation"] = {
             {"goal_state", observation.goal_state},
