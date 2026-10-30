@@ -30,7 +30,7 @@ The new analysis utility consumes the Google Forms CSV export and application lo
 ## Partial or not implemented
 
 - **R7:** Every `--study` launch allocates the next participant code and counterbalance assignment. There is no separate researcher UI for resetting the counter; use a fresh output directory for dry runs/pilots if you do not want them to consume the production counter.
-- **R10:** The automated scripted replay/distribution check has not been implemented.
+- **R10:** Actual study logs and analysis report action distributions and unfamiliar-Q-table-state counts. The separate repeated scripted replay check before participant sessions remains unimplemented.
 - **R13:** The application writes a manifest, step log, interaction log, and session summary outside the repository by default, but does not package them into a single archive bundle.
 - **Compliance rate:** Deliberately remains unestimated until the plausibility rule for justified deviations is specified.
 - **Behavioural interpretation:** Memory-probe shifts, action variety, latency, idle actions, and free-interaction use are descriptive supporting metrics. They do not replace participant ratings as the evidence for believability.
