@@ -1652,6 +1652,13 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             row["timestamp"] = utcTimestamp();
             row["processing_status"] = "statement_object_unresolved";
             row["condition_code"] = std::string(1, selectedAgentCode);
+            row["condition"] = selectedAgentIsProposed ? "proposed" : "baseline";
+            row["participant_code"] = guidedStudyMode ? studyParticipantCode : "";
+            row["session_index"] = guidedStudyMode ? studySessionIndex : 0;
+            row["phase"] = guidedStudyMode ? studyPhase : "simulation";
+            row["step_id"] = guidedStudyMode && studyPhase == "guided" ? studyStepIndex + 1 : 0;
+            row["software_revision"] = IS2_GIT_REVISION;
+            row["policy_updates_enabled"] = false;
             row["input_summary"] = text;
             row["utterance_analysis"] = {{"kind", "preference_statement"}, {"memory_updated", false},
                                          {"response_required", false}, {"response_action", "NONE"},
@@ -1706,6 +1713,13 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             row["timestamp"] = utcTimestamp();
             row["processing_status"] = "recorded_no_action";
             row["condition_code"] = std::string(1, selectedAgentCode);
+            row["condition"] = selectedAgentIsProposed ? "proposed" : "baseline";
+            row["participant_code"] = guidedStudyMode ? studyParticipantCode : "";
+            row["session_index"] = guidedStudyMode ? studySessionIndex : 0;
+            row["phase"] = guidedStudyMode ? studyPhase : "simulation";
+            row["step_id"] = guidedStudyMode && studyPhase == "guided" ? studyStepIndex + 1 : 0;
+            row["software_revision"] = IS2_GIT_REVISION;
+            row["policy_updates_enabled"] = false;
             row["input_summary"] = text;
             row["utterance_analysis"] = {
                 {"kind", "preference_statement"}, {"relation", relation}, {"object", object},
