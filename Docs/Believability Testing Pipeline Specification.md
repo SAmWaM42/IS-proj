@@ -102,19 +102,19 @@ Priority: P0 is needed to run the study, P1 is strongly recommended, P2 is optio
 
 | ID | Requirement | Priority | Status |
 | --- | --- | --- | --- |
-| R1 | Guided-task panel: step text, progress (Step n of 12) and automatic advance when the matching interaction is issued; researcher override key | P0 | New |
-| R2 | Session phases (warm-up, guided, free, finished) stored in the state and written to every log row | P0 | New |
+| R1 | Guided-task panel: step text, progress (Step n of 12) and automatic advance when the matching interaction is issued; researcher override key | P0 | Implemented in source; local verification pending |
+| R2 | Session phases (warm-up, guided, free, finished) stored in the state and written to every log row | P0 | Implemented in source; local verification pending |
 | R3 | Log schema additions: participant\_code, session\_index, condition\_code, phase, step\_id, build version (Git commit), policy checksums | P0 | Extend |
-| R4 | End of guided script: free-interaction screen with a Finish button and an optional 3-minute timer; then a clear Answer Form prompt | P0 | New |
-| R5 | Prefilled form link carrying condition code, run id and session number as Google Forms entry parameters (the form ignores plain names such as condition=A) | P0 | Fix |
-| R6 | Change Model is available only after the Answer Form button has been used for the current companion | P1 | New |
-| R7 | New-participant launch option: clears proposed memory, increments a participant counter stored in a small state file and sets the A/B mapping from its parity | P0 | New |
-| R8 | Fixed ball-landing positions per scripted step so both companions see identical throws | P0 | New |
-| R9 | Autonomous idle decisions suppressed during steps 1 to 8 and 10 to 12, active during step 9 and the free phase | P1 | New |
-| R10 | Scripted replay check: feed the 12 step observations to both agents many times and report the action distribution and any unfamiliar-state warnings before participants | P1 | New |
-| R11 | Policies loaded read-only, learning and exploration off, checksums logged at start | P0 | Verify |
+| R4 | End of guided script: free-interaction screen with a Finish button and an optional 3-minute timer; then a clear Answer Form prompt | P0 | Implemented in source; local verification pending |
+| R5 | Prefilled form link carrying condition code, run id and session number as Google Forms entry parameters (the form ignores plain names such as condition=A) | P0 | Implemented; requires configured form URL and entry IDs |
+| R6 | Change Model is available only after the Answer Form button has been used for the current companion | P1 | Implemented in source; local verification pending |
+| R7 | New-participant launch option: clears proposed memory, increments a participant counter stored in a small state file and sets the A/B mapping from its parity | P0 | Partially implemented: each guided-study launch increments the persistent counter and clears in-memory memory/affect; no separate reset-counter UI |
+| R8 | Fixed ball-landing positions per scripted step so both companions see identical throws | P0 | Implemented for the two guided throw probes; local verification pending |
+| R9 | Autonomous idle decisions suppressed during steps 1 to 8 and 10 to 12, active during step 9 and the free phase | P1 | Implemented in source; local verification pending |
+| R10 | Scripted replay check: feed the 12 step observations to both agents many times and report the action distribution and any unfamiliar-state warnings before participants | P1 | Not implemented |
+| R11 | Policies loaded read-only, learning and exploration off, checksums logged at start | P0 | Implemented in source; local verification pending |
 | R12 | Study mode hides action labels, state, statistics, interpretation method and the event log; no mapping is visible | P0 | Exists |
-| R13 | Export a participant data bundle (manifest, interaction log, step log) to a restricted folder outside the repository | P1 | New |
+| R13 | Export a participant data bundle (manifest, interaction log, step log) to a restricted folder outside the repository | P1 | Partial: manifest, interaction, step and session files are written outside the repo by default; no archive bundle generated |
 
 **Form link construction (R5).** Configure three environment variables: the base form link and the entry ids of the three prefilled questions. The application appends the entry parameters to the base link. Entry ids are obtained from the form's Get pre-filled link option.
 
