@@ -1151,6 +1151,14 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
                     {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},
                     {"phase", studyPhase}, {"step_id", studyStepIndex + 1},
                     {"event_type", "autonomous_action"}, {"selected_action", selectedAction},
+                    {"q_table_state_present", selectedAgentIsProposed
+                        ? proposed.getLastDecisionTrace().q_table_state_present : baseline.lastDecisionHadQTableState()},
+                    {"q_table_has_valid_action_values", selectedAgentIsProposed
+                        ? proposed.getLastDecisionTrace().q_table_has_valid_action_values : baseline.lastDecisionHadValidQAction()},
+                    {"contextual_fallback", selectedAgentIsProposed
+                        ? proposed.getLastDecisionTrace().contextual_fallback : baseline.getLastContextualFallback()},
+                    {"general_preference_override", selectedAgentIsProposed
+                        ? proposed.getLastDecisionTrace().general_preference_override : ""},
                     {"observation", {{"goal_state", ambient.goal_state},
                                      {"target_proximity", ambient.target_proximity},
                                      {"user_status", ambient.user_status},
@@ -1519,6 +1527,14 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["policy_updates_enabled"] = false;
         row["selected_action"] = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
         row["response_latency_ms"] = guidedStudyMode ? nlohmann::json(responseLatencyMs) : nlohmann::json(nullptr);
+        row["q_table_state_present"] = selectedAgentIsProposed
+            ? proposed.getLastDecisionTrace().q_table_state_present : baseline.lastDecisionHadQTableState();
+        row["q_table_has_valid_action_values"] = selectedAgentIsProposed
+            ? proposed.getLastDecisionTrace().q_table_has_valid_action_values : baseline.lastDecisionHadValidQAction();
+        row["contextual_fallback"] = selectedAgentIsProposed
+            ? proposed.getLastDecisionTrace().contextual_fallback : baseline.getLastContextualFallback();
+        row["general_preference_override"] = selectedAgentIsProposed
+            ? proposed.getLastDecisionTrace().general_preference_override : "";
         row["input_summary"] = safeLabelForLogs;
         row["observation"] = {
             {"goal_state", observation.goal_state},
