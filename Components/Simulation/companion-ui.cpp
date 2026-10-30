@@ -639,7 +639,9 @@ void CompanionUI::completeStudyStep(const std::string& interaction) {
         {"step_id", studyStepIndex + 1},
         {"step_prompt", currentStudyPrompt()},
         {"interaction", interaction},
-        {"selected_action", selectedAgentIsProposed ? latestProposedAction : latestBaselineAction},
+        {"selected_action", (studyStepIndex == 5 || studyStepIndex == 8 || studyStepIndex == 9)
+                                ? "NO_DIRECT_ACTION"
+                                : (selectedAgentIsProposed ? latestProposedAction : latestBaselineAction)},
         {"memory_count_after", selectedAgentIsProposed ? proposed.getMemoryRecords().size() : 0},
         {"affect_after", selectedAgentIsProposed ? nlohmann::json({
             {"valence", static_cast<int>(proposed.getAffectiveState().valence)},
