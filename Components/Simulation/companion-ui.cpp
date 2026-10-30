@@ -1446,7 +1446,7 @@ void CompanionUI::executeInteraction(const std::string& label,
     const int interactionId = interactionCount + 1;
     lastActionInteractionId = interactionId;
     latestObservation = observation;
-    latestStimulus = label;
+    latestStimulus = (guidedStudyMode && studyPhase == "free") ? "free_phase_interaction" : label;
     if (guidedStudyMode) {
         latestBaselineAction = selectedAgentIsProposed ? "NOT_RUN" : baseline.selectAction(observation);
         latestProposedAction = selectedAgentIsProposed ? proposed.selectAction(observation) : "NOT_RUN";
@@ -1497,7 +1497,7 @@ void CompanionUI::executeInteraction(const std::string& label,
     baselineRewards.push_back(feedbackRewardValue);
     proposedRewards.push_back(feedbackRewardValue);
     ++interactionCount;
-    appendLog("You: " + label);
+    appendLog("You: " + ((guidedStudyMode && studyPhase == "free") ? "free_phase_interaction" : label));
     appendLog("Baseline: " + describeAction(latestBaselineAction));
     appendLog("Proposed: " + describeAction(latestProposedAction));
     {
@@ -1637,6 +1637,10 @@ void CompanionUI::processTextInteraction(const std::string& text) {
     std::string lower = text;
     std::transform(lower.begin(), lower.end(), lower.begin(),
         [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    const std::string safeTextForLogs = !guidedStudyMode ? text :
+        (studyPhase == "guided" && studyStepIndex == 5 ? "scripted_preference:likes_ball" :
+         studyPhase == "guided" && studyStepIndex == 9 ? "scripted_preference:dislikes_sound" :
+         studyPhase == "free" ? "free_phase_text_input" : "guided_text_input");
     if (guidedStudyMode && studyPhase == "guided" && !studyInputMatches(text, true)) {
         appendLog("Please follow the current guided-study prompt.");
         return;
@@ -1703,7 +1707,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             row["step_id"] = guidedStudyMode && studyPhase == "guided" ? studyStepIndex + 1 : 0;
             row["software_revision"] = IS2_GIT_REVISION;
             row["policy_updates_enabled"] = false;
-            row["input_summary"] = text;
+            row["input_summary"] = safeTextForLogs;
             row["utterance_analysis"] = {{"kind", "preference_statement"}, {"memory_updated", false},
                                          {"response_required", false}, {"response_action", "NONE"},
                                          {"candidate_association", "unresolved"}};
@@ -1754,7 +1758,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             }
 
             ++interactionCount;
-            appendLog("You: " + text + " [preference statement]");
+            appendLog("You: " + safeTextForLogs + " [preference statement]");
             appendLog(memoryUpdated ? "Memory: stored user " + relation + " " + object
                                     : "Preference statement recorded as study input; baseline memory remains disabled.");
             appendLog(contextMatches ? "Context: candidate association with preceding interaction."
@@ -1784,7 +1788,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
                 {"candidate_association", associationType}, {"association_confidence", associationConfidence},
                 {"association_reason", associationReason},
                 {"referenced_interaction_id", contextMatches ? lastActionInteractionId : 0},
-                {"preceding_context", hasPriorAction ? previousContext : ""},
+                {"preceding_context", hasPriorAction ? (guidedStudyMode && studyPhase == "free" ? "free_phase_interaction" : previousContext) : ""},
                 {"preceding_baseline_action", hasPriorAction ? latestBaselineAction : ""},
                 {"preceding_proposed_action", hasPriorAction ? latestProposedAction : ""}
             };
@@ -1792,7 +1796,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
             if (log) log << row.dump() << '\n';
             else appendLog("WARNING: interaction event log could not be written.");
-            if (guidedStudyMode && studyPhase == "guided") completeStudyStep(text);
+            if (guidedStudyMode && studyPhase == "guided") completeStudyStep(safeTextForLogs);
             saveSession();
             return;
         }
