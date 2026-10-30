@@ -1355,8 +1355,13 @@ void CompanionUI::executeInteraction(const std::string& label,
     lastActionInteractionId = interactionId;
     latestObservation = observation;
     latestStimulus = label;
-    latestBaselineAction = baseline.selectAction(observation);
-    latestProposedAction = proposed.selectAction(observation);
+    if (guidedStudyMode) {
+        latestBaselineAction = selectedAgentIsProposed ? "NOT_RUN" : baseline.selectAction(observation);
+        latestProposedAction = selectedAgentIsProposed ? proposed.selectAction(observation) : "NOT_RUN";
+    } else {
+        latestBaselineAction = baseline.selectAction(observation);
+        latestProposedAction = proposed.selectAction(observation);
+    }
     const std::size_t baselineStateBeforeOutcome = baseline.getCurrentState().encode();
     const std::size_t proposedStateBeforeOutcome = proposed.getCurrentState().encode();
     nlohmann::json memoryCandidates = nlohmann::json::array();
@@ -1383,8 +1388,17 @@ void CompanionUI::executeInteraction(const std::string& label,
     baselineOutcome.outcome_tag = "simulation_" + (feedbackRewardValue > 0 ? std::string("positive") :
                                                     feedbackRewardValue < 0 ? std::string("negative") : std::string("neutral"));
     ActionOutcome proposedOutcome = baselineOutcome;
-    baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome);
-    proposed.applyOutcome(observation, latestProposedAction, proposedOutcome);
+    if (guidedStudyMode) {
+        // Only the visible condition receives the interaction. Learning stays off,
+        // but the proposed condition still updates its affect/memory state from events.
+        if (selectedAgentIsProposed)
+            proposed.applyOutcome(observation, latestProposedAction, proposedOutcome);
+        else
+            baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome);
+    } else {
+        baseline.applyOutcome(observation, latestBaselineAction, baselineOutcome);
+        proposed.applyOutcome(observation, latestProposedAction, proposedOutcome);
+    }
 
     baselineRewards.push_back(feedbackRewardValue);
     proposedRewards.push_back(feedbackRewardValue);
@@ -2167,6 +2181,24 @@ void CompanionUI::saveSession() {
     try {
         const auto directory = std::filesystem::path(outputDirectory);
         std::filesystem::create_directories(directory);
+        if (guidedStudyMode) {
+            nlohmann::json session = {
+                {"schema_version", 1}, {"protocol_id", "companion-believability-v0.1"},
+                {"run_id", runId}, {"participant_code", studyParticipantCode},
+                {"session_index", studySessionIndex},
+                {"condition_code", std::string(1, selectedAgentCode)},
+                {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},
+                {"phase", studyPhase}, {"interaction_count", interactionCount},
+                {"software_revision", IS2_GIT_REVISION},
+                {"policy_updates_enabled", false},
+                {"latest_stimulus", latestStimulus},
+                {"visible_action", selectedAgentIsProposed ? latestProposedAction : latestBaselineAction},
+                {"interactions", eventLog}
+            };
+            std::ofstream out(directory / (runId + "-session.json"));
+            if (out) out << session.dump(2) << '\\n';
+            return; // Study mode must never overwrite shared training policy files.
+        }
         nlohmann::json session;
         session["run_id"] = runId;
         session["condition_code"] = std::string(1, selectedAgentCode);
