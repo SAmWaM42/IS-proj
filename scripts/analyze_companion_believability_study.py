@@ -79,7 +79,7 @@ def find_indices(headers: list[str], query: str) -> list[int]:
     # Google Sheets/CSV exports sometimes suffix duplicate form questions with .1, .2, etc.
     exact_or_duplicate = [
         i for i, header in enumerate(headers)
-        if norm(header) == q or re.match(r"^" + re.escape(q) + r"\\.\\d+$", norm(header))
+        if norm(header) == q or re.match(r"^" + re.escape(q) + r"\.\d+$", norm(header))
     ]
     if exact_or_duplicate:
         return exact_or_duplicate
