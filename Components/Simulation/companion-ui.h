@@ -166,6 +166,7 @@ private:
     void startNewParticipant();
     void initialiseGuidedStudy();
     void writeStudyManifest();
+    void logStudyPhaseEvent(const std::string& eventType, const std::string& phase);
     void completeStudyStep(const std::string& interaction);
     bool studyInputMatches(const std::string& interaction, bool isText) const;
     std::string currentStudyPrompt() const;
