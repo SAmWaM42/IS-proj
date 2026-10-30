@@ -1875,10 +1875,13 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                     if (studyPhase == "free") {
                         studyFreeFinished = true;
                         studyPhase = "rating";
+                        logStudyPhaseEvent("phase_ended", "free");
+                        logStudyPhaseEvent("phase_started", "rating");
                         writeStudyManifest();
                     } else if (studyPhase == "rating" && studyFormOpenedCurrentCondition) {
                         if (studySessionIndex == 1) {
                             studySessionIndex = 2;
+                            studyStartedAt = utcTimestamp();
                             selectedAgentCode = 'B';
                             selectedAgentIsProposed = !agentAIsProposed;
                             const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(
