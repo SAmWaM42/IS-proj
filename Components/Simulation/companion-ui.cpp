@@ -568,7 +568,7 @@ bool CompanionUI::studyInputMatches(const std::string& interaction, bool isText)
         case 0: return !isText && lower.find("greet") != std::string::npos;
         case 1: return !isText && lower.find("praise") != std::string::npos;
         case 2: return !isText && lower.find("throw") != std::string::npos && lower.find("ball") != std::string::npos;
-        case 3: return !isText && lower.find("feed") != std::string::npos;
+        case 3: return !isText && (lower.find("feed") != std::string::npos || lower.find("food") != std::string::npos);
         case 4: return !isText && lower.find("loud noise") != std::string::npos;
         case 5: return isText && lower.find("i like the ball") != std::string::npos;
         case 6: return !isText && lower.find("throw") != std::string::npos && lower.find("ball") != std::string::npos;
