@@ -1431,7 +1431,7 @@ void CompanionUI::processInteraction(const std::string& label,
     interactionQueuedAt = std::chrono::steady_clock::now();
     interactionBuffer.push_back(QueuedInteraction{label, observation, feedbackRewardValue, preference,
                                                   preferencePositive, sceneEvent, proximityBasis});
-    appendLog("Queued interaction (" + std::to_string(interactionBuffer.size()) + " waiting): " + label);
+    appendLog("Queued interaction (" + std::to_string(interactionBuffer.size()) + " waiting): " + ((guidedStudyMode && studyPhase == "free") ? "free_phase_interaction" : label));
 }
 
 void CompanionUI::executeInteraction(const std::string& label,
@@ -1446,7 +1446,8 @@ void CompanionUI::executeInteraction(const std::string& label,
     const int interactionId = interactionCount + 1;
     lastActionInteractionId = interactionId;
     latestObservation = observation;
-    latestStimulus = (guidedStudyMode && studyPhase == "free") ? "free_phase_interaction" : label;
+    const std::string safeLabelForLogs = (guidedStudyMode && studyPhase == "free") ? "free_phase_interaction" : label;
+    latestStimulus = safeLabelForLogs;
     if (guidedStudyMode) {
         latestBaselineAction = selectedAgentIsProposed ? "NOT_RUN" : baseline.selectAction(observation);
         latestProposedAction = selectedAgentIsProposed ? proposed.selectAction(observation) : "NOT_RUN";
@@ -1497,7 +1498,7 @@ void CompanionUI::executeInteraction(const std::string& label,
     baselineRewards.push_back(feedbackRewardValue);
     proposedRewards.push_back(feedbackRewardValue);
     ++interactionCount;
-    appendLog("You: " + ((guidedStudyMode && studyPhase == "free") ? "free_phase_interaction" : label));
+    appendLog("You: " + safeLabelForLogs);
     appendLog("Baseline: " + describeAction(latestBaselineAction));
     appendLog("Proposed: " + describeAction(latestProposedAction));
     {
@@ -1518,7 +1519,7 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["policy_updates_enabled"] = false;
         row["selected_action"] = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
         row["response_latency_ms"] = guidedStudyMode ? nlohmann::json(responseLatencyMs) : nlohmann::json(nullptr);
-        row["input_summary"] = label;
+        row["input_summary"] = safeLabelForLogs;
         row["observation"] = {
             {"goal_state", observation.goal_state},
             {"target_proximity", observation.target_proximity},
@@ -1691,7 +1692,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
 
         if (object.empty()) {
             ++interactionCount;
-            appendLog("You: " + text + " [preference statement; object unresolved; no action selected]");
+            appendLog("You: " + safeTextForLogs + " [preference statement; object unresolved; no action selected]");
             nlohmann::json row;
             row["schema_version"] = 2;
             row["run_id"] = runId;
@@ -1779,7 +1780,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             row["step_id"] = guidedStudyMode && studyPhase == "guided" ? studyStepIndex + 1 : 0;
             row["software_revision"] = IS2_GIT_REVISION;
             row["policy_updates_enabled"] = false;
-            row["input_summary"] = text;
+            row["input_summary"] = safeTextForLogs;
             row["utterance_analysis"] = {
                 {"kind", "preference_statement"}, {"relation", relation}, {"object", object},
                 {"memory_updated", memoryUpdated},
@@ -1810,7 +1811,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
     // visible in the log without forcing a policy action or inventing a fact.
     if (intent == "unknown") {
         ++interactionCount;
-        appendLog("You: " + text + " [unclassified statement; no action selected]");
+        appendLog("You: " + safeTextForLogs + " [unclassified statement; no action selected]");
         nlohmann::json row;
         row["schema_version"] = 2;
         row["run_id"] = runId;
@@ -1826,7 +1827,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
         row["step_id"] = guidedStudyMode && studyPhase == "guided" ? studyStepIndex + 1 : 0;
         row["software_revision"] = IS2_GIT_REVISION;
         row["policy_updates_enabled"] = false;
-        row["input_summary"] = text;
+        row["input_summary"] = safeTextForLogs;
         row["utterance_analysis"] = {{"kind", "unclassified"}, {"memory_updated", false},
                                      {"response_required", false}, {"response_action", "NONE"}};
         row["learning_update_enabled"] = false;
