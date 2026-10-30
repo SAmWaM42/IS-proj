@@ -603,6 +603,21 @@ void CompanionUI::writeStudyManifest() {
     if (out) out << manifest.dump(2) << '\n';
 }
 
+void CompanionUI::logStudyPhaseEvent(const std::string& eventType, const std::string& phase) {
+    if (!guidedStudyMode) return;
+    nlohmann::json row = {
+        {"schema_version", 1}, {"protocol_id", "companion-believability-v0.1"},
+        {"event_type", eventType}, {"run_id", runId},
+        {"participant_code", studyParticipantCode}, {"session_index", studySessionIndex},
+        {"condition_code", std::string(1, selectedAgentCode)},
+        {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},
+        {"phase", phase}, {"timestamp", utcTimestamp()},
+        {"software_revision", IS2_GIT_REVISION}
+    };
+    std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
+    if (log) log << row.dump(2) << '\n';
+}
+
 void CompanionUI::completeStudyStep(const std::string& interaction) {
     if (!guidedStudyMode || studyPhase != "guided" || studyStepIndex >= 12) return;
     nlohmann::json row = {
@@ -617,6 +632,15 @@ void CompanionUI::completeStudyStep(const std::string& interaction) {
         {"step_id", studyStepIndex + 1},
         {"step_prompt", currentStudyPrompt()},
         {"interaction", interaction},
+        {"selected_action", selectedAgentIsProposed ? latestProposedAction : latestBaselineAction},
+        {"memory_count_after", selectedAgentIsProposed ? proposed.getMemoryRecords().size() : 0},
+        {"affect_after", selectedAgentIsProposed ? nlohmann::json({
+            {"valence", static_cast<int>(proposed.getAffectiveState().valence)},
+            {"stress", proposed.getAffectiveState().stress},
+            {"arousal", proposed.getAffectiveState().arousal},
+            {"engagement", proposed.getAffectiveState().engagement},
+            {"affinity", proposed.getAffectiveState().affinity}
+        }) : nlohmann::json(nullptr)},
         {"timestamp", utcTimestamp()}
     };
     std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
@@ -627,6 +651,7 @@ void CompanionUI::completeStudyStep(const std::string& interaction) {
         studyGuidedComplete = true;
         studyPhase = "free";
         studyFreeElapsed = 0.0f;
+        logStudyPhaseEvent("phase_started", "free");
     }
     writeStudyManifest();
 }
@@ -1008,6 +1033,8 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
         if (studyFreeElapsed >= 180.0f) {
             studyFreeFinished = true;
             studyPhase = "rating";
+            logStudyPhaseEvent("phase_ended", "free");
+            logStudyPhaseEvent("phase_started", "rating");
             writeStudyManifest();
         }
     }
