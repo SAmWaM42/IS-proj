@@ -250,11 +250,23 @@ def behaviour_metrics(run_id: str, log_dir: Path) -> tuple[dict[str, Any], list[
         and r.get("phase") == "guided" and 1 <= int(r.get("step_id", 0) or 0) <= 12
     ]
 
+    action_distribution = Counter(
+        str(r.get("selected_action")) for r in events
+        if isinstance(r.get("selected_action"), str)
+        and r.get("selected_action") not in {"NOT_RUN", "NO_DIRECT_ACTION", "IDLE"}
+    )
+    decision_rows = [r for r in events if isinstance(r.get("selected_action"), str)]
+    unfamiliar_states = sum(r.get("q_table_state_present") is False for r in decision_rows)
+    missing_valid_action_values = sum(r.get("q_table_has_valid_action_values") is False for r in decision_rows)
+
     metrics = {
         "guided_steps_observed": len(seen),
         "guided_steps_missing": missing_steps,
         "action_variety": len(set(valid_actions)) if valid_actions else None,
         "action_entropy_bits": action_entropy(valid_actions),
+        "action_distribution": dict(action_distribution),
+        "q_table_unfamiliar_state_decisions": unfamiliar_states,
+        "q_table_missing_valid_action_value_decisions": missing_valid_action_values,
         "memory_probe_shift": probes,
         "idle_action_count_step_9": len(idle_actions),
         "idle_actions_step_9": idle_actions,
@@ -508,10 +520,35 @@ def main() -> int:
         "virtual_pet_familiarity_counts": dict(Counter(
             row["background"].get("virtual_pet_familiarity", "") for row in accepted if row["background"].get("virtual_pet_familiarity")
         )),
+        "computer_comfort_counts": dict(Counter(
+            row["background"].get("computer_comfort", "") for row in accepted if row["background"].get("computer_comfort")
+        )),
         "age_range_counts": dict(Counter(
             row["background"].get("age_range", "") for row in accepted if row["background"].get("age_range")
         )),
     }
+
+    single_item_descriptives = {}
+    for condition in ("baseline", "proposed"):
+        condition_rows = [row for row in accepted if row["condition"] == condition]
+        single_item_descriptives[condition] = {}
+        for label, item_number in (("statement_response_row_7", 7),
+                                   ("contextual_appropriateness_row_14", 14)):
+            values = [row["rating"]["item_responses_scored"][str(item_number)]
+                      for row in condition_rows
+                      if row["rating"]["item_responses_scored"].get(str(item_number)) is not None]
+            single_item_descriptives[condition][label] = {
+                "n": len(values),
+                "mean": statistics.mean(values) if values else None,
+                "median": statistics.median(values) if values else None,
+            }
+        summary_values = [row["rating"]["summary_believability_item"]
+                          for row in condition_rows if row["rating"]["summary_believability_item"] is not None]
+        single_item_descriptives[condition]["summary_believability_item_3_1"] = {
+            "n": len(summary_values),
+            "mean": statistics.mean(summary_values) if summary_values else None,
+            "median": statistics.median(summary_values) if summary_values else None,
+        }
 
     summary = {
         "protocol_id": "companion-believability-v0.1",
@@ -525,6 +562,7 @@ def main() -> int:
         "secondary_subscales_holm_adjusted": secondary,
         "cronbach_alpha_by_condition": reliability,
         "direct_comparison_counts": direct_comparison,
+        "single_item_descriptives": single_item_descriptives,
         "order_effect_descriptives": order_effects,
         "background_covariate_descriptives": background_summary,
         "behaviour_metrics_note": "Action variety, entropy, probe shifts, idle counts and free-interaction use are descriptive; they do not measure believability. Compliance and latency remain unestimated until their operational rules/events are implemented.",
