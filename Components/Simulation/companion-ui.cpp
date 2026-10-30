@@ -1734,8 +1734,55 @@ void CompanionUI::handleClick(sf::Vector2f point) {
             else if (x >= 499 && x < 644) screen = Screen::Comparison;
             else if (x >= 1030 && screen == Screen::Simulation) controlsVisible = !controlsVisible;
         } else {
-            if (x >= 185 && x < 345) screen = Screen::AgentSelection;       // Change Model
-            else if (x >= 357 && x < 517) openStudyForm();                  // Answer Form
+            if (x >= 185 && x < 345) {
+                if (guidedStudyMode) {
+                    if (studyPhase == "free") {
+                        studyFreeFinished = true;
+                        studyPhase = "rating";
+                        writeStudyManifest();
+                    } else if (studyPhase == "rating" && studyFormOpenedCurrentCondition) {
+                        if (studySessionIndex == 1) {
+                            studySessionIndex = 2;
+                            selectedAgentCode = 'B';
+                            selectedAgentIsProposed = !agentAIsProposed;
+                            const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::system_clock::now().time_since_epoch()).count();
+                            runId = "study-" + studyParticipantCode + "-" + std::to_string(ticks);
+                            studyStepIndex = 0;
+                            studyPhase = "guided";
+                            studyIdleElapsed = 0.0f;
+                            studyFreeElapsed = 0.0f;
+                            studyGuidedComplete = false;
+                            studyFreeFinished = false;
+                            studyFormOpenedCurrentCondition = false;
+                            trialRows.clear();
+                            eventLog.clear();
+                            interactionCount = 0;
+                            lastActionInteractionId = 0;
+                            latestBaselineAction = "IDLE";
+                            latestProposedAction = "IDLE";
+                            proposed.clearMemory();
+                            std::error_code ec;
+                            std::filesystem::remove(std::filesystem::path(policyDirectory) / "proposed.qtable.memory.json", ec);
+                            baseline.reset();
+                            proposed.reset();
+                            resetScene();
+                            screen = Screen::Simulation;
+                            writeStudyManifest();
+                        } else {
+                            studyFinished = true;
+                            studyPhase = "complete";
+                            writeStudyManifest();
+                            saveSession();
+                        }
+                    }
+                } else {
+                    screen = Screen::AgentSelection;
+                }
+            } else if (x >= 357 && x < 517) {
+                if (!guidedStudyMode || (studyPhase == "rating" && studyFreeFinished))
+                    openStudyForm();
+            }
         }
         return;
     }
@@ -1749,6 +1796,11 @@ void CompanionUI::handleClick(sf::Vector2f point) {
         return;
     }
     if (screen != Screen::Simulation) return;
+    if (guidedStudyMode && studyPhase != "guided" && studyPhase != "free") return;
+    if (guidedStudyMode && studyPhase == "guided" &&
+        (studyStepIndex == 5 || studyStepIndex == 8 || studyStepIndex == 9)) {
+        // These steps require a typed statement or a timed observation, not a button.
+    }
     if (!controlsVisible) return;
 
     const SceneLayout L = sceneLayout();
@@ -1758,11 +1810,20 @@ void CompanionUI::handleClick(sf::Vector2f point) {
         const float by = firstRowY + static_cast<float>(i / 5) * kButtonRowStep;
         if (x >= bx && x < bx + kButtonW && y >= by && y < by + kButtonH) {
             const ControlButton& control = kControls[i];
+            if (guidedStudyMode) {
+                if (studyPhase == "guided") {
+                    if (behaviourActive || !interactionBuffer.empty() ||
+                        !studyInputMatches(control.label, false)) return;
+                } else if (studyPhase != "free") {
+                    return;
+                }
+            }
             textInputFocused = false;
             processInteraction(control.stimulus,
                                makeObservation(control.goal, control.proximity, control.user, control.task,
                                                control.signal, control.food, control.play),
                                control.reward, "", true, control.sceneEvent, control.basis);
+            if (guidedStudyMode && studyPhase == "guided") completeStudyStep(control.label);
             return;
         }
     }
