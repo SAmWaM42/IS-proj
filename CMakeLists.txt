@@ -96,7 +96,7 @@ add_test(NAME paired_agent_scenarios_test COMMAND paired_agent_scenarios_test)
 add_test(NAME believability_fixture_validation
    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/validate_study_fixtures.py
 )
-add_test(NAME believability_study_pipeline_tests
+add_test(NAME legacy_believability_study_pipeline_tests
    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_believability_pipeline.py
 )
 
