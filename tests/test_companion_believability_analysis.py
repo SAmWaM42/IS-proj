@@ -52,6 +52,12 @@ class CompanionBelievabilityAnalysisTests(unittest.TestCase):
             self.assertEqual(first["summary_believability_item"], 4)
             self.assertEqual(second["summary_believability_item"], 2)
 
+    def test_google_export_duplicate_suffix_is_detected(self):
+        self.assertEqual(
+            analysis.find_indices([analysis.ITEMS[0], analysis.ITEMS[0] + ".1"], analysis.ITEMS[0]),
+            [0, 1],
+        )
+
     def test_attention_check_failure_is_flagged(self):
         headers = [analysis.SESSION_COL, *analysis.ITEMS]
         values = ["1", *(["Agree"] * 20), "Disagree"]
