@@ -1008,6 +1008,9 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
 void CompanionUI::updatePlayer(float elapsedSeconds) {
     playerMoving = false;
     if (screen != Screen::Simulation || textInputFocused || !window.hasFocus()) return;
+    if (guidedStudyMode &&
+        (studyPhase == "consent" || studyPhase == "rating" || studyPhase == "finished" ||
+         (studyPhase == "guided" && studyStepIndex != 0))) return;
     auto held = [](sf::Keyboard::Key a, sf::Keyboard::Key b) {
         return sf::Keyboard::isKeyPressed(a) || sf::Keyboard::isKeyPressed(b);
     };
