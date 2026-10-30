@@ -1,0 +1,2 @@
+session_id,baseline_score,proposed_score,difference_proposed_minus_baseline,cross_condition_action_agreement,baseline_repeat_consistency,proposed_repeat_consistency,adaptation_status,condition_order,scenario_version,questionnaire_version,software_revision
+S1793337941660-244693,3.4,4.0,0.6000000000000001,0.7777777777777778,,,not_estimable_missing_matched_event_control_pairs,"[""A"", ""B""]",1,believability-v1,b466c4c
