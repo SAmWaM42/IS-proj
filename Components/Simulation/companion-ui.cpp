@@ -343,6 +343,10 @@ void CompanionUI::run() {
                 if (key->code == sf::Keyboard::Key::Escape) {
                     saveSession();
                     window.close();
+                } else if (guidedStudyMode && studyPhase == "warm_up" &&
+                           (key->code == sf::Keyboard::Key::Enter || key->code == sf::Keyboard::Key::Space)) {
+                    studyPhase = "guided";
+                    writeStudyManifest();
                 } else if (screen == Screen::Simulation && textInputFocused) {
                     if (key->code == sf::Keyboard::Key::Enter && !textInput.empty()) {
                         processTextInteraction(textInput);
@@ -1922,6 +1926,17 @@ void CompanionUI::drawNavigation() {
         if (screen == Screen::Simulation)
             drawButton(controlsVisible ? "Hide Controls" : "Show Controls", 1030, 12, 180, 42);
         drawText("ANIMAL AGENT / SFML [researcher]", 700, 22, 15, kMuted);
+    } else if (guidedStudyMode) {
+        std::string continueLabel = "Change Model (locked)";
+        if (studyPhase == "free") continueLabel = "Finish Free Phase";
+        else if (studyPhase == "rating" && studyFormOpenedCurrentCondition)
+            continueLabel = studySessionIndex == 1 ? "Continue to Companion B" : "Finish Study";
+        drawButton(continueLabel, 185, 12, 160, 42,
+                   studyPhase == "free" || (studyPhase == "rating" && studyFormOpenedCurrentCondition));
+        drawButton(studyFormOpenedCurrentCondition ? "Form Opened" : "Answer Form",
+                   357, 12, 160, 42, studyFormOpenedCurrentCondition);
+        drawText("Participant study | Session " + std::to_string(studySessionIndex) + "/2",
+                 700, 22, 15, kMuted);
     } else {
         drawButton("Change Model", 185, 12, 160, 42);
         drawButton("Answer Form", 357, 12, 160, 42);
