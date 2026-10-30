@@ -974,7 +974,8 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
     proposed.advanceTime(elapsedSeconds);
     if (throwTimer > 0.0f) throwTimer = std::max(0.0f, throwTimer - elapsedSeconds);
     updatePlayer(elapsedSeconds);
-    if (guidedStudyMode && studyPhase == "guided" && studyStepIndex == 8) {
+    if (guidedStudyMode && studyPhase == "guided" && studyStepIndex == 8 &&
+        !behaviourActive && interactionBuffer.empty()) {
         studyIdleElapsed += elapsedSeconds;
         if (studyIdleElapsed >= 30.0f) completeStudyStep("30-second idle observation completed");
     }
@@ -2075,6 +2076,29 @@ void CompanionUI::drawSimulationScreen() {
     drawText("YOU", userX - 14.0f, userY + 12.0f, 13, kInk);
     drawText(std::string("Companion ") + selectedAgentCode, agentX - 46.0f, agentY + 12.0f, 13, kInk);
     drawControlHelper();
+
+    if (guidedStudyMode) {
+        if (studyPhase == "warm_up") {
+            drawText("WARM-UP: Move with W A S D or arrow keys. Press Enter when ready.",
+                     L.x + 275.0f, L.y + 18.0f, 17, sf::Color::White);
+        } else if (studyPhase == "guided") {
+            drawText(currentStudyPrompt(), L.x + 275.0f, L.y + 18.0f, 17, sf::Color::White);
+            if (studyStepIndex == 8) {
+                drawText("Observation: " + std::to_string(std::min(30, static_cast<int>(studyIdleElapsed))) +
+                         " / 30 seconds", L.x + 275.0f, L.y + 44.0f, 15, sf::Color::White);
+            }
+        } else if (studyPhase == "free") {
+            drawText("Optional free interaction. Click Finish Free Phase when ready (maximum 3 minutes).",
+                     L.x + 275.0f, L.y + 18.0f, 16, sf::Color::White);
+        } else if (studyPhase == "rating") {
+            drawText(studyFormOpenedCurrentCondition
+                         ? "Complete the form in your browser, then return and continue."
+                         : "Guided interaction complete. Open Answer Form before continuing.",
+                     L.x + 275.0f, L.y + 18.0f, 16, sf::Color::White);
+        } else if (studyPhase == "complete") {
+            drawText("Study sessions complete. Thank you.", L.x + 275.0f, L.y + 18.0f, 17, sf::Color::White);
+        }
+    }
 
     if (researcherMode) {
         const std::string visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
