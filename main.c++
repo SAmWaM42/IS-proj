@@ -158,7 +158,17 @@ int main(int argc, char **argv)
 
     if (mode == "study")
     {
-        return runParticipantStudy(policyDirectory, studyOutputDirectory) ? 0 : 1;
+        try
+        {
+            CompanionUI study(policyDirectory, studyOutputDirectory, false, true);
+            study.run();
+        }
+        catch (const std::exception &error)
+        {
+            std::cerr << "Unable to start guided believability study: " << error.what() << '\\n';
+            return 1;
+        }
+        return 0;
     }
 
     if ((mode == "train" || mode == "resume-training") && !explicitEpisodes)
