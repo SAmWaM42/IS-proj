@@ -99,3 +99,7 @@ add_test(NAME believability_fixture_validation
 add_test(NAME believability_study_pipeline_tests
    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_believability_pipeline.py
 )
+
+add_test(NAME companion_believability_analysis_tests
+   COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_companion_believability_analysis.py
+)
