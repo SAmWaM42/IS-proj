@@ -1120,7 +1120,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
                     {"policy_updates_enabled", false}
                 };
                 std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
-                if (log) log << row.dump() << '\\n';
+                if (log) log << row.dump() << '\n';
             }
             if (researcherMode) appendLog("Autonomous environment-driven action: " + selectedAction);
         }
@@ -2292,7 +2292,7 @@ void CompanionUI::saveSession() {
                 {"interactions", eventLog}
             };
             std::ofstream out(directory / (runId + "-session.json"));
-            if (out) out << session.dump(2) << '\\n';
+            if (out) out << session.dump(2) << '\n';
             return; // Study mode must never overwrite shared training policy files.
         }
         nlohmann::json session;
