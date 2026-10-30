@@ -521,7 +521,8 @@ void CompanionUI::initialiseGuidedStudy() {
     studyFinished = false;
     selectedAgentCode = 'A';
     selectedAgentIsProposed = agentAIsProposed;
-    const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(\n        std::chrono::system_clock::now().time_since_epoch()).count();
+    const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
     runId = "study-" + studyParticipantCode + "-" + std::to_string(ticks);
     baseline.setLearningEnabled(false);
     proposed.setLearningEnabled(false);
