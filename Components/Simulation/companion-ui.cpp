@@ -1920,6 +1920,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                             proposed.resetForStudy();
                             resetScene();
                             screen = Screen::Simulation;
+                            logStudyPhaseEvent("phase_started", "guided");
                             writeStudyManifest();
                         } else {
                             studyFinished = true;
