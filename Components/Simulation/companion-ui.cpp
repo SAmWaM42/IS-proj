@@ -355,7 +355,15 @@ void CompanionUI::run() {
                 window.close();
             } else if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
                 if (key->code == sf::Keyboard::Key::Escape) {
-                    saveSession();
+                    if (!guidedStudyMode || studyPhase != "consent") saveSession();
+                    window.close();
+                } else if (guidedStudyMode && studyPhase == "consent" &&
+                           (key->code == sf::Keyboard::Key::Y || key->code == sf::Keyboard::Key::Enter)) {
+                    studyPhase = "warm_up";
+                    studyStartedAt = utcTimestamp();
+                    writeStudyManifest();
+                } else if (guidedStudyMode && studyPhase == "consent" && key->code == sf::Keyboard::Key::N) {
+                    studyPhase = "declined";
                     window.close();
                 } else if (guidedStudyMode && studyPhase == "warm_up" &&
                            (key->code == sf::Keyboard::Key::Enter || key->code == sf::Keyboard::Key::Space)) {
@@ -503,7 +511,7 @@ void CompanionUI::initialiseGuidedStudy() {
     agentAIsProposed = (counter % 2) == 0;
     studySessionIndex = 1;
     studyStepIndex = 0;
-    studyPhase = "warm_up";
+    studyPhase = "consent";
     studyStartedAt = utcTimestamp();
     studyIdleElapsed = 0.0f;
     studyFreeElapsed = 0.0f;
@@ -522,7 +530,6 @@ void CompanionUI::initialiseGuidedStudy() {
     proposed.resetForStudy();
     resetScene();
     screen = Screen::Simulation;
-    writeStudyManifest();
 }
 
 std::string CompanionUI::currentStudyPrompt() const {
@@ -2121,7 +2128,12 @@ void CompanionUI::drawSimulationScreen() {
     drawControlHelper();
 
     if (guidedStudyMode) {
-        if (studyPhase == "warm_up") {
+        if (studyPhase == "consent") {
+            drawText("STUDY INFORMATION: This is a voluntary study of two simulated animal companions.",
+                     L.x + 275.0f, L.y + 18.0f, 16, sf::Color::White);
+            drawText("No names or contact details are requested. Press Y to agree and continue, or N to decline.",
+                     L.x + 275.0f, L.y + 44.0f, 15, sf::Color::White);
+        } else if (studyPhase == "warm_up") {
             drawText("WARM-UP: Move with W A S D or arrow keys. Press Enter when ready.",
                      L.x + 275.0f, L.y + 18.0f, 17, sf::Color::White);
         } else if (studyPhase == "guided") {
