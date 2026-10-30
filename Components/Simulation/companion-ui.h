@@ -36,6 +36,7 @@ private:
     float studyFreeElapsed = 0.0f;
     std::string studyParticipantCode;
     std::string studyPhase = "setup";
+    std::string studyStartedAt;
     bool agentAIsProposed = false;
     char selectedAgentCode = 'A';
     bool selectedAgentIsProposed = false;
