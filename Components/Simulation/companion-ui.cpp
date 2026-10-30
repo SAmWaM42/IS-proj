@@ -1511,6 +1511,8 @@ void CompanionUI::executeInteraction(const std::string& label,
         if (log) log << row.dump() << '\n';
         else appendLog("WARNING: interaction event log could not be written.");
     }
+    if (guidedStudyMode && studyPhase == "guided" && studyInputMatches(label, false))
+        completeStudyStep(label);
     saveSession();
 }
 
@@ -1904,7 +1906,6 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                                makeObservation(control.goal, control.proximity, control.user, control.task,
                                                control.signal, control.food, control.play),
                                control.reward, "", true, control.sceneEvent, control.basis);
-            if (guidedStudyMode && studyPhase == "guided") completeStudyStep(control.label);
             return;
         }
     }
