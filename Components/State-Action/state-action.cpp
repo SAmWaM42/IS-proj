@@ -1911,6 +1911,44 @@ void ProposedAgent::recordUserStatement(const std::string& relation, const std::
 }
 
 
+bool testStudyResetClearsMemoryAndAffectWithoutChangingQTable() {
+    const std::filesystem::path dir = std::filesystem::temp_directory_path() / "is2_study_reset_test";
+    std::filesystem::create_directories(dir);
+    const auto beforePath = dir / "before.qtable";
+    const auto afterPath = dir / "after.qtable";
+
+    ProposedAgent agent(EnvironmentConfig{});
+    agent.setLearningEnabled(false);
+    agent.setExplorationRate(0.0f);
+    agent.recordUserStatement("dislikes", "sound");
+    EnvironmentObservation observation{2, 0, 0, 0, 0.95f};
+    const std::string action = agent.selectAction(observation);
+    ActionOutcome outcome;
+    outcome.reward = -1.0f;
+    outcome.terminal = true;
+    outcome.outcome_tag = "study_reset_test";
+    agent.applyOutcome(observation, action, outcome);
+    agent.savePersistentState(beforePath.string());
+
+    agent.resetForStudy();
+    agent.savePersistentState(afterPath.string());
+
+    std::ifstream beforeFile(beforePath);
+    std::ifstream afterFile(afterPath);
+    const std::string before((std::istreambuf_iterator<char>(beforeFile)), std::istreambuf_iterator<char>());
+    const std::string after((std::istreambuf_iterator<char>(afterFile)), std::istreambuf_iterator<char>());
+    const AffectiveState neutral{};
+    const auto& affect = agent.getAffectiveState();
+    const bool stateCleared = agent.getMemoryRecords().empty() &&
+        affect.valence == neutral.valence && affect.energy == neutral.energy &&
+        std::abs(affect.arousal - neutral.arousal) < 1e-6f &&
+        std::abs(affect.engagement - neutral.engagement) < 1e-6f &&
+        std::abs(affect.stress - neutral.stress) < 1e-6f &&
+        std::abs(affect.affinity - neutral.affinity) < 1e-6f;
+    std::filesystem::remove_all(dir);
+    return before == after && stateCleared;
+}
+
 bool testUserStatementsAreStoredAsSemanticMemory() {
     EnvironmentConfig config;
     ProposedAgent agent(config);
@@ -2167,6 +2205,7 @@ bool runBaselineValidation() {
     results.push_back({"Memory retention after intervening interactions", "PASS", testMemoryRetentionAfterInterveningInteractions(), "memory"});
     results.push_back({"Semantic preference survives intervening interactions", "PASS", testSemanticPreferenceSurvivesInterveningInteractions(), "memory"});
     results.push_back({"User statements are stored as semantic memory", "PASS", testUserStatementsAreStoredAsSemanticMemory(), "memory"});
+    results.push_back({"Study reset clears memory/affect without changing the Q-table", "PASS", testStudyResetClearsMemoryAndAffectWithoutChangingQTable(), "study"});
     results.push_back({"General semantic preferences influence contextual actions", "PASS", testGeneralSemanticPreferencesInfluenceContextualActions(), "memory"});
     results.push_back({"Memory confidence follows outcome history", "PASS", testProposedMemoryConfidenceTracksOutcome(), "memory"});
     results.push_back({"Proposed memory and affect persist across reset and disk", "PASS", testProposedMemoryPersistsAcrossResetAndDisk(), "persistence"});
