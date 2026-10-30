@@ -567,11 +567,11 @@ bool CompanionUI::studyInputMatches(const std::string& interaction, bool isText)
     switch (studyStepIndex) {
         case 0: return !isText && lower.find("greet") != std::string::npos;
         case 1: return !isText && lower.find("praise") != std::string::npos;
-        case 2: return !isText && lower.find("throw ball") != std::string::npos;
+        case 2: return !isText && lower.find("throw") != std::string::npos && lower.find("ball") != std::string::npos;
         case 3: return !isText && lower.find("feed") != std::string::npos;
         case 4: return !isText && lower.find("loud noise") != std::string::npos;
         case 5: return isText && lower.find("i like the ball") != std::string::npos;
-        case 6: return !isText && lower.find("throw ball") != std::string::npos;
+        case 6: return !isText && lower.find("throw") != std::string::npos && lower.find("ball") != std::string::npos;
         case 7: return !isText && lower.find("scold") != std::string::npos;
         case 8: return false; // completed by the timed observation window
         case 9: return isText && lower.find("i hate loud noises") != std::string::npos;
@@ -622,7 +622,7 @@ void CompanionUI::logStudyPhaseEvent(const std::string& eventType, const std::st
         {"software_revision", IS2_GIT_REVISION}
     };
     std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
-    if (log) log << row.dump(2) << '\n';
+    if (log) log << row.dump() << '\n';
 }
 
 void CompanionUI::completeStudyStep(const std::string& interaction) {
