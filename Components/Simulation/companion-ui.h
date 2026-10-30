@@ -36,6 +36,7 @@ private:
     float studyFreeElapsed = 0.0f;
     std::string studyParticipantCode;
     std::string studyPhase = "setup";
+    std::chrono::steady_clock::time_point interactionQueuedAt{};
     std::string studyStartedAt;
     bool agentAIsProposed = false;
     char selectedAgentCode = 'A';
