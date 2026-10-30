@@ -498,14 +498,13 @@ void CompanionUI::initialiseGuidedStudy() {
     studyFinished = false;
     selectedAgentCode = 'A';
     selectedAgentIsProposed = agentAIsProposed;
-    const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(\n        std::chrono::system_clock::now().time_since_epoch()).count();\n    runId = "study-" + studyParticipantCode + "-" + std::to_string(ticks);
+    const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(\n        std::chrono::system_clock::now().time_since_epoch()).count();
+    runId = "study-" + studyParticipantCode + "-" + std::to_string(ticks);
     baseline.setLearningEnabled(false);
     proposed.setLearningEnabled(false);
     baseline.setExplorationRate(0.0f);
     proposed.setExplorationRate(0.0f);
-    proposed.clearMemory();
-    std::error_code ec;
-    std::filesystem::remove(std::filesystem::path(policyDirectory) / "proposed.qtable.memory.json", ec);
+    proposed.resetForStudy();
     resetScene();
     screen = Screen::Simulation;
     writeStudyManifest();
@@ -1095,7 +1094,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
                     {"timestamp", utcTimestamp()}, {"software_revision", IS2_GIT_REVISION},
                     {"policy_updates_enabled", false}
                 };
-                std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-interaction-events.jsonl"), std::ios::app);
+                std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
                 if (log) log << row.dump() << '\\n';
             }
             if (researcherMode) appendLog("Autonomous environment-driven action: " + selectedAction);
@@ -1822,11 +1821,8 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                             lastActionInteractionId = 0;
                             latestBaselineAction = "IDLE";
                             latestProposedAction = "IDLE";
-                            proposed.clearMemory();
-                            std::error_code ec;
-                            std::filesystem::remove(std::filesystem::path(policyDirectory) / "proposed.qtable.memory.json", ec);
                             baseline.reset();
-                            proposed.reset();
+                            proposed.resetForStudy();
                             resetScene();
                             screen = Screen::Simulation;
                             writeStudyManifest();
