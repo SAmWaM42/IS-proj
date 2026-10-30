@@ -2246,6 +2246,10 @@ void CompanionUI::drawSimulationScreen() {
         drawText(std::string("Agent ") + selectedAgentCode + " action: " + visibleAction, L.x + 280.0f, L.y + 14.0f, 16, sf::Color::White);
         drawText("Input interpretation: " + nlpMethod, L.x + 280.0f, L.y + 38.0f, 14, sf::Color::White);
     }
+    if (guidedStudyMode && studyPhase != "guided" && studyPhase != "free") {
+        drawHover();
+        return;
+    }
     if (!controlsVisible) {
         drawText("Controls hidden - use Show Controls to interact", L.x + 280.0f, L.y + 64.0f, 16, sf::Color::White);
         drawHover();
