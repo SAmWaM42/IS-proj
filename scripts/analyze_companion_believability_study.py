@@ -76,10 +76,14 @@ def norm(value: str) -> str:
 
 def find_indices(headers: list[str], query: str) -> list[int]:
     q = norm(query)
-    exact = [i for i, h in enumerate(headers) if norm(h) == q]
-    if exact:
-        return exact
-    return [i for i, h in enumerate(headers) if q in norm(h)]
+    # Google Sheets/CSV exports sometimes suffix duplicate form questions with .1, .2, etc.
+    exact_or_duplicate = [
+        i for i, header in enumerate(headers)
+        if norm(header) == q or re.match(r"^" + re.escape(q) + r"\\.\\d+$", norm(header))
+    ]
+    if exact_or_duplicate:
+        return exact_or_duplicate
+    return [i for i, header in enumerate(headers) if q in norm(header)]
 
 
 class FormTable:
