@@ -965,6 +965,18 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
     proposed.advanceTime(elapsedSeconds);
     if (throwTimer > 0.0f) throwTimer = std::max(0.0f, throwTimer - elapsedSeconds);
     updatePlayer(elapsedSeconds);
+    if (guidedStudyMode && studyPhase == "guided" && studyStepIndex == 8) {
+        studyIdleElapsed += elapsedSeconds;
+        if (studyIdleElapsed >= 30.0f) completeStudyStep("30-second idle observation completed");
+    }
+    if (guidedStudyMode && studyPhase == "free") {
+        studyFreeElapsed += elapsedSeconds;
+        if (studyFreeElapsed >= 180.0f) {
+            studyFreeFinished = true;
+            studyPhase = "rating";
+            writeStudyManifest();
+        }
+    }
     const SceneLayout L = sceneLayout();
 
     if (ballFlying) {
@@ -1032,8 +1044,10 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
         // only the selected A/B condition is rendered. No synthetic user reward
         // or memory event is recorded for this autonomous decision.
         autonomousDecisionTimer += elapsedSeconds;
+        const bool autonomousAllowed = !guidedStudyMode || studyPhase == "free" ||
+            (studyPhase == "guided" && studyStepIndex == 8);
         if (autonomousDecisionTimer >= autonomousDecisionInterval &&
-            screen == Screen::Simulation) {
+            screen == Screen::Simulation && autonomousAllowed) {
             autonomousDecisionTimer = 0.0f;
             EnvironmentObservation ambient = latestObservation;
             ambient.goal_state = 2;       // no new user request: ambient context
