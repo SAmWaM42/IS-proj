@@ -243,6 +243,11 @@ def behaviour_metrics(run_id: str, log_dir: Path) -> tuple[dict[str, Any], list[
     free_end = next((parse_timestamp(r.get("timestamp")) for r in phase_events
                      if r.get("event_type") == "phase_ended" and r.get("phase") == "free"), None)
     free_seconds = (free_end - free_start).total_seconds() if free_start and free_end else None
+    latency_values = [
+        float(r["response_latency_ms"]) for r in events
+        if isinstance(r.get("response_latency_ms"), (int, float))
+        and r.get("phase") == "guided" and 1 <= int(r.get("step_id", 0) or 0) <= 12
+    ]
 
     metrics = {
         "guided_steps_observed": len(seen),
@@ -254,10 +259,11 @@ def behaviour_metrics(run_id: str, log_dir: Path) -> tuple[dict[str, Any], list[
         "idle_actions_step_9": idle_actions,
         "free_interaction_count": len(free_interactions),
         "free_interaction_seconds": free_seconds,
+        "response_latency_ms_mean": statistics.mean(latency_values) if latency_values else None,
+        "response_latency_ms_median": statistics.median(latency_values) if latency_values else None,
         "compliance_rate": None,
         "compliance_rate_note": "Not calculated: the specification's plausibility rule for justified deviations is still unresolved.",
-        "response_latency": None,
-        "response_latency_note": "Not available from the current event timestamps; interaction-to-visible-action timing needs an explicit start/end event pair.",
+        "response_latency_note": "Measured from interaction enqueue to the start of the selected action; it excludes animation completion.",
     }
     return metrics, errors
 
