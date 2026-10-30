@@ -601,6 +601,7 @@ void CompanionUI::writeStudyManifest() {
         {"software_revision", IS2_GIT_REVISION},
         {"started_at", studyStartedAt},
         {"ended_at", studyPhase == "finished" ? nlohmann::json(utcTimestamp()) : nlohmann::json(nullptr)},
+        {"policy_checksum_algorithm", "FNV-1a 64-bit; local integrity comparison, not cryptographic authentication"},
         {"policy_checksums", {{"baseline", fileChecksum(std::filesystem::path(policyDirectory) / "baseline.qtable")},
                               {"proposed", fileChecksum(std::filesystem::path(policyDirectory) / "proposed.qtable")}}},
         {"policy_updates_enabled", false},
