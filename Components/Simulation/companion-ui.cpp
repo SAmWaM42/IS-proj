@@ -503,6 +503,7 @@ void CompanionUI::initialiseGuidedStudy() {
     std::error_code ec;
     std::filesystem::remove(std::filesystem::path(policyDirectory) / "proposed.qtable.memory.json", ec);
     resetScene();
+    screen = Screen::Simulation;
     writeStudyManifest();
 }
 
@@ -527,19 +528,22 @@ std::string CompanionUI::currentStudyPrompt() const {
 
 bool CompanionUI::studyInputMatches(const std::string& interaction, bool isText) const {
     if (!guidedStudyMode || studyPhase != "guided") return false;
+    std::string lower = interaction;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+        [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
     switch (studyStepIndex) {
-        case 0: return interaction == "Greet";
-        case 1: return interaction == "Praise";
-        case 2: return interaction == "Throw ball";
-        case 3: return interaction == "Feed";
-        case 4: return interaction == "Loud noise";
-        case 5: return isText && interaction.find("i like the ball") != std::string::npos;
-        case 6: return interaction == "Throw ball";
-        case 7: return interaction == "Scold";
+        case 0: return !isText && lower.find("greet") != std::string::npos;
+        case 1: return !isText && lower.find("praise") != std::string::npos;
+        case 2: return !isText && lower.find("throw ball") != std::string::npos;
+        case 3: return !isText && lower.find("feed") != std::string::npos;
+        case 4: return !isText && lower.find("loud noise") != std::string::npos;
+        case 5: return isText && lower.find("i like the ball") != std::string::npos;
+        case 6: return !isText && lower.find("throw ball") != std::string::npos;
+        case 7: return !isText && lower.find("scold") != std::string::npos;
         case 8: return false; // completed by the timed observation window
-        case 9: return isText && interaction.find("i hate loud noises") != std::string::npos;
-        case 10: return interaction == "Loud noise";
-        case 11: return interaction == "Rest";
+        case 9: return isText && lower.find("i hate loud noises") != std::string::npos;
+        case 10: return !isText && lower.find("loud noise") != std::string::npos;
+        case 11: return !isText && lower.find("rest") != std::string::npos;
         default: return false;
     }
 }
@@ -589,7 +593,7 @@ void CompanionUI::completeStudyStep(const std::string& interaction) {
     };
     std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
     if (log) log << row.dump() << '\n';
-    if (studyStepIndex == 8) studyIdleElapsed = 0.0f;
+    if (studyStepIndex + 1 == 8) studyIdleElapsed = 0.0f;
     ++studyStepIndex;
     if (studyStepIndex >= 12) {
         studyGuidedComplete = true;
