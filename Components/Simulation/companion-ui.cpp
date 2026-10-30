@@ -1424,6 +1424,7 @@ void CompanionUI::processInteraction(const std::string& label,
                                      bool preferencePositive,
                                      const std::string& sceneEvent,
                                      const std::string& proximityBasis) {
+    interactionQueuedAt = std::chrono::steady_clock::now();
     interactionBuffer.push_back(QueuedInteraction{label, observation, feedbackRewardValue, preference,
                                                   preferencePositive, sceneEvent, proximityBasis});
     appendLog("Queued interaction (" + std::to_string(interactionBuffer.size()) + " waiting): " + label);
@@ -1468,6 +1469,8 @@ void CompanionUI::executeInteraction(const std::string& label,
     // Show the visible companion's chosen action in the scene.
     // The scene event was already applied (and proximity derived) before this call.
     startBehaviour(selectedAgentIsProposed ? latestProposedAction : latestBaselineAction, sceneEvent);
+    const auto responseLatencyMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - interactionQueuedAt).count();
 
     ActionOutcome baselineOutcome;
     baselineOutcome.reward = feedbackRewardValue;
@@ -1510,6 +1513,7 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["software_revision"] = IS2_GIT_REVISION;
         row["policy_updates_enabled"] = false;
         row["selected_action"] = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
+        row["response_latency_ms"] = guidedStudyMode ? nlohmann::json(responseLatencyMs) : nlohmann::json(nullptr);
         row["input_summary"] = label;
         row["observation"] = {
             {"goal_state", observation.goal_state},
