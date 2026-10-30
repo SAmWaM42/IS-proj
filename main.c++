@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 {
     std::string mode;
     std::string outputDirectory = "artifacts/training";
-    std::string studyOutputDirectory = "artifacts/study";
+    std::string studyOutputDirectory = "../companion-study-data";
     std::string policyDirectory = "artifacts/training";
     int episodes = 200;
     int steps = 40;
