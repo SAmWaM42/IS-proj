@@ -494,7 +494,7 @@ void CompanionUI::initialiseGuidedStudy() {
     studyFinished = false;
     selectedAgentCode = 'A';
     selectedAgentIsProposed = agentAIsProposed;
-    runId = makeStudyRunId();
+    const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(\n        std::chrono::system_clock::now().time_since_epoch()).count();\n    runId = "study-" + studyParticipantCode + "-" + std::to_string(ticks);
     baseline.setLearningEnabled(false);
     proposed.setLearningEnabled(false);
     baseline.setExplorationRate(0.0f);
@@ -600,33 +600,48 @@ void CompanionUI::completeStudyStep(const std::string& interaction) {
 }
 
 void CompanionUI::openStudyForm() {
-    const std::string code(1, selectedAgentCode);
+    if (guidedStudyMode && (studyPhase != "rating" || studyFormOpenedCurrentCondition)) {
+        appendLog("The form opens only after the guided and free-interaction phases.");
+        return;
+    }
     const char* configuredUrl = std::getenv("ANIMAL_AGENT_STUDY_FORM_URL");
-    if (configuredUrl == nullptr || *configuredUrl == '\0') {
-        appendLog("Study questionnaire URL is not configured. Set ANIMAL_AGENT_STUDY_FORM_URL.");
+    const char* sessionEntry = std::getenv("ANIMAL_AGENT_FORM_ENTRY_SESSION");
+    const char* conditionEntry = std::getenv("ANIMAL_AGENT_FORM_ENTRY_CONDITION");
+    const char* runEntry = std::getenv("ANIMAL_AGENT_FORM_ENTRY_RUN");
+    if (!configuredUrl || !*configuredUrl || !sessionEntry || !*sessionEntry ||
+        !conditionEntry || !*conditionEntry || !runEntry || !*runEntry) {
+        appendLog("Google Form configuration missing. Set ANIMAL_AGENT_STUDY_FORM_URL and the three ANIMAL_AGENT_FORM_ENTRY_* IDs.");
         return;
     }
     const std::string baseUrl(configuredUrl);
-    const std::string url = baseUrl + (baseUrl.find('?') == std::string::npos ? "?" : "&") +
-                            "condition=" + code + "&run=" + runId;
+    const std::string separator = baseUrl.find('?') == std::string::npos ? "?" : "&";
+    const std::string url = baseUrl + separator +
+        "entry." + sessionEntry + "=" + std::to_string(studySessionIndex) +
+        "&entry." + conditionEntry + "=" + std::string(1, selectedAgentCode) +
+        "&entry." + runEntry + "=" + runId;
     {
-        nlohmann::json row;
-        row["event"] = "study_form_opened";
-        row["run_id"] = runId;
-        row["condition_code"] = code;
-        row["timestamp"] = utcTimestamp();
-        row["interaction_count"] = interactionCount;
-        std::ofstream log(std::filesystem::path(outputDirectory) / ("study-events-" + runId + ".jsonl"), std::ios::app);
+        nlohmann::json row = {
+            {"schema_version", 1}, {"event", "study_form_opened"},
+            {"protocol_id", "companion-believability-v0.1"}, {"run_id", runId},
+            {"participant_code", studyParticipantCode}, {"session_index", studySessionIndex},
+            {"condition_code", std::string(1, selectedAgentCode)},
+            {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},
+            {"timestamp", utcTimestamp()}, {"phase", studyPhase}
+        };
+        std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
         if (log) log << row.dump() << '\n';
     }
-    appendLog("Opened study form for condition " + code);
     const pid_t browser = fork();
     if (browser == 0) {
         execlp("xdg-open", "xdg-open", url.c_str(), static_cast<char*>(nullptr));
         _exit(127);
     }
-    if (browser < 0)
-        appendLog("Could not start the browser for questionnaire URL: " + url);
+    if (browser < 0) {
+        appendLog("Could not start browser for the study form.");
+        return;
+    }
+    if (guidedStudyMode) studyFormOpenedCurrentCondition = true;
+    appendLog("Opened Google Form for Companion " + std::string(1, selectedAgentCode));
 }
 
 void CompanionUI::applySceneEvent(const std::string& sceneEvent) {
