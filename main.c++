@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -45,8 +46,8 @@ int main(int argc, char **argv)
 {
     std::string mode;
     std::string outputDirectory = "artifacts/training";
-    std::string studyOutputDirectory = "../companion-study-data";
-    std::string policyDirectory = "artifacts/training";
+    std::string studyOutputDirectory = (std::filesystem::path(IS2_SOURCE_DIR).parent_path() / "companion-study-data").string();
+    std::string policyDirectory = (std::filesystem::path(IS2_SOURCE_DIR) / "artifacts/training").string();
     int episodes = 200;
     int steps = 40;
     int seed = 42;
