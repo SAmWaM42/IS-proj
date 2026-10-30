@@ -421,20 +421,26 @@ def main() -> int:
                 "reason": str(exc),
             })
 
-    # Pair only participants with exactly one valid rating for each condition.
-    by_participant: dict[str, dict[str, dict[str, Any]]] = {}
+    # Pair only participants with exactly one valid form for each session and condition.
+    by_participant: dict[str, list[dict[str, Any]]] = {}
     for row in accepted:
-        by_participant.setdefault(row["participant_code"], {}).setdefault(row["condition"], row)
+        by_participant.setdefault(row["participant_code"], []).append(row)
     paired: list[dict[str, Any]] = []
-    for participant, conditions in sorted(by_participant.items()):
-        if set(conditions) != {"baseline", "proposed"}:
-            exclusions.append({"participant_code": participant, "reason": "no_complete_valid_baseline_proposed_pair"})
+    for participant, rows in sorted(by_participant.items()):
+        session_indexes = [row["session_index"] for row in rows]
+        conditions_present = {row["condition"] for row in rows}
+        if len(rows) != 2 or set(session_indexes) != {1, 2} or conditions_present != {"baseline", "proposed"}:
+            exclusions.append({"participant_code": participant, "reason": "no_unique_complete_baseline_proposed_session_pair"})
             continue
-        baseline, proposed = conditions["baseline"], conditions["proposed"]
+        session1 = next(row for row in rows if row["session_index"] == 1)
+        session2 = next(row for row in rows if row["session_index"] == 2)
+        baseline = next(row for row in rows if row["condition"] == "baseline")
+        proposed = next(row for row in rows if row["condition"] == "proposed")
         paired.append({
             "participant_code": participant,
             "baseline_run_id": baseline["run_id"], "proposed_run_id": proposed["run_id"],
-            "condition_order": [baseline["condition_code"], proposed["condition_code"]],
+            "condition_order": [session1["condition_code"], session2["condition_code"]],
+            "session1_condition": session1["condition"], "session2_condition": session2["condition"],
             "baseline_rating": baseline["rating"], "proposed_rating": proposed["rating"],
             "baseline_behaviour": baseline["behaviour"], "proposed_behaviour": proposed["behaviour"],
         })
