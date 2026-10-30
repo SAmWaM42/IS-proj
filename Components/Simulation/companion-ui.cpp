@@ -362,6 +362,12 @@ void CompanionUI::run() {
                     window.close();
                 } else if (guidedStudyMode && studyPhase == "consent" &&
                            (key->code == sf::Keyboard::Key::Y || key->code == sf::Keyboard::Key::Enter)) {
+                    {
+                        const auto counterPath = std::filesystem::path(outputDirectory) / "study-participant-counter.txt";
+                        std::ofstream counterOut(counterPath, std::ios::trunc);
+                        if (counterOut) counterOut << studyParticipantCounter << '\n';
+                        else appendLog("WARNING: participant counter could not be saved; counterbalancing may repeat on the next launch.");
+                    }
                     studyPhase = "warm_up";
                     studyStartedAt = utcTimestamp();
                     logStudyPhaseEvent("consent_accepted", "warm_up");
@@ -502,20 +508,18 @@ void CompanionUI::startNewParticipant() {
 void CompanionUI::initialiseGuidedStudy() {
     const auto counterPath = std::filesystem::path(outputDirectory) / "study-participant-counter.txt";
     std::filesystem::create_directories(outputDirectory);
-    int counter = 0;
+    int previousCounter = 0;
     {
         std::ifstream input(counterPath);
-        if (input) input >> counter;
+        if (input) input >> previousCounter;
     }
-    ++counter;
-    {
-        std::ofstream output(counterPath, std::ios::trunc);
-        if (output) output << counter << '\n';
-    }
-    studyParticipantCounter = counter;
-    studyParticipantCode = "P" + (counter < 10 ? std::string("0") : std::string()) + std::to_string(counter);
+    // Reserve the next code in memory only. A declined consent must not consume
+    // a participant number or change the counterbalance sequence.
+    studyParticipantCounter = previousCounter + 1;
+    studyParticipantCode = "P" + (studyParticipantCounter < 10 ? std::string("0") : std::string()) +
+        std::to_string(studyParticipantCounter);
     // Strict alternation: odd participants see A=baseline, even participants A=proposed.
-    agentAIsProposed = (counter % 2) == 0;
+    agentAIsProposed = (studyParticipantCounter % 2) == 0;
     studySessionIndex = 1;
     studyStepIndex = 0;
     studyPhase = "consent";
