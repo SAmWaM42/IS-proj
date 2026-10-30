@@ -279,13 +279,15 @@ const std::array<ControlButton, 10> kControls{{
 
 CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
                          const std::string& outputDirectoryValue,
-                         bool researcherModeValue)
+                         bool researcherModeValue,
+                         bool guidedStudyModeValue)
     : window(sf::VideoMode(sf::Vector2u(1280u, 900u)), "Animal Agent | Companion Simulation"),
       policyDirectory(policyDirectoryValue),
       outputDirectory(outputDirectoryValue),
       baseline(EnvironmentConfig{}),
       proposed(EnvironmentConfig{}) {
     researcherMode = researcherModeValue;
+    guidedStudyMode = guidedStudyModeValue;
     baseline.setLearningEnabled(false);
     proposed.setLearningEnabled(false);
     baseline.setExplorationRate(0.0f);
@@ -324,6 +326,9 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     if (std::filesystem::exists(proposedPath)) proposed.loadPersistentState(proposedPath.string());
     latestObservation = EnvironmentObservation{0, 1, 0, 0, 0.35f};
     resetScene();
+    if (guidedStudyMode) {
+        initialiseGuidedStudy();
+    }
     appendLog("Simulation ready. Select an interaction or enter a short message.");
 }
 
@@ -459,6 +464,139 @@ void CompanionUI::startNewParticipant() {
     resetScene();
     appendLog(std::string("New participant: memory cleared. Mapping A = ") +
               (agentAIsProposed ? "proposed" : "baseline") + ".");
+}
+
+void CompanionUI::initialiseGuidedStudy() {
+    const auto counterPath = std::filesystem::path(outputDirectory) / "study-participant-counter.txt";
+    std::filesystem::create_directories(outputDirectory);
+    int counter = 0;
+    {
+        std::ifstream input(counterPath);
+        if (input) input >> counter;
+    }
+    ++counter;
+    {
+        std::ofstream output(counterPath, std::ios::trunc);
+        if (output) output << counter << '\n';
+    }
+    studyParticipantCounter = counter;
+    studyParticipantCode = "P" + (counter < 10 ? std::string("0") : std::string()) + std::to_string(counter);
+    // Strict alternation: odd participants see A=baseline, even participants A=proposed.
+    agentAIsProposed = (counter % 2) == 0;
+    studySessionIndex = 1;
+    studyStepIndex = 0;
+    studyPhase = "warm_up";
+    studyIdleElapsed = 0.0f;
+    studyFreeElapsed = 0.0f;
+    studyGuidedComplete = false;
+    studyFreeFinished = false;
+    studyFormOpenedCurrentCondition = false;
+    studyFinished = false;
+    selectedAgentCode = 'A';
+    selectedAgentIsProposed = agentAIsProposed;
+    runId = makeStudyRunId();
+    baseline.setLearningEnabled(false);
+    proposed.setLearningEnabled(false);
+    baseline.setExplorationRate(0.0f);
+    proposed.setExplorationRate(0.0f);
+    proposed.clearMemory();
+    std::error_code ec;
+    std::filesystem::remove(std::filesystem::path(policyDirectory) / "proposed.qtable.memory.json", ec);
+    resetScene();
+    writeStudyManifest();
+}
+
+std::string CompanionUI::currentStudyPrompt() const {
+    static const std::array<std::string, 12> prompts = {
+        "1/12: Walk close to the companion and press Greet.",
+        "2/12: Press Praise.",
+        "3/12: Press Throw ball and watch.",
+        "4/12: Press Feed.",
+        "5/12: Press Loud noise.",
+        "6/12: Type: I like the ball. Then press Enter.",
+        "7/12: Press Throw ball again.",
+        "8/12: Press Scold.",
+        "9/12: Stay still for 30 seconds and watch the companion.",
+        "10/12: Type: I hate loud noises. Then press Enter.",
+        "11/12: Press Loud noise again.",
+        "12/12: Press Rest."
+    };
+    if (studyStepIndex < 0 || studyStepIndex >= static_cast<int>(prompts.size())) return {};
+    return prompts[static_cast<std::size_t>(studyStepIndex)];
+}
+
+bool CompanionUI::studyInputMatches(const std::string& interaction, bool isText) const {
+    if (!guidedStudyMode || studyPhase != "guided") return false;
+    switch (studyStepIndex) {
+        case 0: return interaction == "Greet";
+        case 1: return interaction == "Praise";
+        case 2: return interaction == "Throw ball";
+        case 3: return interaction == "Feed";
+        case 4: return interaction == "Loud noise";
+        case 5: return isText && interaction.find("i like the ball") != std::string::npos;
+        case 6: return interaction == "Throw ball";
+        case 7: return interaction == "Scold";
+        case 8: return false; // completed by the timed observation window
+        case 9: return isText && interaction.find("i hate loud noises") != std::string::npos;
+        case 10: return interaction == "Loud noise";
+        case 11: return interaction == "Rest";
+        default: return false;
+    }
+}
+
+void CompanionUI::writeStudyManifest() {
+    if (!guidedStudyMode) return;
+    nlohmann::json manifest = {
+        {"schema_version", 1},
+        {"protocol_id", "companion-believability-v0.1"},
+        {"participant_code", studyParticipantCode},
+        {"run_id", runId},
+        {"session_index", studySessionIndex},
+        {"condition_code", std::string(1, selectedAgentCode)},
+        {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},
+        {"condition_key", {{"A", agentAIsProposed ? "proposed" : "baseline"},
+                           {"B", agentAIsProposed ? "baseline" : "proposed"}}},
+        {"phase", studyPhase},
+        {"software_revision", IS2_GIT_REVISION},
+        {"started_at", utcTimestamp()},
+        {"policy_updates_enabled", false},
+        {"exploration_rate", 0.0},
+        {"memory_initialisation", "clean proposed memory per participant; no cross-participant memory"},
+        {"guided_script_version", 1},
+        {"guided_step_count", 12}
+    };
+    const auto manifestPath = std::filesystem::path(outputDirectory) /
+        (runId + "-condition-" + std::string(1, selectedAgentCode) + "-manifest.json");
+    std::ofstream out(manifestPath);
+    if (out) out << manifest.dump(2) << '\n';
+}
+
+void CompanionUI::completeStudyStep(const std::string& interaction) {
+    if (!guidedStudyMode || studyPhase != "guided" || studyStepIndex >= 12) return;
+    nlohmann::json row = {
+        {"schema_version", 1},
+        {"protocol_id", "companion-believability-v0.1"},
+        {"run_id", runId},
+        {"participant_code", studyParticipantCode},
+        {"session_index", studySessionIndex},
+        {"condition_code", std::string(1, selectedAgentCode)},
+        {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},
+        {"phase", studyPhase},
+        {"step_id", studyStepIndex + 1},
+        {"step_prompt", currentStudyPrompt()},
+        {"interaction", interaction},
+        {"timestamp", utcTimestamp()}
+    };
+    std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
+    if (log) log << row.dump() << '\n';
+    if (studyStepIndex == 8) studyIdleElapsed = 0.0f;
+    ++studyStepIndex;
+    if (studyStepIndex >= 12) {
+        studyGuidedComplete = true;
+        studyPhase = "free";
+        studyFreeElapsed = 0.0f;
+    }
+    writeStudyManifest();
 }
 
 void CompanionUI::openStudyForm() {
