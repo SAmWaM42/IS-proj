@@ -66,6 +66,7 @@ COMPARISON_QUESTIONS = {
     "comparison_adaptability": "Which companion adapted better to how you treated it?",
     "comparison_engagement": "Which companion was more engaging to interact with?",
     "comparison_believability": "Which companion was more believable as an animal overall?",
+    "comparison_confidence": "How confident are you in your answer to 4.4?",
     "blinding_check": "Did you think the two companions were built differently?",
 }
 
@@ -200,7 +201,7 @@ def parse_timestamp(value: Any) -> datetime | None:
 
 
 def action_entropy(actions: list[str]) -> float | None:
-    actions = [a for a in actions if a and a not in {"NOT_RUN", "IDLE"}]
+    actions = [a for a in actions if a and a not in {"NOT_RUN", "IDLE", "NO_DIRECT_ACTION"}]
     if not actions:
         return None
     counts = Counter(actions)
@@ -222,7 +223,7 @@ def behaviour_metrics(run_id: str, log_dir: Path) -> tuple[dict[str, Any], list[
     for r in step_rows:
         by_step.setdefault(r["step_id"], r)
     actions = [str(by_step[i].get("selected_action", "")) for i in sorted(by_step)]
-    valid_actions = [a for a in actions if a and a not in {"NOT_RUN", "IDLE"}]
+    valid_actions = [a for a in actions if a and a not in {"NOT_RUN", "IDLE", "NO_DIRECT_ACTION"}]
     probes = {}
     for left, right, name in [(3, 7, "ball_preference_probe"), (5, 11, "noise_dislike_probe")]:
         a = by_step.get(left, {}).get("selected_action")
@@ -388,10 +389,19 @@ def main() -> int:
             behaviour, behaviour_errors = behaviour_metrics(run_id, args.logs_dir)
             if behaviour_errors:
                 raise ValueError(";".join(behaviour_errors))
+            background = {}
+            if session == 1:
+                for key, question in {
+                    "age_range": "What is your age range?",
+                    "pet_ownership": "Have you owned or regularly cared for a pet?",
+                    "virtual_pet_familiarity": "How familiar are you with virtual pets or pet-style games?",
+                    "computer_comfort": "How comfortable are you using a computer with a mouse and keyboard?",
+                }.items():
+                    background[key] = table.cell(form_row, question, session=session)
             accepted.append({
                 "csv_row": index, "participant_code": participant, "session_index": session,
                 "condition_code": condition_code, "condition": manifest["condition"], "run_id": run_id,
-                "rating": rating, "behaviour": behaviour,
+                "rating": rating, "behaviour": behaviour, "background": background,
                 "software_revision": manifest.get("software_revision", "unknown"),
                 "policy_checksums": manifest.get("policy_checksums", {}),
                 "technical_issue_reported": rating["technical_issue_reported"],
@@ -463,6 +473,33 @@ def main() -> int:
     for key in COMPARISON_QUESTIONS:
         direct_comparison[key] = dict(Counter(row["rating"].get(key, "") for row in session2))
 
+    order_effects = {}
+    for session_index in (1, 2):
+        rows = [row for row in accepted if row["session_index"] == session_index]
+        order_effects[f"session_{session_index}"] = {
+            "valid_ratings": len(rows),
+            "mean_adaptability": statistics.mean(
+                row["rating"]["subscales"]["adaptability"] for row in rows
+                if row["rating"]["subscales"]["adaptability"] is not None
+            ) if any(row["rating"]["subscales"]["adaptability"] is not None for row in rows) else None,
+            "mean_overall_believability": statistics.mean(
+                row["rating"]["subscales"]["overall_believability"] for row in rows
+                if row["rating"]["subscales"]["overall_believability"] is not None
+            ) if any(row["rating"]["subscales"]["overall_believability"] is not None for row in rows) else None,
+            "condition_counts": dict(Counter(row["condition"] for row in rows)),
+        }
+    background_summary = {
+        "pet_ownership_counts": dict(Counter(
+            row["background"].get("pet_ownership", "") for row in accepted if row["background"].get("pet_ownership")
+        )),
+        "virtual_pet_familiarity_counts": dict(Counter(
+            row["background"].get("virtual_pet_familiarity", "") for row in accepted if row["background"].get("virtual_pet_familiarity")
+        )),
+        "age_range_counts": dict(Counter(
+            row["background"].get("age_range", "") for row in accepted if row["background"].get("age_range")
+        )),
+    }
+
     summary = {
         "protocol_id": "companion-believability-v0.1",
         "valid_companion_ratings": len(accepted),
@@ -475,6 +512,8 @@ def main() -> int:
         "secondary_subscales_holm_adjusted": secondary,
         "cronbach_alpha_by_condition": reliability,
         "direct_comparison_counts": direct_comparison,
+        "order_effect_descriptives": order_effects,
+        "background_covariate_descriptives": background_summary,
         "behaviour_metrics_note": "Action variety, entropy, probe shifts, idle counts and free-interaction use are descriptive; they do not measure believability. Compliance and latency remain unestimated until their operational rules/events are implemented.",
         "interpretation": "Exploratory within-participant analysis. Report effect sizes, intervals, missingness and limitations; do not infer causality from a small pilot.",
         "exclusions": exclusions,
