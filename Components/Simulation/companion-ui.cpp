@@ -662,15 +662,20 @@ void CompanionUI::applySceneEvent(const std::string& sceneEvent) {
         ballLandX = ballX;
         ballLandY = ballY;
     } else if (sceneEvent == "throw_ball") {
-        // The ball is thrown in the direction the player is facing.
-        std::uniform_real_distribution<float> distance(240.0f, 520.0f);
-        std::uniform_real_distribution<float> lane(L.minY + 20.0f, L.maxY - 10.0f);
-        const float dir = playerFacingRight ? 1.0f : -1.0f;
         ballCarried = false;
-        ballStartX = userX + dir * 26.0f;
+        ballStartX = userX + (playerFacingRight ? 26.0f : -26.0f);
         ballStartY = userY;
-        ballLandX = std::clamp(userX + dir * distance(sceneRng), L.minX + 10.0f, L.maxX - 10.0f);
-        ballLandY = lane(sceneRng);
+        if (guidedStudyMode) {
+            // The two fetch probes use the same absolute landing point in both conditions.
+            ballLandX = std::clamp(L.ballHomeX + L.w * 0.18f, L.minX + 10.0f, L.maxX - 10.0f);
+            ballLandY = L.minY + (L.maxY - L.minY) * 0.62f;
+        } else {
+            std::uniform_real_distribution<float> distance(240.0f, 520.0f);
+            std::uniform_real_distribution<float> lane(L.minY + 20.0f, L.maxY - 10.0f);
+            const float dir = playerFacingRight ? 1.0f : -1.0f;
+            ballLandX = std::clamp(userX + dir * distance(sceneRng), L.minX + 10.0f, L.maxX - 10.0f);
+            ballLandY = lane(sceneRng);
+        }
         ballX = ballStartX;
         ballY = ballStartY;
         ballHeight = 85.0f;
@@ -1513,6 +1518,11 @@ void CompanionUI::processTextInteraction(const std::string& text) {
     std::string lower = text;
     std::transform(lower.begin(), lower.end(), lower.begin(),
         [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    if (guidedStudyMode && studyPhase == "guided" && !studyInputMatches(text, true)) {
+        appendLog("Please follow the current guided-study prompt.");
+        return;
+    }
+    if (guidedStudyMode && studyPhase != "guided" && studyPhase != "free") return;
 
     const bool explicitLike = lower.find("prefer") != std::string::npos ||
                               lower.find(" like ") != std::string::npos ||
@@ -1578,7 +1588,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             return;
         } else {
             const std::string relation = explicitDislike ? "dislikes" : "likes";
-            proposed.recordUserStatement(relation, object);
+            const bool memoryUpdated = !guidedStudyMode || selectedAgentIsProposed;
+            if (memoryUpdated) proposed.recordUserStatement(relation, object);
             const std::string previousContext = latestStimulus;
             std::string associationType = "none";
             std::string associationReason = "No recent matching action or event was found.";
@@ -1607,7 +1618,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
 
             ++interactionCount;
             appendLog("You: " + text + " [preference statement]");
-            appendLog("Memory: stored user " + relation + " " + object);
+            appendLog(memoryUpdated ? "Memory: stored user " + relation + " " + object
+                                    : "Preference statement recorded as study input; baseline memory remains disabled.");
             appendLog(contextMatches ? "Context: candidate association with preceding interaction."
                                      : "Context: no relevant preceding interaction; stored as a general preference record.");
 
@@ -1622,7 +1634,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             row["input_summary"] = text;
             row["utterance_analysis"] = {
                 {"kind", "preference_statement"}, {"relation", relation}, {"object", object},
-                {"memory_updated", true}, {"response_required", false}, {"response_action", "NONE"},
+                {"memory_updated", memoryUpdated}, {"response_required", false}, {"response_action", "NONE"},
                 {"candidate_association", associationType}, {"association_confidence", associationConfidence},
                 {"association_reason", associationReason},
                 {"referenced_interaction_id", contextMatches ? lastActionInteractionId : 0},
@@ -1634,6 +1646,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
             if (log) log << row.dump() << '\n';
             else appendLog("WARNING: interaction event log could not be written.");
+            if (guidedStudyMode && studyPhase == "guided") completeStudyStep(text);
             saveSession();
             return;
         }
@@ -1755,7 +1768,6 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                             studyGuidedComplete = false;
                             studyFreeFinished = false;
                             studyFormOpenedCurrentCondition = false;
-                            trialRows.clear();
                             eventLog.clear();
                             interactionCount = 0;
                             lastActionInteractionId = 0;
