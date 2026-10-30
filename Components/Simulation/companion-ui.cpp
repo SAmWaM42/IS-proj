@@ -354,7 +354,7 @@ void CompanionUI::run() {
         updateAnimation(frameClock.restart().asSeconds());
         while (const auto event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>()) {
-                saveSession();
+                if (!guidedStudyMode || studyPhase != "consent") saveSession();
                 window.close();
             } else if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
                 if (key->code == sf::Keyboard::Key::Escape) {
@@ -596,6 +596,7 @@ void CompanionUI::writeStudyManifest() {
         {"phase", studyPhase},
         {"software_revision", IS2_GIT_REVISION},
         {"started_at", studyStartedAt},
+        {"ended_at", studyPhase == "finished" ? nlohmann::json(utcTimestamp()) : nlohmann::json(nullptr)},
         {"policy_checksums", {{"baseline", fileChecksum(std::filesystem::path(policyDirectory) / "baseline.qtable")},
                               {"proposed", fileChecksum(std::filesystem::path(policyDirectory) / "proposed.qtable")}}},
         {"policy_updates_enabled", false},
