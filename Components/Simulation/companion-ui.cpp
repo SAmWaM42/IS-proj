@@ -364,6 +364,8 @@ void CompanionUI::run() {
                            (key->code == sf::Keyboard::Key::Y || key->code == sf::Keyboard::Key::Enter)) {
                     studyPhase = "warm_up";
                     studyStartedAt = utcTimestamp();
+                    logStudyPhaseEvent("consent_accepted", "warm_up");
+                    logStudyPhaseEvent("phase_started", "warm_up");
                     writeStudyManifest();
                 } else if (guidedStudyMode && studyPhase == "consent" && key->code == sf::Keyboard::Key::N) {
                     studyPhase = "declined";
@@ -371,6 +373,8 @@ void CompanionUI::run() {
                 } else if (guidedStudyMode && studyPhase == "warm_up" &&
                            (key->code == sf::Keyboard::Key::Enter || key->code == sf::Keyboard::Key::Space)) {
                     studyPhase = "guided";
+                    logStudyPhaseEvent("phase_ended", "warm_up");
+                    logStudyPhaseEvent("phase_started", "guided");
                     writeStudyManifest();
                 } else if (screen == Screen::Simulation && textInputFocused) {
                     if (key->code == sf::Keyboard::Key::Enter && !textInput.empty()) {
@@ -1909,7 +1913,9 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                             writeStudyManifest();
                         } else {
                             studyFinished = true;
+                            logStudyPhaseEvent("phase_ended", "rating");
                             studyPhase = "finished";
+                            logStudyPhaseEvent("phase_started", "finished");
                             writeStudyManifest();
                             saveSession();
                         }
