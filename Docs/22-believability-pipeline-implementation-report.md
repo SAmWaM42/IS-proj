@@ -40,7 +40,7 @@ The new analysis utility consumes the Google Forms CSV export and application lo
 
 The default study output path is `../companion-study-data`, a sibling directory outside the repository. Use a restricted local directory for real participant data and keep the Google Forms export there as well. Do not commit participant CSVs, logs, or session files.
 
-The study resets the proposed agent's in-memory memory/affect before each condition and does not delete or overwrite the shared training sidecar files. The baseline does not receive preference-memory writes. The two conditions are run sequentially under the same participant session, with independent condition state. Learning and exploration remain disabled during this participant study, in line with the newer specification.
+The study resets the proposed agent's in-memory memory/affect before each condition and does not delete or overwrite the shared training sidecar files. The baseline does not receive preference-memory writes. The two conditions are run sequentially under the same participant session, with independent condition state. Learning and exploration remain disabled during this participant study, in line with the newer specification. Free-text content is not written verbatim to the study logs: the logs use fixed scripted labels or a generic free-text marker instead. The agent may still process the text transiently to choose a response; this is not a substitute for advising participants not to enter identifying information.
 
 ## Configure the Google Form
 
