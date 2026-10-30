@@ -1715,7 +1715,18 @@ void CompanionUI::processTextInteraction(const std::string& text) {
         } else {
             const std::string relation = explicitDislike ? "dislikes" : "likes";
             const bool memoryUpdated = !guidedStudyMode || selectedAgentIsProposed;
-            if (memoryUpdated) proposed.recordUserStatement(relation, object);
+            bool studyActionPreferenceAdded = false;
+            if (memoryUpdated) {
+                proposed.recordUserStatement(relation, object);
+                // In the fixed protocol, "I like the ball" is the operationalised
+                // preference probe for the later FETCH opportunity (step 7).
+                // The baseline never receives this record.
+                if (guidedStudyMode && selectedAgentIsProposed &&
+                    relation == "likes" && object == "ball") {
+                    proposed.recordUserPreference("FETCH", true);
+                    studyActionPreferenceAdded = true;
+                }
+            }
             const std::string previousContext = latestStimulus;
             std::string associationType = "none";
             std::string associationReason = "No recent matching action or event was found.";
@@ -1767,7 +1778,9 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             row["input_summary"] = text;
             row["utterance_analysis"] = {
                 {"kind", "preference_statement"}, {"relation", relation}, {"object", object},
-                {"memory_updated", memoryUpdated}, {"response_required", false}, {"response_action", "NONE"},
+                {"memory_updated", memoryUpdated},
+                {"study_action_preference_added", studyActionPreferenceAdded},
+                {"response_required", false}, {"response_action", "NONE"},
                 {"candidate_association", associationType}, {"association_confidence", associationConfidence},
                 {"association_reason", associationReason},
                 {"referenced_interaction_id", contextMatches ? lastActionInteractionId : 0},
