@@ -1068,15 +1068,37 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
             ambient.play_available = !ballCarried && !ballFlying;
             applyGeometryProximity(ambient, "nearest");
 
-            latestBaselineAction = baseline.selectAction(ambient);
-            latestProposedAction = proposed.selectAction(ambient);
+            if (guidedStudyMode) {
+                latestBaselineAction = selectedAgentIsProposed ? "NOT_RUN" : baseline.selectAction(ambient);
+                latestProposedAction = selectedAgentIsProposed ? proposed.selectAction(ambient) : "NOT_RUN";
+            } else {
+                latestBaselineAction = baseline.selectAction(ambient);
+                latestProposedAction = proposed.selectAction(ambient);
+            }
             latestObservation = ambient;
             latestStimulus = "The companion responds to its surroundings.";
-            startBehaviour(selectedAgentIsProposed ? latestProposedAction : latestBaselineAction, "");
-            if (researcherMode) {
-                appendLog("Autonomous environment-driven action: " +
-                          (selectedAgentIsProposed ? latestProposedAction : latestBaselineAction));
+            const std::string selectedAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
+            startBehaviour(selectedAction, "");
+            if (guidedStudyMode) {
+                nlohmann::json row = {
+                    {"schema_version", 1}, {"protocol_id", "companion-believability-v0.1"},
+                    {"run_id", runId}, {"participant_code", studyParticipantCode},
+                    {"session_index", studySessionIndex}, {"condition_code", std::string(1, selectedAgentCode)},
+                    {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},
+                    {"phase", studyPhase}, {"step_id", studyStepIndex + 1},
+                    {"event_type", "autonomous_action"}, {"selected_action", selectedAction},
+                    {"observation", {{"goal_state", ambient.goal_state},
+                                     {"target_proximity", ambient.target_proximity},
+                                     {"user_status", ambient.user_status},
+                                     {"task_status", ambient.task_status},
+                                     {"signal_strength", ambient.signal_strength}}},
+                    {"timestamp", utcTimestamp()}, {"software_revision", IS2_GIT_REVISION},
+                    {"policy_updates_enabled", false}
+                };
+                std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-interaction-events.jsonl"), std::ios::app);
+                if (log) log << row.dump() << '\\n';
             }
+            if (researcherMode) appendLog("Autonomous environment-driven action: " + selectedAction);
         }
     }
 }
@@ -1426,7 +1448,7 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["phase"] = guidedStudyMode ? studyPhase : "simulation";
         row["step_id"] = guidedStudyMode && studyPhase == "guided" ? studyStepIndex + 1 : 0;
         row["software_revision"] = IS2_GIT_REVISION;
-        row["policy_updates_enabled"] = guidedStudyMode ? false : (baseline.isLearningEnabled() || proposed.isLearningEnabled());
+        row["policy_updates_enabled"] = false;
         row["selected_action"] = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
         row["input_summary"] = label;
         row["observation"] = {
