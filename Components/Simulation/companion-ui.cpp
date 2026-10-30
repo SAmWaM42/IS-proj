@@ -162,6 +162,20 @@ std::string utcTimestamp() {
     return buffer;
 }
 
+std::string fileChecksum(const std::filesystem::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) return "unavailable";
+    unsigned long long hash = 1469598103934665603ULL;
+    char byte = 0;
+    while (input.get(byte)) {
+        hash ^= static_cast<unsigned char>(byte);
+        hash *= 1099511628211ULL;
+    }
+    std::ostringstream output;
+    output << std::hex << std::setfill('0') << std::setw(16) << hash;
+    return output.str();
+}
+
 // ---- Layout and scene constants -------------------------------------------
 constexpr float kSceneX = 30.0f;
 constexpr float kSceneY = 135.0f;
@@ -490,6 +504,7 @@ void CompanionUI::initialiseGuidedStudy() {
     studySessionIndex = 1;
     studyStepIndex = 0;
     studyPhase = "warm_up";
+    studyStartedAt = utcTimestamp();
     studyIdleElapsed = 0.0f;
     studyFreeElapsed = 0.0f;
     studyGuidedComplete = false;
@@ -565,7 +580,9 @@ void CompanionUI::writeStudyManifest() {
                            {"B", agentAIsProposed ? "baseline" : "proposed"}}},
         {"phase", studyPhase},
         {"software_revision", IS2_GIT_REVISION},
-        {"started_at", utcTimestamp()},
+        {"started_at", studyStartedAt},
+        {"policy_checksums", {{"baseline", fileChecksum(std::filesystem::path(policyDirectory) / "baseline.qtable")},
+                              {"proposed", fileChecksum(std::filesystem::path(policyDirectory) / "proposed.qtable")}}},
         {"policy_updates_enabled", false},
         {"exploration_rate", 0.0},
         {"memory_initialisation", "clean proposed memory per participant; no cross-participant memory"},
