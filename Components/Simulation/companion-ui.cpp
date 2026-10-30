@@ -2242,7 +2242,7 @@ void CompanionUI::drawSimulationScreen() {
         if (studyPhase == "consent") {
             drawText("STUDY INFORMATION: This is a voluntary study of two simulated animal companions.",
                      L.x + 275.0f, L.y + 18.0f, 16, sf::Color::White);
-            drawText("No names or contact details are requested. Press Y to agree and continue, or N to decline.",
+            drawText("Do not enter names, contact details or other identifying information. Press Y to agree, N to decline.",
                      L.x + 275.0f, L.y + 44.0f, 15, sf::Color::White);
         } else if (studyPhase == "warm_up") {
             drawText("WARM-UP: Move with W A S D or arrow keys. Press Enter when ready.",
@@ -2256,6 +2256,8 @@ void CompanionUI::drawSimulationScreen() {
         } else if (studyPhase == "free") {
             drawText("Optional free interaction. Click Finish Free Phase when ready (maximum 3 minutes).",
                      L.x + 275.0f, L.y + 18.0f, 16, sf::Color::White);
+            drawText("Please do not enter identifying details; free text is not saved verbatim.",
+                     L.x + 275.0f, L.y + 44.0f, 14, sf::Color::White);
         } else if (studyPhase == "rating") {
             drawText(studyFormOpenedCurrentCondition
                          ? "Complete the form in your browser, then return and continue."
