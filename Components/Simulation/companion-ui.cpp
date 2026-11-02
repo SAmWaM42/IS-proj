@@ -7,6 +7,7 @@
 #include <ctime>
 #include <cmath>
 #include <cstdio>
+#include <cstdint>
 #include <cstdlib>
 #include <cstdlib>
 #include <memory>
