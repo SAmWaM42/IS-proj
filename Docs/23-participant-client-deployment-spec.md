@@ -272,7 +272,7 @@ The first release must target both Linux and Windows. Produce separate platform-
 4. Package the executable, assets, policies, NLP runtime/model, launcher, and participant README.
 5. Confirm that no build cache, test data, research analysis, developer notes, or secrets are shipped.
 
-**Phase 4 implementation note (2026-11-02):** Added allow-list staging scripts for Linux and Windows under `Deployment/`. They package only the participant executable, launcher, required assets, study JSON/configuration, NLP service, Python runtime, SFML runtime dependencies, and the two trained policies. The scripts require a relocatable Python runtime with spaCy/model already prepared, and matching SFML runtime files. They are packaging scaffolding only; no ZIP has been produced or clean-machine verified.
+**Phase 4 implementation note (2026-11-02):** Added allow-list staging scripts for Linux and Windows under `Deployment/`. They package only the participant executable, launcher, required assets/font, study JSON/configuration, NLP service, Python runtime, SFML runtime dependencies, and the two trained policies. The scripts require a relocatable Python runtime with spaCy/model already prepared, and matching SFML runtime files. CMake now builds a participant-only target by default, excludes training/study implementation modules and research test targets, and retains the developer tests/scripts in the repository. The NLP subprocess, browser launch, timestamps, and atomic sidecar replacement have platform-specific Windows/Linux implementations. These are packaging and portability changes only; no build or ZIP has been run.
 
 ### Phase 5 — Clean-machine verification
 1. Build from a clean checkout of this branch.
