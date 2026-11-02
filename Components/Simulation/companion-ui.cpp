@@ -349,7 +349,8 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     appendLog("Simulation ready. Select an interaction or enter a short message.");
 }
 
-void CompanionUI::run() {
+bool CompanionUI::run() {
+    bool returnToMenu = false;
     while (window.isOpen()) {
         updateAnimation(frameClock.restart().asSeconds());
         while (const auto event = window.pollEvent()) {
@@ -358,7 +359,12 @@ void CompanionUI::run() {
                 window.close();
             } else if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
                 if (key->code == sf::Keyboard::Key::Escape) {
-                    if (!guidedStudyMode || studyPhase != "consent") saveSession();
+                    if (!guidedStudyMode) {
+                        saveSession();
+                        returnToMenu = true;
+                    } else if (studyPhase != "consent") {
+                        saveSession();
+                    }
                     window.close();
                 } else if (guidedStudyMode && studyPhase == "consent" &&
                            (key->code == sf::Keyboard::Key::Y || key->code == sf::Keyboard::Key::Enter)) {
@@ -403,6 +409,7 @@ void CompanionUI::run() {
         }
         draw();
     }
+    return returnToMenu;
 }
 
 CompanionUI::SceneLayout CompanionUI::sceneLayout() const {
