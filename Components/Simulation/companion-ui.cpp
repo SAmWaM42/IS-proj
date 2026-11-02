@@ -409,7 +409,7 @@ bool CompanionUI::run() {
         }
         draw();
     }
-    return returnToMenu;
+    return returnToMenu || returnToMenuRequested;
 }
 
 CompanionUI::SceneLayout CompanionUI::sceneLayout() const {
@@ -1933,6 +1933,12 @@ void CompanionUI::handleClick(sf::Vector2f point) {
             else if (x >= 499 && x < 644) screen = Screen::Comparison;
             else if (x >= 1030 && screen == Screen::Simulation) controlsVisible = !controlsVisible;
         } else {
+            if (!guidedStudyMode && x >= 1030 && x < 1210) {
+                saveSession();
+                returnToMenuRequested = true;
+                window.close();
+                return;
+            }
             if (x >= 185 && x < 345) {
                 if (guidedStudyMode) {
                     if (studyPhase == "free") {
@@ -2109,6 +2115,7 @@ void CompanionUI::drawNavigation() {
     } else {
         drawButton("Change Model", 185, 12, 160, 42);
         drawButton("Answer Form", 357, 12, 160, 42);
+        drawButton("Main Menu", 1030, 12, 180, 42);
     }
 }
 
