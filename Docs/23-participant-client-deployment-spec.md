@@ -142,11 +142,10 @@ Use **one study attempt per installation by default**, containing both condition
 Separate the stable participant identifier from the attempt/run identifier:
 
 - `participant_id`: stable identifier for the person, for example `P014`.
-- `attempt_number`: starts at 1 and increments only when a researcher authorises a reset/re-run.
 - `run_id`: combine the two, for example `P014-A01` or `P014-A02`.
 - `session_index`: `1` for the first companion encounter and `2` for the second encounter within that attempt.
 
-Both condition forms for one attempt must receive the same `run_id` and different `session_index` values. The manifest and every relevant log row must also retain `participant_id`, `attempt_number`, `run_id`, and attempt status. This makes the two forms joinable while preserving the fact that multiple attempts belong to the same person.
+Both condition forms must receive the same `run_id` and different `session_index` values. The manifest and relevant form-linkage records must retain `participant_id`, `run_id`, and `session_index` so the two responses can be joined.
 
 No reset/re-run workflow is required for participants or the researcher in the deployed application. The study attempt identifier remains useful for linking the two condition forms, but attempt-number incrementing, completed-attempt lockout, and preservation of repeat-attempt records are out of scope unless the study protocol later requires them. If a participant needs to repeat the study, handle that administratively and ensure questionnaire records are not accidentally treated as independent participants.
 
@@ -182,7 +181,7 @@ The starting repository snapshot does not show a top-level `analysis/` directory
 - Exclude analysis scripts, analysis output directories, notebooks, plots, statistical reports, and analysis-only dependencies from the participant release package.
 - Remove researcher-only analysis commands from the participant executable's command-line interface.
 - Remove researcher UI screens, labels, and controls from the participant runtime.
-- Keep study logging and data export: these are data collection, not analysis, and are required by the experiment.
+- Keep the minimum study metadata required for questionnaire linking. Do not add local data export unless a concrete research requirement emerges.
 - Keep the analysis tools on the research/development branch. On this deployment branch, remove them from the participant-facing source/package only after checking dependencies and updating CMake so a clean participant build does not refer to deleted files.
 - Do not remove runtime validation or tests that protect the simulation, persistence, study flow, or log schema merely because they are located in a `tests/` or `scripts/` directory.
 
@@ -271,7 +270,7 @@ The first release must target both Linux and Windows. Produce separate platform-
 ### Phase 5 — Clean-machine verification
 1. Build from a clean checkout of this branch.
 2. Run the Linux ZIP on a clean Linux machine and the Windows ZIP on a clean Windows machine, neither with the development environment installed.
-3. Test General Interaction persistence across multiple launches and verify that reset is researcher-only.
+3. Test General Interaction persistence across multiple launches; no reset workflow is required.
 4. Test the full guided study, both condition orders, and same-run-ID/different-session-index form-prefill linking.
 6. Confirm no researcher controls or analysis tools are visible or included in either package.
 7. Confirm all participant data is outside the repository and policy checksums remain unchanged.
