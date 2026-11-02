@@ -34,8 +34,8 @@ if (-not (Test-Path $Executable)) { $Executable = Join-Path $BuildDir "Release/A
 if (-not (Test-Path $Executable)) { throw "Could not locate the built AnimalAgent.exe." }
 Copy-Item $Executable $Stage
 Copy-Item $env:ANIMAL_AGENT_SFML_DLL_DIR/*.dll $Stage
-New-Item -ItemType Directory -Force -Path (Join-Path $Stage "Data/Assets/white_dog_by_Brysia"), (Join-Path $Stage "Data/Study"), (Join-Path $Stage "Components/NLP"), (Join-Path $Stage "Policies"), (Join-Path $Stage "runtime/python") | Out-Null
-Copy-Item (Join-Path $Root "Data/Assets/free version/free.png") (Join-Path $Stage "Data/Assets/free.png")
+New-Item -ItemType Directory -Force -Path (Join-Path $Stage "Data/Assets/free version"), (Join-Path $Stage "Data/Assets/white_dog_by_Brysia"), (Join-Path $Stage "Data/Study"), (Join-Path $Stage "Components/NLP"), (Join-Path $Stage "Policies"), (Join-Path $Stage "runtime/python") | Out-Null
+Copy-Item (Join-Path $Root "Data/Assets/free version/free.png") (Join-Path $Stage "Data/Assets/free version/free.png")
 Copy-Item (Join-Path $Root "Data/Assets/white_dog_by_Brysia/*.png") (Join-Path $Stage "Data/Assets/white_dog_by_Brysia/")
 Copy-Item (Join-Path $Root "Data/Study/*.json") (Join-Path $Stage "Data/Study/")
 Copy-Item (Join-Path $Root "Components/NLP/nlp_intent_service.py") (Join-Path $Stage "Components/NLP/")
