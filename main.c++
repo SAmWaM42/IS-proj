@@ -4,8 +4,10 @@
 #include <string>
 
 #include "Components/State-Action/state-action.h"
+#ifndef IS2_PARTICIPANT_BUILD
 #include "Components/Training/training.h"
 #include "Components/Study/study.h"
+#endif
 #include "Components/Simulation/companion-ui.h"
 #include "Components/Simulation/participant-menu.h"
 #include "Components/Simulation/runtime-paths.h"
@@ -47,12 +49,51 @@ namespace
 int main(int argc, char **argv)
 {
 #ifdef IS2_PARTICIPANT_BUILD
-    if (argc > 1)
-    {
-        std::cerr << "This is the participant application. Start it without command-line options.\n";
+    if (argc > 1) {
+        std::cerr << "This is the participant application. Start it without command-line options.\\n";
         return 2;
     }
-#endif
+    auto appRoot = runtime_paths::executableDirectory(argc > 0 ? argv[0] : nullptr);
+    if (!std::filesystem::exists(appRoot / "Data" / "Assets") && std::filesystem::exists(IS2_SOURCE_DIR))
+        appRoot = IS2_SOURCE_DIR;
+    const auto userDataRoot = runtime_paths::userDataDirectory();
+    std::error_code pathError;
+    std::filesystem::create_directories(userDataRoot, pathError);
+    if (pathError) {
+        std::cerr << "Unable to create application data directory: " << pathError.message() << '\\n';
+        return 1;
+    }
+    std::filesystem::current_path(appRoot, pathError);
+    if (pathError) {
+        std::cerr << "Unable to locate application resources: " << pathError.message() << '\\n';
+        return 1;
+    }
+    const auto packagedPolicies = appRoot / "Policies";
+    const std::string policyDirectory =
+        (std::filesystem::exists(packagedPolicies) ? packagedPolicies : appRoot / "artifacts" / "training").string();
+    const std::string studyOutputDirectory = (userDataRoot / "study-linkage").string();
+    const std::string runtimeStatePath = (userDataRoot / "companion-state").string();
+    try {
+        for (;;) {
+            ParticipantMenu menu;
+            const auto choice = menu.run();
+            if (choice == ParticipantMenu::Choice::Exit) break;
+            if (choice == ParticipantMenu::Choice::BelievabilityStudy) {
+                CompanionUI study(policyDirectory, studyOutputDirectory, false, true, runtimeStatePath);
+                study.run();
+                break;
+            }
+            CompanionUI simulation(policyDirectory, (userDataRoot / "general-interaction").string(),
+                                   false, false, runtimeStatePath);
+            if (!simulation.run()) break;
+        }
+    } catch (const std::exception& error) {
+        std::cerr << "Unable to start Animal Agent: " << error.what() << '\\n';
+        return 1;
+    }
+    return 0;
+#else
+
     const auto appRoot = runtime_paths::executableDirectory(argc > 0 ? argv[0] : nullptr);
     const auto userDataRoot = runtime_paths::userDataDirectory();
     std::error_code pathError;
@@ -243,4 +284,5 @@ int main(int argc, char **argv)
     }
 
     return 0;
+#endif
 }
