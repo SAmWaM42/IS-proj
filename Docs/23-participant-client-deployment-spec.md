@@ -102,19 +102,18 @@ A new application launch is **not** automatically a new participant. Starting a 
 
 General Interaction must use a stable per-installation data location and stable filenames. It must not create a new session summary file for each launch or interaction sequence.
 
-Proposed logical layout:
+Current implementation layout:
 
 ```text
-<user-data-directory>/
-└── AnimalAgent/
-    ├── general/
-    │   ├── companion-state.json
-    │   └── interaction-history.jsonl
-    └── study/
-        └── questionnaire-linkage.json
+Linux:   ~/.local/share/animal-agent/
+Windows: %LOCALAPPDATA%/AnimalAgent/
+    companion-state.memory.json
+    companion-state.affect.json
+    study-linkage/
+        study-participant-counter.txt
 ```
 
-- `companion-state.json` stores the latest persistent companion state needed to continue General Interaction (for example, memory and affect, plus a schema version).
+- The two `companion-state.*.json` sidecars store only the proposed agent's memory records and affective state. The trained Q-table is loaded from the package and is never saved by the participant application.
 - General Interaction interaction history is not persisted by the participant client. Only the proposed agent's memory and affect sidecars are saved locally.
 - Do not create `run-<timestamp>-session.json`, `session-<counter>.json`, or equivalent files for every general interaction launch.
 - Saving should update the one state file atomically (write a temporary file, flush/close it, then replace the previous file where supported). A failed save must not destroy the last valid state.
