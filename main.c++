@@ -181,22 +181,27 @@ int main(int argc, char **argv)
     {
         try
         {
-            ParticipantMenu menu;
-            const auto choice = menu.run();
-            if (choice == ParticipantMenu::Choice::Exit)
+            bool showMenu = true;
+            while (showMenu)
             {
-                return 0;
-            }
+                ParticipantMenu menu;
+                const auto choice = menu.run();
+                if (choice == ParticipantMenu::Choice::Exit)
+                {
+                    break;
+                }
 
-            if (choice == ParticipantMenu::Choice::BelievabilityStudy)
-            {
-                CompanionUI study(policyDirectory, studyOutputDirectory, false, true);
-                study.run();
-            }
-            else
-            {
+                if (choice == ParticipantMenu::Choice::BelievabilityStudy)
+                {
+                    CompanionUI study(policyDirectory, studyOutputDirectory, false, true);
+                    study.run();
+                    // The guided study owns its completion and withdrawal flow.
+                    // Returning from it ends this application run.
+                    break;
+                }
+
                 CompanionUI simulation(policyDirectory, "artifacts/simulation", false);
-                simulation.run();
+                showMenu = simulation.run();
             }
         }
         catch (const std::exception &error)
