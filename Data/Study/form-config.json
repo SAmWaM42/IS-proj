@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "form_url": "REPLACE_WITH_GOOGLE_FORM_PREFILL_URL",
+  "entry_session": "REPLACE_WITH_SESSION_INDEX_ENTRY_ID",
+  "entry_condition": "REPLACE_WITH_CONDITION_CODE_ENTRY_ID",
+  "entry_run": "REPLACE_WITH_RUN_ID_ENTRY_ID"
+}
