@@ -1821,6 +1821,11 @@ void ProposedAgent::loadPersistentContext(const std::string& path) {
     const std::filesystem::path memoryFile = prefix + "memory.json";
     if (std::filesystem::exists(memoryFile)) {
         try {
+            std::ifstream validationInput(memoryFile);
+            nlohmann::json validationPayload;
+            validationInput >> validationPayload;
+            if (!validationPayload.is_array())
+                throw std::runtime_error("Memory sidecar has an unsupported structure");
             memory_records = loadMemoryRecords(memoryFile.string());
         } catch (const std::exception&) {
             memory_records.clear();
