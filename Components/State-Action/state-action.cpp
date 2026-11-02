@@ -1371,7 +1371,11 @@ std::string currentTimeStamp() {
     const auto now = std::chrono::system_clock::now();
     const auto timer = std::chrono::system_clock::to_time_t(now);
     std::tm gmt{};
+#ifdef _WIN32
+    gmtime_s(&gmt, &timer);
+#else
     gmtime_r(&timer, &gmt);
+#endif
     char stamp[32];
     std::strftime(stamp, sizeof(stamp), "%Y-%m-%dT%H:%M:%SZ", &gmt);
     return std::string(stamp);
