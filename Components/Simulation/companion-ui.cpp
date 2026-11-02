@@ -24,16 +24,27 @@
 #include <condition_variable>
 #include <queue>
 #include <future>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <shellapi.h>
+#else
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#endif
+#include "Components/Simulation/runtime-paths.h"
 
 namespace {
 using nlohmann::json;
 
 class PersistentNlpClient {
 public:
-    explicit PersistentNlpClient(std::string scriptPath) : script(std::move(scriptPath)), worker(&PersistentNlpClient::run, this) {}
+    PersistentNlpClient(std::string scriptPath, std::string pythonExecutable)
+        : script(std::move(scriptPath)), python(std::move(pythonExecutable)),
+          worker(&PersistentNlpClient::run, this) {}
     ~PersistentNlpClient() {
         {
             std::lock_guard<std::mutex> lock(mutex);
@@ -55,24 +66,70 @@ public:
 private:
     struct Request { std::string jsonLine; std::shared_ptr<std::promise<std::string>> result; };
     std::string script;
+    std::string python;
     std::mutex mutex;
     std::condition_variable condition;
     std::queue<Request> requests;
     bool stopping = false;
     std::thread worker;
+#ifdef _WIN32
+    HANDLE childProcess = nullptr;
+    HANDLE childInput = nullptr;
+    HANDLE childOutput = nullptr;
+#else
     pid_t child = -1;
     int childInput = -1;
     int childOutput = -1;
+#endif
 
     bool startService() {
+#ifdef _WIN32
+        SECURITY_ATTRIBUTES security{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+        HANDLE childStdoutRead = nullptr, childStdoutWrite = nullptr;
+        HANDLE childStdinRead = nullptr, childStdinWrite = nullptr;
+        if (!CreatePipe(&childStdoutRead, &childStdoutWrite, &security, 0)) return false;
+        if (!SetHandleInformation(childStdoutRead, HANDLE_FLAG_INHERIT, 0)) {
+            CloseHandle(childStdoutRead); CloseHandle(childStdoutWrite); return false;
+        }
+        if (!CreatePipe(&childStdinRead, &childStdinWrite, &security, 0)) {
+            CloseHandle(childStdoutRead); CloseHandle(childStdoutWrite); return false;
+        }
+        if (!SetHandleInformation(childStdinWrite, HANDLE_FLAG_INHERIT, 0)) {
+            CloseHandle(childStdoutRead); CloseHandle(childStdoutWrite);
+            CloseHandle(childStdinRead); CloseHandle(childStdinWrite); return false;
+        }
+        STARTUPINFOA startup{};
+        startup.cb = sizeof(startup);
+        startup.dwFlags = STARTF_USESTDHANDLES;
+        startup.hStdInput = childStdinRead;
+        startup.hStdOutput = childStdoutWrite;
+        startup.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+        PROCESS_INFORMATION process{};
+        std::string command = "\"" + python + "\" \"" + script + "\"";
+        const BOOL created = CreateProcessA(nullptr, command.data(), nullptr, nullptr, TRUE,
+                                             CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process);
+        CloseHandle(childStdinRead);
+        CloseHandle(childStdoutWrite);
+        if (!created) {
+            CloseHandle(childStdoutRead); CloseHandle(childStdinWrite); return false;
+        }
+        CloseHandle(process.hThread);
+        childProcess = process.hProcess;
+        childInput = childStdinWrite;
+        childOutput = childStdoutRead;
+        return true;
+#else
         int toChild[2], fromChild[2];
-        if (pipe(toChild) != 0 || pipe(fromChild) != 0) return false;
+        if (pipe(toChild) != 0) return false;
+        if (pipe(fromChild) != 0) {
+            close(toChild[0]); close(toChild[1]); return false;
+        }
         child = fork();
         if (child == 0) {
             dup2(toChild[0], STDIN_FILENO);
             dup2(fromChild[1], STDOUT_FILENO);
             close(toChild[0]); close(toChild[1]); close(fromChild[0]); close(fromChild[1]);
-            execlp("python3", "python3", script.c_str(), static_cast<char*>(nullptr));
+            execlp(python.c_str(), python.c_str(), script.c_str(), static_cast<char*>(nullptr));
             _exit(127);
         }
         close(toChild[0]); close(fromChild[1]);
@@ -80,20 +137,56 @@ private:
         childInput = toChild[1];
         childOutput = fromChild[0];
         return true;
+#endif
     }
     void stopService() {
+#ifdef _WIN32
+        if (childInput) { CloseHandle(childInput); childInput = nullptr; }
+        if (childOutput) { CloseHandle(childOutput); childOutput = nullptr; }
+        if (childProcess) {
+            WaitForSingleObject(childProcess, 5000);
+            DWORD exitCode = 0;
+            if (GetExitCodeProcess(childProcess, &exitCode) && exitCode == STILL_ACTIVE)
+                TerminateProcess(childProcess, 1);
+            CloseHandle(childProcess);
+            childProcess = nullptr;
+        }
+#else
         if (childInput >= 0) { close(childInput); childInput = -1; }
         if (childOutput >= 0) { close(childOutput); childOutput = -1; }
         if (child > 0) { int status = 0; waitpid(child, &status, 0); child = -1; }
+#endif
     }
     std::string exchange(const std::string& line) {
+#ifdef _WIN32
+        if (!childInput || !childOutput) return {};
+        const std::string payload = line + "\n";
+        std::size_t written = 0;
+        while (written < payload.size()) {
+            DWORD count = 0;
+            if (!WriteFile(childInput, payload.data() + written,
+                           static_cast<DWORD>(payload.size() - written), &count, nullptr) || count == 0)
+                return {};
+            written += count;
+        }
+        std::string response;
+        char ch = 0;
+        for (;;) {
+            DWORD count = 0;
+            if (!ReadFile(childOutput, &ch, 1, &count, nullptr) || count != 1) return {};
+            if (ch == '\n') break;
+            response.push_back(ch);
+            if (response.size() > 65536) return {};
+        }
+        return response;
+#else
         if (childInput < 0 || childOutput < 0) return {};
         const std::string payload = line + "\n";
         std::size_t written = 0;
         while (written < payload.size()) {
-            const ssize_t n = write(childInput, payload.data() + written, payload.size() - written);
-            if (n <= 0) return {};
-            written += static_cast<std::size_t>(n);
+            const ssize_t count = write(childInput, payload.data() + written, payload.size() - written);
+            if (count <= 0) return {};
+            written += static_cast<std::size_t>(count);
         }
         std::string response;
         char ch = 0;
@@ -103,6 +196,7 @@ private:
             if (response.size() > 65536) return {};
         }
         return response;
+#endif
     }
     void run() {
         bool running = startService();
@@ -128,7 +222,15 @@ private:
 };
 
 PersistentNlpClient& nlpClient() {
-    static PersistentNlpClient client("Components/NLP/nlp_intent_service.py");
+    static const auto root = runtime_paths::executableDirectory();
+#ifdef _WIN32
+    const auto bundledPython = root / "runtime" / "python" / "python.exe";
+    const std::string python = std::filesystem::exists(bundledPython) ? bundledPython.string() : "python";
+#else
+    const auto bundledPython = root / "runtime" / "python" / "bin" / "python3";
+    const std::string python = std::filesystem::exists(bundledPython) ? bundledPython.string() : "python3";
+#endif
+    static PersistentNlpClient client((root / "Components" / "NLP" / "nlp_intent_service.py").string(), python);
     return client;
 }
 std::string callNlp(const std::string& input) {
