@@ -7,6 +7,11 @@
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+#include <filesystem>
+#include <cstdio>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 void AffectiveState::updateFromFeedback(float reward, bool positive_feedback, bool explicit_negative) {
     if (explicit_negative) {
@@ -215,6 +220,16 @@ bool isRestState(const SessionContext& context, float memory_signal, float affec
 
 namespace {
 
+bool replaceFileAtomically(const std::filesystem::path& temporary,
+                           const std::filesystem::path& destination) {
+#ifdef _WIN32
+    return MoveFileExA(temporary.string().c_str(), destination.string().c_str(),
+                       MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+#else
+    return std::rename(temporary.string().c_str(), destination.string().c_str()) == 0;
+#endif
+}
+
 nlohmann::json recordToJson(const record& entry) {
     nlohmann::json item = nlohmann::json::object();
     item["subject"] = entry.raw_fact.subject;
@@ -335,16 +350,22 @@ std::vector<std::string> splitSummary(const std::string& text) {
 } // namespace
 
 bool saveMemoryRecords(const std::string& path, const std::vector<record>& records) {
-    std::ofstream output(path);
-    if (!output.is_open()) {
-        return false;
-    }
+    const std::filesystem::path destination(path);
+    const std::filesystem::path temporary = destination.string() + ".tmp";
+    std::ofstream output(temporary, std::ios::trunc);
+    if (!output.is_open()) return false;
 
     nlohmann::json payload = nlohmann::json::array();
-    for (const auto& entry : records) {
-        payload.push_back(recordToJson(entry));
+    for (const auto& entry : records) payload.push_back(recordToJson(entry));
+    output << payload.dump(2) << '\\n';
+    output.flush();
+    if (!output.good()) return false;
+    output.close();
+    if (!replaceFileAtomically(temporary, destination)) {
+        std::error_code ec;
+        std::filesystem::remove(temporary, ec);
+        return false;
     }
-    output << payload.dump(2);
     return true;
 }
 
@@ -369,12 +390,20 @@ std::vector<record> loadMemoryRecords(const std::string& path) {
 }
 
 bool saveAffectiveState(const std::string& path, const AffectiveState& affect) {
-    std::ofstream output(path);
-    if (!output.is_open()) {
+    const std::filesystem::path destination(path);
+    const std::filesystem::path temporary = destination.string() + ".tmp";
+    std::ofstream output(temporary, std::ios::trunc);
+    if (!output.is_open()) return false;
+
+    output << affectToJson(affect).dump(2) << '\\n';
+    output.flush();
+    if (!output.good()) return false;
+    output.close();
+    if (!replaceFileAtomically(temporary, destination)) {
+        std::error_code ec;
+        std::filesystem::remove(temporary, ec);
         return false;
     }
-
-    output << affectToJson(affect).dump(2);
     return true;
 }
 
