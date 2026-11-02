@@ -40,8 +40,6 @@ target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}/Inc
    ${CMAKE_SOURCE_DIR}/Components/Memory
    ${CMAKE_SOURCE_DIR}/Components/State-Action
-   ${CMAKE_SOURCE_DIR}/Components/Training
-   ${CMAKE_SOURCE_DIR}/Components/Study
    ${CMAKE_SOURCE_DIR}/Components/Simulation
 )
 
