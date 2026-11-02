@@ -223,7 +223,7 @@ private:
 };
 
 PersistentNlpClient& nlpClient() {
-    static const auto root = runtime_paths::executableDirectory();
+    static const auto root = std::filesystem::current_path();
 #ifdef _WIN32
     const auto bundledPython = root / "runtime" / "python" / "python.exe";
     const std::string python = std::filesystem::exists(bundledPython) ? bundledPython.string() : "python";
