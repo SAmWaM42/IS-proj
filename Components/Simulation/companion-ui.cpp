@@ -443,15 +443,14 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     loadFrames(barkFrames, {"bark1.png", "bark2.png"});
     if (idleFrames.empty()) appendLog("Dog frames missing (Data/Assets/white_dog_by_Brysia); using a placeholder companion.");
     std::filesystem::create_directories(outputDirectory);
-    std::filesystem::create_directories(policyDirectory);
     if (!runtimeStatePath.empty()) {
         const auto stateParent = std::filesystem::path(runtimeStatePath).parent_path();
         if (!stateParent.empty()) std::filesystem::create_directories(stateParent);
     }
     const auto basePath = std::filesystem::path(policyDirectory) / "baseline.qtable";
     const auto proposedPath = std::filesystem::path(policyDirectory) / "proposed.qtable";
-    if (guidedStudyMode && (!std::filesystem::exists(basePath) || !std::filesystem::exists(proposedPath))) {
-        throw std::runtime_error("Guided believability study requires trained baseline.qtable and proposed.qtable files in " + policyDirectory);
+    if (!std::filesystem::exists(basePath) || !std::filesystem::exists(proposedPath)) {
+        throw std::runtime_error("The participant application requires baseline.qtable and proposed.qtable in " + policyDirectory);
     }
     if (std::filesystem::exists(basePath)) baseline.loadPersistentState(basePath.string());
     if (std::filesystem::exists(proposedPath)) proposed.loadPersistentPolicy(proposedPath.string());
