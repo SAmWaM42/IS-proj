@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(IS-2 LANGUAGES CXX)
+
+option(ANIMAL_AGENT_BUILD_RESEARCH_TESTS "Build developer and research validation targets" OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -20,8 +22,6 @@ add_executable(IS-2
    main.c++
    Components/State-Action/state-action.cpp
    Components/Memory/memory.cpp
-   Components/Training/training.cpp
-   Components/Study/study.cpp
    Components/Simulation/companion-ui.cpp
    Components/Simulation/participant-menu.cpp
    Components/Simulation/backyard-environment.cpp
@@ -54,6 +54,7 @@ else()
    target_compile_options(IS-2 PRIVATE -Wall -Wextra)
 endif()
 
+if(ANIMAL_AGENT_BUILD_RESEARCH_TESTS)
 enable_testing()
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 add_test(NAME nlp_service_smoke_test
@@ -108,3 +109,5 @@ add_test(NAME legacy_believability_study_pipeline_tests
 add_test(NAME companion_believability_analysis_tests
    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_companion_believability_analysis.py
 )
+
+endif() # ANIMAL_AGENT_BUILD_RESEARCH_TESTS
