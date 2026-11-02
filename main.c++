@@ -94,7 +94,9 @@ int main(int argc, char **argv)
     return 0;
 #else
 
-    const auto appRoot = runtime_paths::executableDirectory(argc > 0 ? argv[0] : nullptr);
+    auto appRoot = runtime_paths::executableDirectory(argc > 0 ? argv[0] : nullptr);
+    if (!std::filesystem::exists(appRoot / "Data" / "Assets") && std::filesystem::exists(IS2_SOURCE_DIR))
+        appRoot = IS2_SOURCE_DIR;
     const auto userDataRoot = runtime_paths::userDataDirectory();
     std::error_code pathError;
     std::filesystem::create_directories(userDataRoot, pathError);
