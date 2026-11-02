@@ -1887,6 +1887,13 @@ void CompanionUI::processTextInteraction(const std::string& text) {
 
 void CompanionUI::handleClick(sf::Vector2f point) {
     const float x = point.x, y = point.y;
+    if (!researcherMode && !guidedStudyMode && y >= 14 && y <= 58 &&
+        x >= 1030 && x < 1210) {
+        saveSession();
+        returnToMenuRequested = true;
+        window.close();
+        return;
+    }
     if (screen == Screen::AgentSelection) {
         if (researcherMode && y >= 530 && y <= 600 && x >= 180 && x <= 580) {
             proposed.clearMemory();
@@ -1934,12 +1941,6 @@ void CompanionUI::handleClick(sf::Vector2f point) {
             else if (x >= 499 && x < 644) screen = Screen::Comparison;
             else if (x >= 1030 && screen == Screen::Simulation) controlsVisible = !controlsVisible;
         } else {
-            if (!guidedStudyMode && x >= 1030 && x < 1210) {
-                saveSession();
-                returnToMenuRequested = true;
-                window.close();
-                return;
-            }
             if (x >= 185 && x < 345) {
                 if (guidedStudyMode) {
                     if (studyPhase == "free") {
