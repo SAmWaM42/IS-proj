@@ -19,7 +19,8 @@ public:
                          const std::string& outputDirectory = "artifacts/simulation",
                          bool researcherMode = false,
                          bool guidedStudyMode = false);
-    void run();
+    // Returns true when General Interaction requests a return to the application menu.
+    bool run();
 
 private:
     enum class Screen { AgentSelection, Simulation, AgentState, Comparison };
