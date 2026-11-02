@@ -661,7 +661,9 @@ void CompanionUI::initialiseGuidedStudy() {
     selectedAgentIsProposed = agentAIsProposed;
     const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
-    runId = "study-" + studyParticipantCode + "-" + std::to_string(ticks);
+    std::random_device runIdRandom;
+    runId = "study-" + studyParticipantCode + "-" + std::to_string(ticks) +
+        "-" + std::to_string(runIdRandom());
     baseline.setLearningEnabled(false);
     proposed.setLearningEnabled(false);
     baseline.setExplorationRate(0.0f);
