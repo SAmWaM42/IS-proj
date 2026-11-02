@@ -41,6 +41,9 @@ Copy-Item (Join-Path $Root "Data/Study/*.json") (Join-Path $Stage "Data/Study/")
 Copy-Item (Join-Path $Root "Components/NLP/nlp_intent_service.py") (Join-Path $Stage "Components/NLP/")
 Copy-Item (Join-Path $Root "artifacts/training/baseline.qtable") (Join-Path $Root "artifacts/training/proposed.qtable") (Join-Path $Stage "Policies/")
 Copy-Item (Join-Path $env:ANIMAL_AGENT_PYTHON_RUNTIME "*") (Join-Path $Stage "runtime/python/") -Recurse
+$StagedPython = Join-Path $Stage "runtime/python/python.exe"
+& $StagedPython -c "import spacy; spacy.load('en_core_web_sm')"
+if ($LASTEXITCODE -ne 0) { throw "The staged Python runtime cannot load spaCy en_core_web_sm." }
 
 @'
 @echo off
