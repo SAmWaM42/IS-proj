@@ -312,7 +312,8 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     std::random_device conditionRandom;
     agentAIsProposed = (conditionRandom() % 2u) == 0u;
     if (!font.openFromFile("Data/Fonts/UIFont.ttf") &&
-        !font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
+        !font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf") &&
+        !font.openFromFile("C:/Windows/Fonts/arial.ttf")) {
         throw std::runtime_error("Unable to load DejaVuSans.ttf. Install DejaVu fonts or update companion-ui.cpp.");
     }
     window.setFramerateLimit(60);
