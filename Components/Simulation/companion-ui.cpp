@@ -1739,7 +1739,7 @@ void CompanionUI::executeInteraction(const std::string& label,
             }}
         };        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
         if (log) log << row.dump() << '\n';
-        else appendLog("WARNING: interaction event log could not be written.");
+        else if (researcherMode) appendLog("WARNING: interaction event log could not be written.");
     }
     if (guidedStudyMode && studyPhase == "guided" && studyInputMatches(label, false))
         completeStudyStep(label);
@@ -1899,7 +1899,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             std::ofstream log;
             if (researcherMode) log.open(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
             if (log) log << row.dump() << '\n';
-            else appendLog("WARNING: interaction event log could not be written.");
+            else if (researcherMode) appendLog("WARNING: interaction event log could not be written.");
             saveSession();
             return;
         } else {
@@ -1982,7 +1982,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             std::ofstream log;
             if (researcherMode) log.open(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
             if (log) log << row.dump() << '\n';
-            else appendLog("WARNING: interaction event log could not be written.");
+            else if (researcherMode) appendLog("WARNING: interaction event log could not be written.");
             if (guidedStudyMode && studyPhase == "guided") completeStudyStep(safeTextForLogs);
             saveSession();
             return;
@@ -2020,7 +2020,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
         std::ofstream log;
         if (researcherMode) log.open(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
         if (log) log << row.dump() << '\n';
-        else appendLog("WARNING: interaction event log could not be written.");
+        else if (researcherMode) appendLog("WARNING: interaction event log could not be written.");
         saveSession();
         return;
     }
