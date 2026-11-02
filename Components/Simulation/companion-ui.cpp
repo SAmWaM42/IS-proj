@@ -2578,6 +2578,6 @@ void CompanionUI::saveSession() {
         }
         proposed.savePersistentContext(runtimeStatePath);
     } catch (const std::exception& e) {
-        std::cerr << "Unable to save companion runtime state: " << e.what() << '\\n';
+        std::cerr << "Unable to save companion runtime state: " << e.what() << '\n';
     }
 }
