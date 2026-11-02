@@ -8,6 +8,7 @@
 #include "Components/Study/study.h"
 #include "Components/Simulation/companion-ui.h"
 #include "Components/Simulation/participant-menu.h"
+#include "Components/Simulation/runtime-paths.h"
 
 namespace
 {
@@ -52,10 +53,26 @@ int main(int argc, char **argv)
         return 2;
     }
 #endif
+    const auto appRoot = runtime_paths::executableDirectory(argc > 0 ? argv[0] : nullptr);
+    const auto userDataRoot = runtime_paths::userDataDirectory();
+    std::error_code pathError;
+    std::filesystem::create_directories(userDataRoot, pathError);
+    if (pathError) {
+        std::cerr << "Unable to create application data directory: " << pathError.message() << '\\n';
+        return 1;
+    }
+    std::filesystem::current_path(appRoot, pathError);
+    if (pathError) {
+        std::cerr << "Unable to locate application resources: " << pathError.message() << '\\n';
+        return 1;
+    }
+
     std::string mode;
-    std::string outputDirectory = "artifacts/training";
-    std::string studyOutputDirectory = (std::filesystem::path(IS2_SOURCE_DIR).parent_path() / "companion-study-data").string();
-    std::string policyDirectory = (std::filesystem::path(IS2_SOURCE_DIR) / "artifacts/training").string();
+    std::string outputDirectory = (userDataRoot / "training").string();
+    std::string studyOutputDirectory = (userDataRoot / "study-linkage").string();
+    const auto packagedPolicies = appRoot / "Policies";
+    std::string policyDirectory = (std::filesystem::exists(packagedPolicies) ? packagedPolicies : appRoot / "artifacts" / "training").string();
+    const std::string runtimeStatePath = (userDataRoot / "companion-state").string();
     int episodes = 200;
     int steps = 40;
     int seed = 42;
@@ -169,7 +186,7 @@ int main(int argc, char **argv)
     {
         try
         {
-            CompanionUI study(policyDirectory, studyOutputDirectory, false, true);
+            CompanionUI study(policyDirectory, studyOutputDirectory, false, true, runtimeStatePath);
             study.run();
         }
         catch (const std::exception &error)
@@ -207,7 +224,7 @@ int main(int argc, char **argv)
                     break;
                 }
 
-                CompanionUI simulation(policyDirectory, "artifacts/simulation", false);
+                CompanionUI simulation(policyDirectory, (userDataRoot / "general-interaction").string(), false, false, runtimeStatePath);
                 showMenu = simulation.run();
             }
         }
