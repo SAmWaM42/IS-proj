@@ -27,7 +27,7 @@ The branch is not intended to be a second research-development branch. It should
 - Keep participant data outside the source/build directory and outside the Git repository.
 - Preserve the trained policies as read-only deployment assets.
 - Keep the study's condition separation, counterbalancing, blinding, and required questionnaire-linking fields intact.
-- Treat questionnaire form responses as the primary research dataset. Q-table export is optional and must be explicitly enabled/retained only if useful to the research analysis.
+- Treat questionnaire form responses as the primary research dataset. Do not collect Q-tables in the current study: the trained policies are shared and learning is disabled, so per-participant copies would not represent participant-specific results. Revisit only if the experimental design changes.
 - Exclude researcher-only analysis features and unrelated development files from the participant release package.
 - Keep the application runnable locally; no VM, hosted backend, Docker service, or paid infrastructure is required.
 
@@ -261,7 +261,7 @@ The first release must target both Linux and Windows. Produce separate platform-
 3. Verify counterbalancing, memory reset between conditions, policy immutability, and incomplete-run handling required by the existing study protocol.
 4. Preserve one run identifier shared across both condition forms, with session indices 1 and 2.
 5. Keep questionnaire responses as the primary collected data. Do not build participant reset/re-run or local data-export workflows unless the study protocol requires them.
-6. Optionally support a researcher-triggered Q-table snapshot/export if it is useful for the planned analysis.
+6. Do not add Q-table export in the current design; the study uses fixed shared policies with learning disabled.
 
 **Phase 3 implementation note (2026-11-02):** Added `Data/Study/form-config.json` as the packaged source for the Google Form URL and prefill entry IDs, with environment-variable overrides for researcher testing. The existing guided flow retains one `run_id` across both conditions and changes `session_index` from 1 to 2. The configuration still contains placeholders and must be completed before release. Important: the existing participant counter is local to each installation, so it cannot provide global A/B counterbalancing across participants on separate machines. A researcher-issued participant assignment or another cross-installation assignment method must be agreed before collecting data.
 
@@ -310,7 +310,7 @@ The following decisions have been confirmed for this branch:
 
 1. **Release operating systems:** Linux and Windows. Produce and test separate platform-specific ZIP packages.
 2. **Reset workflow:** no participant-facing or researcher-only reset is required in the deployed application. Memory reset/testing remains a development-time operation.
-3. **Research data:** questionnaire form responses are the primary dataset. Q-table collection is optional; local interaction history, companion state, memory, and affect are not collected by default.
+3. **Research data:** questionnaire form responses are the primary dataset. The current fixed Q-tables are not participant-specific data; local interaction history, companion state, memory, and affect are not collected by default.
 4. **Application distribution:** one common ZIP package per operating system, sent to all participants. Runtime state remains on each participant's machine; questionnaire responses are collected through the forms. No participant-specific local export is required.
 5. **Form integration:** one unique run ID per participant attempt, shared across both condition encounters, with `session_index` 1 and 2 distinguishing the two forms/conditions.
 
