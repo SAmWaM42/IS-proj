@@ -1792,7 +1792,15 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
 }
 
 void ProposedAgent::loadPersistentState(const std::string& path) {
+    loadPersistentPolicy(path);
+    loadPersistentContext(path);
+}
+
+void ProposedAgent::loadPersistentPolicy(const std::string& path) {
     q_policy.loadQTable(path);
+}
+
+void ProposedAgent::loadPersistentContext(const std::string& path) {
     const std::string prefix = path + ".";
     if (std::filesystem::exists(prefix + "memory.json"))
         memory_records = loadMemoryRecords(prefix + "memory.json");
