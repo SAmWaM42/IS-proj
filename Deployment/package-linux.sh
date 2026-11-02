@@ -26,7 +26,7 @@ cmake -S "$ROOT" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_BUILD
 cmake --build "$BUILD_DIR" --config Release --parallel
 
 rm -rf "$STAGE"
-mkdir -p "$STAGE"/{Data/Assets/"free version",Data/Study,Components/NLP,Policies,runtime,lib}
+mkdir -p "$STAGE/Data/Assets/free version" "$STAGE/Data/Assets/white_dog_by_Brysia" "$STAGE/Data/Study" "$STAGE/Components/NLP" "$STAGE/Policies" "$STAGE/runtime" "$STAGE/lib"
 cp "$BUILD_DIR/AnimalAgent" "$STAGE/AnimalAgent"
 cp "$ROOT/Data/Assets/free version/free.png" "$STAGE/Data/Assets/free version/free.png"
 mkdir -p "$STAGE/Data/Assets/white_dog_by_Brysia"
