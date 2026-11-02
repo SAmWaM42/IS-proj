@@ -50,9 +50,9 @@ chmod +x "$STAGE/run-animal-agent.sh"
 if command -v patchelf >/dev/null 2>&1; then
   patchelf --set-rpath '$ORIGIN/lib' "$STAGE/AnimalAgent"
 fi
-if ldd "$STAGE/AnimalAgent" | grep -q "not found"; then
+if LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" ldd "$STAGE/AnimalAgent" | grep -q "not found"; then
   echo "Unresolved shared libraries in staged executable:" >&2
-  ldd "$STAGE/AnimalAgent" | grep "not found" >&2
+  LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" ldd "$STAGE/AnimalAgent" | grep "not found" >&2
   exit 1
 fi
 
