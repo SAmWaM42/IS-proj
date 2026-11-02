@@ -18,7 +18,8 @@ public:
     explicit CompanionUI(const std::string& policyDirectory = "artifacts/training",
                          const std::string& outputDirectory = "artifacts/simulation",
                          bool researcherMode = false,
-                         bool guidedStudyMode = false);
+                         bool guidedStudyMode = false,
+                         const std::string& runtimeStatePath = "");
     // Returns true when General Interaction requests a return to the application menu.
     bool run();
 
@@ -57,6 +58,7 @@ private:
     sf::Clock frameClock;
     std::string policyDirectory;
     std::string outputDirectory;
+    std::string runtimeStatePath;
     std::string runId;
     Screen screen = Screen::AgentSelection;
     BaselineAgent baseline;
