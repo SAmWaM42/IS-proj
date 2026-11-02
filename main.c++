@@ -45,6 +45,13 @@ namespace
 
 int main(int argc, char **argv)
 {
+#ifdef IS2_PARTICIPANT_BUILD
+    if (argc > 1)
+    {
+        std::cerr << "This is the participant application. Start it without command-line options.\\n";
+        return 2;
+    }
+#endif
     std::string mode;
     std::string outputDirectory = "artifacts/training";
     std::string studyOutputDirectory = (std::filesystem::path(IS2_SOURCE_DIR).parent_path() / "companion-study-data").string();
