@@ -206,7 +206,7 @@ int main(int argc, char **argv)
         }
         catch (const std::exception &error)
         {
-            std::cerr << "Unable to start Animal Agent: " << error.what() << '\\n';
+            std::cerr << "Unable to start Animal Agent: " << error.what() << '\n';
             return 1;
         }
         return 0;
