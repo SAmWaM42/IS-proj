@@ -258,7 +258,11 @@ std::string utcTimestamp() {
     const auto now = std::chrono::system_clock::now();
     const std::time_t value = std::chrono::system_clock::to_time_t(now);
     std::tm utc{};
+#ifdef _WIN32
+    gmtime_s(&utc, &value);
+#else
     gmtime_r(&value, &utc);
+#endif
     char buffer[32];
     std::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc);
     return buffer;
@@ -826,6 +830,14 @@ void CompanionUI::openStudyForm() {
         std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
         if (log) log << row.dump() << '\n';
     }
+#ifdef _WIN32
+    const auto result = reinterpret_cast<std::intptr_t>(
+        ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+    if (result <= 32) {
+        appendLog("Could not start browser for the study form.");
+        return;
+    }
+#else
     const pid_t browser = fork();
     if (browser == 0) {
         execlp("xdg-open", "xdg-open", url.c_str(), static_cast<char*>(nullptr));
@@ -835,6 +847,7 @@ void CompanionUI::openStudyForm() {
         appendLog("Could not start browser for the study form.");
         return;
     }
+#endif
     if (guidedStudyMode) studyFormOpenedCurrentCondition = true;
     appendLog("Opened Google Form for Companion " + std::string(1, selectedAgentCode));
 }
