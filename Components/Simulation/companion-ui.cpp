@@ -2222,6 +2222,8 @@ void CompanionUI::appendLog(const std::string& value) {
 }
 
 void CompanionUI::drawAgentSelectionScreen() {
+    if (!researcherMode && !guidedStudyMode)
+        drawButton("Main Menu", 1030, 12, 180, 42);
     drawText("CHOOSE COMPANION", 60, 120, 30, kInk);
     drawText(researcherMode
                  ? "Select A or B. The interface does not disclose the model behind either label."
