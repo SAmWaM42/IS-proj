@@ -26,9 +26,12 @@ cmake -S "$ROOT" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_BUILD
 cmake --build "$BUILD_DIR" --config Release --parallel
 
 rm -rf "$STAGE"
-mkdir -p "$STAGE/Data/Assets/free version" "$STAGE/Data/Assets/white_dog_by_Brysia" "$STAGE/Data/Study" "$STAGE/Components/NLP" "$STAGE/Policies" "$STAGE/runtime" "$STAGE/lib"
+mkdir -p "$STAGE/Data/Assets/free version" "$STAGE/Data/Assets/white_dog_by_Brysia" "$STAGE/Data/Fonts" "$STAGE/Data/Study" "$STAGE/Components/NLP" "$STAGE/Policies" "$STAGE/runtime" "$STAGE/lib"
 cp "$BUILD_DIR/AnimalAgent" "$STAGE/AnimalAgent"
 cp "$ROOT/Data/Assets/free version/free.png" "$STAGE/Data/Assets/free version/free.png"
+FONT_FILE="${ANIMAL_AGENT_FONT_FILE:-/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf}"
+[[ -s "$FONT_FILE" ]] || { echo "Set ANIMAL_AGENT_FONT_FILE to a redistributable TTF font." >&2; exit 1; }
+cp "$FONT_FILE" "$STAGE/Data/Fonts/UIFont.ttf"
 mkdir -p "$STAGE/Data/Assets/white_dog_by_Brysia"
 find "$ROOT/Data/Assets/white_dog_by_Brysia" -maxdepth 1 -type f -name '*.png' -exec cp {} "$STAGE/Data/Assets/white_dog_by_Brysia/" \;
 cp "$ROOT"/Data/Study/*.json "$STAGE/Data/Study/"
