@@ -199,6 +199,8 @@ public:
                       float elapsedSeconds);
 
     void loadPersistentState(const std::string& path);
+    void loadPersistentPolicy(const std::string& path);
+    void loadPersistentContext(const std::string& path);
     void savePersistentState(const std::string& path);
     void savePersistentContext(const std::string& path);
 
