@@ -740,7 +740,8 @@ void CompanionUI::writeStudyManifest() {
     };
     const auto manifestPath = std::filesystem::path(outputDirectory) /
         (runId + "-condition-" + std::string(1, selectedAgentCode) + "-manifest.json");
-    std::ofstream out(manifestPath);
+    std::ofstream out;
+    if (researcherMode) out.open(manifestPath);
     if (out) out << manifest.dump(2) << '\n';
 }
 
@@ -755,7 +756,8 @@ void CompanionUI::logStudyPhaseEvent(const std::string& eventType, const std::st
         {"phase", phase}, {"timestamp", utcTimestamp()},
         {"software_revision", IS2_GIT_REVISION}
     };
-    std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
+    std::ofstream log;
+    if (researcherMode) log.open(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
     if (log) log << row.dump() << '\n';
 }
 
@@ -786,7 +788,8 @@ void CompanionUI::completeStudyStep(const std::string& interaction) {
         }) : nlohmann::json(nullptr)},
         {"timestamp", utcTimestamp()}
     };
-    std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
+    std::ofstream log;
+    if (researcherMode) log.open(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
     if (log) log << row.dump() << '\n';
     if (studyStepIndex + 1 == 8) studyIdleElapsed = 0.0f;
     ++studyStepIndex;
@@ -849,7 +852,8 @@ void CompanionUI::openStudyForm() {
             {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},
             {"timestamp", utcTimestamp()}, {"phase", studyPhase}
         };
-        std::ofstream log(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
+        std::ofstream log;
+        if (researcherMode) log.open(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
         if (log) log << row.dump() << '\n';
     }
 #ifdef _WIN32
@@ -1330,7 +1334,8 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
                     {"timestamp", utcTimestamp()}, {"software_revision", IS2_GIT_REVISION},
                     {"policy_updates_enabled", false}
                 };
-                std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+                std::ofstream log;
+                if (researcherMode) log.open(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
                 if (log) log << row.dump() << '\n';
             }
             if (researcherMode) appendLog("Autonomous environment-driven action: " + selectedAction);
@@ -1891,7 +1896,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             row["utterance_analysis"] = {{"kind", "preference_statement"}, {"memory_updated", false},
                                          {"response_required", false}, {"response_action", "NONE"},
                                          {"candidate_association", "unresolved"}};
-            std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+            std::ofstream log;
+            if (researcherMode) log.open(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
             if (log) log << row.dump() << '\n';
             else appendLog("WARNING: interaction event log could not be written.");
             saveSession();
@@ -1973,7 +1979,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
                 {"preceding_proposed_action", hasPriorAction ? latestProposedAction : ""}
             };
             row["learning_update_enabled"] = false;
-            std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+            std::ofstream log;
+            if (researcherMode) log.open(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
             if (log) log << row.dump() << '\n';
             else appendLog("WARNING: interaction event log could not be written.");
             if (guidedStudyMode && studyPhase == "guided") completeStudyStep(safeTextForLogs);
@@ -2010,7 +2017,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
         row["utterance_analysis"] = {{"kind", "unclassified"}, {"memory_updated", false},
                                      {"response_required", false}, {"response_action", "NONE"}};
         row["learning_update_enabled"] = false;
-        std::ofstream log(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
+        std::ofstream log;
+        if (researcherMode) log.open(std::filesystem::path(outputDirectory) / ("interaction-events-" + runId + ".jsonl"), std::ios::app);
         if (log) log << row.dump() << '\n';
         else appendLog("WARNING: interaction event log could not be written.");
         saveSession();
@@ -2073,7 +2081,8 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                     {"A", agentAIsProposed ? "proposed" : "baseline"},
                     {"B", agentAIsProposed ? "baseline" : "proposed"}
                 };
-                std::ofstream manifestOut(std::filesystem::path(outputDirectory) / ("run-manifest-" + runId + ".json"));
+                std::ofstream manifestOut;
+                if (researcherMode) manifestOut.open(std::filesystem::path(outputDirectory) / ("run-manifest-" + runId + ".json"));
                 if (manifestOut) manifestOut << manifest.dump(2) << '\n';
             }
             resetScene();
