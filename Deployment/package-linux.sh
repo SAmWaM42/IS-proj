@@ -35,7 +35,7 @@ cp "$ROOT"/Data/Study/*.json "$STAGE/Data/Study/"
 cp "$ROOT/Components/NLP/nlp_intent_service.py" "$STAGE/Components/NLP/"
 cp "$ROOT/artifacts/training/baseline.qtable" "$ROOT/artifacts/training/proposed.qtable" "$STAGE/Policies/"
 cp -a "$ANIMAL_AGENT_PYTHON_RUNTIME" "$STAGE/runtime/python"
-find "$ANIMAL_AGENT_SFML_RUNTIME" -maxdepth 1 -type f \( -name 'libsfml-*.so*' -o -name 'libfreetype.so*' -o -name 'libFLAC.so*' -o -name 'libvorbis*.so*' -o -name 'libogg.so*' \) -exec cp -L {} "$STAGE/lib/" \;
+find "$ANIMAL_AGENT_SFML_RUNTIME" -maxdepth 1 \( -type f -o -type l \) -name '*.so*' -exec cp -L {} "$STAGE/lib/" \;
 
 cat > "$STAGE/run-animal-agent.sh" <<'LAUNCH'
 #!/usr/bin/env bash
