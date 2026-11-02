@@ -1940,9 +1940,8 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                             studyStartedAt = utcTimestamp();
                             selectedAgentCode = 'B';
                             selectedAgentIsProposed = !agentAIsProposed;
-                            const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::system_clock::now().time_since_epoch()).count();
-                            runId = "study-" + studyParticipantCode + "-" + std::to_string(ticks);
+                            // Keep one run ID for the full participant attempt. session_index
+                            // distinguishes the two condition encounters and questionnaire forms.
                             studyStepIndex = 0;
                             studyPhase = "guided";
                             studyIdleElapsed = 0.0f;
