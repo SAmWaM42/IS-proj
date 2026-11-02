@@ -7,14 +7,14 @@ const sf::Color background(250, 241, 225);
 const sf::Color panel(255, 250, 240);
 const sf::Color ink(84, 58, 44);
 const sf::Color muted(150, 118, 96);
-const sf::Color accent(196, 112, 84);
 }
 
 ParticipantMenu::ParticipantMenu()
     : window(sf::VideoMode(sf::Vector2u(900u, 620u)), "Animal Agent") {
     window.setFramerateLimit(60);
     fontLoaded = font.openFromFile("Data/Fonts/UIFont.ttf") ||
-                 font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
+                 font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf") ||
+                 font.openFromFile("C:/Windows/Fonts/arial.ttf");
     if (!fontLoaded) {
         throw std::runtime_error("Menu font unavailable. Package Data/Fonts/UIFont.ttf with the application.");
     }
@@ -30,15 +30,15 @@ ParticipantMenu::Choice ParticipantMenu::run() {
             if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
                 if (click->button != sf::Mouse::Button::Left) continue;
                 const auto point = window.mapPixelToCoords(click->position);
-                if (point.y >= 270.0f && point.y < 340.0f) {
+                if (point.x >= 190.0f && point.x < 710.0f && point.y >= 270.0f && point.y < 340.0f) {
                     window.close();
                     return Choice::GeneralInteraction;
                 }
-                if (point.y >= 360.0f && point.y < 430.0f) {
+                if (point.x >= 190.0f && point.x < 710.0f && point.y >= 360.0f && point.y < 430.0f) {
                     window.close();
                     return Choice::BelievabilityStudy;
                 }
-                if (point.y >= 450.0f && point.y < 520.0f) {
+                if (point.x >= 190.0f && point.x < 710.0f && point.y >= 450.0f && point.y < 520.0f) {
                     window.close();
                     return Choice::Exit;
                 }
