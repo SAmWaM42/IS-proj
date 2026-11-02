@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 #ifdef IS2_PARTICIPANT_BUILD
     if (argc > 1)
     {
-        std::cerr << "This is the participant application. Start it without command-line options.\\n";
+        std::cerr << "This is the participant application. Start it without command-line options.\n";
         return 2;
     }
 #endif
