@@ -357,7 +357,7 @@ bool saveMemoryRecords(const std::string& path, const std::vector<record>& recor
 
     nlohmann::json payload = nlohmann::json::array();
     for (const auto& entry : records) payload.push_back(recordToJson(entry));
-    output << payload.dump(2) << '\\n';
+    output << payload.dump(2) << '\n';
     output.flush();
     if (!output.good()) return false;
     output.close();
@@ -395,7 +395,7 @@ bool saveAffectiveState(const std::string& path, const AffectiveState& affect) {
     std::ofstream output(temporary, std::ios::trunc);
     if (!output.is_open()) return false;
 
-    output << affectToJson(affect).dump(2) << '\\n';
+    output << affectToJson(affect).dump(2) << '\n';
     output.flush();
     if (!output.good()) return false;
     output.close();
