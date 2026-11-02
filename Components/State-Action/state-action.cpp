@@ -1,6 +1,7 @@
 #include "state-action.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <ctime>
 #include <filesystem>
@@ -1802,10 +1803,35 @@ void ProposedAgent::loadPersistentPolicy(const std::string& path) {
 
 void ProposedAgent::loadPersistentContext(const std::string& path) {
     const std::string prefix = path + ".";
-    if (std::filesystem::exists(prefix + "memory.json"))
-        memory_records = loadMemoryRecords(prefix + "memory.json");
-    if (std::filesystem::exists(prefix + "affect.json"))
-        affective_state = loadAffectiveState(prefix + "affect.json");
+    const auto recoverCorruptSidecar = [](const std::filesystem::path& file) {
+        std::error_code ec;
+        auto quarantine = file;
+        quarantine += ".corrupt";
+        if (std::filesystem::exists(quarantine, ec)) {
+            quarantine += "." + std::to_string(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count());
+        }
+        std::filesystem::rename(file, quarantine, ec);
+    };
+    const std::filesystem::path memoryFile = prefix + "memory.json";
+    if (std::filesystem::exists(memoryFile)) {
+        try {
+            memory_records = loadMemoryRecords(memoryFile.string());
+        } catch (const std::exception&) {
+            memory_records.clear();
+            recoverCorruptSidecar(memoryFile);
+        }
+    }
+    const std::filesystem::path affectFile = prefix + "affect.json";
+    if (std::filesystem::exists(affectFile)) {
+        try {
+            affective_state = loadAffectiveState(affectFile.string());
+        } catch (const std::exception&) {
+            affective_state = AffectiveState{};
+            recoverCorruptSidecar(affectFile);
+        }
+    }
 }
 
 void ProposedAgent::savePersistentState(const std::string& path) {
