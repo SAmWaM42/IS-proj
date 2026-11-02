@@ -38,6 +38,7 @@ cp "$ROOT"/Data/Study/*.json "$STAGE/Data/Study/"
 cp "$ROOT/Components/NLP/nlp_intent_service.py" "$STAGE/Components/NLP/"
 cp "$ROOT/artifacts/training/baseline.qtable" "$ROOT/artifacts/training/proposed.qtable" "$STAGE/Policies/"
 cp -a "$ANIMAL_AGENT_PYTHON_RUNTIME" "$STAGE/runtime/python"
+LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" "$STAGE/runtime/python/bin/python3" -c 'import spacy; spacy.load("en_core_web_sm")'
 find "$ANIMAL_AGENT_SFML_RUNTIME" -maxdepth 1 \( -type f -o -type l \) -name '*.so*' -exec cp -L {} "$STAGE/lib/" \;
 
 cat > "$STAGE/run-animal-agent.sh" <<'LAUNCH'
