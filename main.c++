@@ -7,6 +7,7 @@
 #include "Components/Training/training.h"
 #include "Components/Study/study.h"
 #include "Components/Simulation/companion-ui.h"
+#include "Components/Simulation/participant-menu.h"
 
 namespace
 {
@@ -178,8 +179,31 @@ int main(int argc, char **argv)
     }
     if (mode.empty())
     {
-        CompanionUI simulation(policyDirectory, "artifacts/simulation", false);
-        simulation.run();
+        try
+        {
+            ParticipantMenu menu;
+            const auto choice = menu.run();
+            if (choice == ParticipantMenu::Choice::Exit)
+            {
+                return 0;
+            }
+
+            if (choice == ParticipantMenu::Choice::BelievabilityStudy)
+            {
+                CompanionUI study(policyDirectory, studyOutputDirectory, false, true);
+                study.run();
+            }
+            else
+            {
+                CompanionUI simulation(policyDirectory, "artifacts/simulation", false);
+                simulation.run();
+            }
+        }
+        catch (const std::exception &error)
+        {
+            std::cerr << "Unable to start Animal Agent: " << error.what() << '\\n';
+            return 1;
+        }
         return 0;
     }
 
