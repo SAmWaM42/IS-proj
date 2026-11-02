@@ -294,10 +294,12 @@ const std::array<ControlButton, 10> kControls{{
 CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
                          const std::string& outputDirectoryValue,
                          bool researcherModeValue,
-                         bool guidedStudyModeValue)
+                         bool guidedStudyModeValue,
+                         const std::string& runtimeStatePathValue)
     : window(sf::VideoMode(sf::Vector2u(1280u, 900u)), "Animal Agent | Companion Simulation"),
       policyDirectory(policyDirectoryValue),
       outputDirectory(outputDirectoryValue),
+      runtimeStatePath(runtimeStatePathValue),
       baseline(EnvironmentConfig{}),
       proposed(EnvironmentConfig{}) {
     researcherMode = researcherModeValue;
@@ -335,13 +337,24 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     if (idleFrames.empty()) appendLog("Dog frames missing (Data/Assets/white_dog_by_Brysia); using a placeholder companion.");
     std::filesystem::create_directories(outputDirectory);
     std::filesystem::create_directories(policyDirectory);
+    if (!runtimeStatePath.empty()) {
+        const auto stateParent = std::filesystem::path(runtimeStatePath).parent_path();
+        if (!stateParent.empty()) std::filesystem::create_directories(stateParent);
+    }
     const auto basePath = std::filesystem::path(policyDirectory) / "baseline.qtable";
     const auto proposedPath = std::filesystem::path(policyDirectory) / "proposed.qtable";
     if (guidedStudyMode && (!std::filesystem::exists(basePath) || !std::filesystem::exists(proposedPath))) {
         throw std::runtime_error("Guided believability study requires trained baseline.qtable and proposed.qtable files in " + policyDirectory);
     }
     if (std::filesystem::exists(basePath)) baseline.loadPersistentState(basePath.string());
-    if (std::filesystem::exists(proposedPath)) proposed.loadPersistentState(proposedPath.string());
+    if (std::filesystem::exists(proposedPath)) proposed.loadPersistentPolicy(proposedPath.string());
+    // General Interaction restores only the companion's mutable memory/affect sidecars.
+    // The trained policy is loaded separately and is never written by the participant app.
+    if (!guidedStudyMode && !runtimeStatePath.empty() &&
+        (std::filesystem::exists(runtimeStatePath + ".memory.json") ||
+         std::filesystem::exists(runtimeStatePath + ".affect.json"))) {
+        proposed.loadPersistentContext(runtimeStatePath);
+    }
     latestObservation = EnvironmentObservation{0, 1, 0, 0, 0.35f};
     resetScene();
     if (guidedStudyMode) {
@@ -2406,46 +2419,18 @@ void CompanionUI::draw() {
 
 void CompanionUI::saveSession() {
     try {
-        const auto directory = std::filesystem::path(outputDirectory);
-        std::filesystem::create_directories(directory);
         if (guidedStudyMode) {
-            nlohmann::json session = {
-                {"schema_version", 1}, {"protocol_id", "companion-believability-v0.1"},
-                {"run_id", runId}, {"participant_code", studyParticipantCode},
-                {"session_index", studySessionIndex},
-                {"condition_code", std::string(1, selectedAgentCode)},
-                {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},
-                {"phase", studyPhase}, {"interaction_count", interactionCount},
-                {"software_revision", IS2_GIT_REVISION},
-                {"policy_updates_enabled", false},
-                {"latest_stimulus", latestStimulus},
-                {"visible_action", selectedAgentIsProposed ? latestProposedAction : latestBaselineAction},
-                {"interactions", eventLog}
-            };
-            std::ofstream out(directory / (runId + "-session.json"));
-            if (out) out << session.dump(2) << '\n';
-            return; // Study mode must never overwrite shared training policy files.
-        }
-        nlohmann::json session;
-        session["run_id"] = runId;
-        session["condition_code"] = std::string(1, selectedAgentCode);
-        session["interaction_count"] = interactionCount;
-        session["latest_stimulus"] = latestStimulus;
-        session["baseline_action"] = latestBaselineAction;
-        session["proposed_action"] = latestProposedAction;
-        session["interactions"] = nlohmann::json::array();
-        for (std::size_t i = 0; i < eventLog.size(); ++i) {
-            session["interactions"].push_back(eventLog[i]);
-        }
-        std::ofstream out(directory / "simulation-session.json");
-        if (!out) {
-            std::cerr << "Unable to write simulation session summary.\n";
+            // Questionnaire forms are the primary study dataset. Retain only the
+            // small linkage/integrity manifest required by the study protocol.
+            writeStudyManifest();
             return;
         }
-        out << session.dump(2) << '\n';
-        baseline.savePersistentState((directory / "baseline-session.qtable").string());
-        proposed.savePersistentContext((std::filesystem::path(policyDirectory) / "proposed.qtable").string());
+        if (runtimeStatePath.empty()) {
+            std::cerr << "General Interaction runtime-state path is not configured.\\n";
+            return;
+        }
+        proposed.savePersistentContext(runtimeStatePath);
     } catch (const std::exception& e) {
-        std::cerr << "Unable to save simulation session: " << e.what() << '\n';
+        std::cerr << "Unable to save companion runtime state: " << e.what() << '\\n';
     }
 }
