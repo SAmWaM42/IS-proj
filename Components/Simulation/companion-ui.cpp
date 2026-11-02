@@ -803,13 +803,34 @@ void CompanionUI::openStudyForm() {
         appendLog("The form opens only after the guided and free-interaction phases.");
         return;
     }
-    const char* configuredUrl = std::getenv("ANIMAL_AGENT_STUDY_FORM_URL");
-    const char* sessionEntry = std::getenv("ANIMAL_AGENT_FORM_ENTRY_SESSION");
-    const char* conditionEntry = std::getenv("ANIMAL_AGENT_FORM_ENTRY_CONDITION");
-    const char* runEntry = std::getenv("ANIMAL_AGENT_FORM_ENTRY_RUN");
-    if (!configuredUrl || !*configuredUrl || !sessionEntry || !*sessionEntry ||
-        !conditionEntry || !*conditionEntry || !runEntry || !*runEntry) {
-        appendLog("Google Form configuration missing. Set ANIMAL_AGENT_STUDY_FORM_URL and the three ANIMAL_AGENT_FORM_ENTRY_* IDs.");
+    std::string configuredUrl;
+    std::string sessionEntry;
+    std::string conditionEntry;
+    std::string runEntry;
+    try {
+        std::ifstream configFile(std::filesystem::path("Data/Study") / "form-config.json");
+        if (configFile) {
+            const auto config = json::parse(configFile);
+            configuredUrl = config.value("form_url", std::string{});
+            sessionEntry = config.value("entry_session", std::string{});
+            conditionEntry = config.value("entry_condition", std::string{});
+            runEntry = config.value("entry_run", std::string{});
+        }
+    } catch (const std::exception& error) {
+        appendLog(std::string("Study form configuration could not be read: ") + error.what());
+        return;
+    }
+    if (configuredUrl.empty()) {
+        if (const char* value = std::getenv("ANIMAL_AGENT_STUDY_FORM_URL")) configuredUrl = value;
+        if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_SESSION")) sessionEntry = value;
+        if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_CONDITION")) conditionEntry = value;
+        if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_RUN")) runEntry = value;
+    }
+    if (configuredUrl.empty() || configuredUrl.find("REPLACE_WITH_") != std::string::npos ||
+        sessionEntry.empty() || sessionEntry.find("REPLACE_WITH_") != std::string::npos ||
+        conditionEntry.empty() || conditionEntry.find("REPLACE_WITH_") != std::string::npos ||
+        runEntry.empty() || runEntry.find("REPLACE_WITH_") != std::string::npos) {
+        appendLog("Study form is not configured. The researcher must set Data/Study/form-config.json before distribution.");
         return;
     }
     const std::string baseUrl(configuredUrl);
