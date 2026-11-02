@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(SFML 3.0 REQUIRED COMPONENTS Graphics Window System)
+find_package(Threads REQUIRED)
 
 file(TO_CMAKE_PATH "${CMAKE_SOURCE_DIR}" IS2_SOURCE_DIR_NORMALIZED)
 execute_process(
@@ -49,6 +50,7 @@ target_link_libraries(IS-2 PRIVATE
    sfml-graphics
    sfml-window
    sfml-system
+   Threads::Threads
 )
 if(WIN32)
    target_link_libraries(IS-2 PRIVATE shell32)
