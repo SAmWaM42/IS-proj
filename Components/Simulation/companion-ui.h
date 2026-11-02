@@ -27,6 +27,7 @@ private:
     bool researcherMode = false;
     bool guidedStudyMode = false;
     bool studyFinished = false;
+    bool returnToMenuRequested = false;
     bool studyFormOpenedCurrentCondition = false;
     bool studyGuidedComplete = false;
     bool studyFreeFinished = false;
