@@ -28,6 +28,9 @@ add_executable(IS-2
 )
 
 set_target_properties(IS-2 PROPERTIES OUTPUT_NAME AnimalAgent)
+if(UNIX AND NOT APPLE)
+   set_target_properties(IS-2 PROPERTIES BUILD_RPATH "$ORIGIN/lib" INSTALL_RPATH "$ORIGIN/lib")
+endif()
 
 target_compile_definitions(IS-2 PRIVATE IS2_PARTICIPANT_BUILD=1 IS2_SOURCE_DIR="${CMAKE_SOURCE_DIR}" IS2_GIT_REVISION="${IS2_GIT_REVISION}")
 
