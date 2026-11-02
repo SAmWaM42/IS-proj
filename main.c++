@@ -60,12 +60,12 @@ int main(int argc, char **argv)
     std::error_code pathError;
     std::filesystem::create_directories(userDataRoot, pathError);
     if (pathError) {
-        std::cerr << "Unable to create application data directory: " << pathError.message() << '\\n';
+        std::cerr << "Unable to create application data directory: " << pathError.message() << '\n';
         return 1;
     }
     std::filesystem::current_path(appRoot, pathError);
     if (pathError) {
-        std::cerr << "Unable to locate application resources: " << pathError.message() << '\\n';
+        std::cerr << "Unable to locate application resources: " << pathError.message() << '\n';
         return 1;
     }
     const auto packagedPolicies = appRoot / "Policies";
@@ -88,7 +88,7 @@ int main(int argc, char **argv)
             if (!simulation.run()) break;
         }
     } catch (const std::exception& error) {
-        std::cerr << "Unable to start Animal Agent: " << error.what() << '\\n';
+        std::cerr << "Unable to start Animal Agent: " << error.what() << '\n';
         return 1;
     }
     return 0;
@@ -99,12 +99,12 @@ int main(int argc, char **argv)
     std::error_code pathError;
     std::filesystem::create_directories(userDataRoot, pathError);
     if (pathError) {
-        std::cerr << "Unable to create application data directory: " << pathError.message() << '\\n';
+        std::cerr << "Unable to create application data directory: " << pathError.message() << '\n';
         return 1;
     }
     std::filesystem::current_path(appRoot, pathError);
     if (pathError) {
-        std::cerr << "Unable to locate application resources: " << pathError.message() << '\\n';
+        std::cerr << "Unable to locate application resources: " << pathError.message() << '\n';
         return 1;
     }
 
