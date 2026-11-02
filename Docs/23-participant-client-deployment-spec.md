@@ -252,6 +252,8 @@ The first release must target both Linux and Windows. Produce separate platform-
 4. Add safe return/exit behaviour without bypassing study completion/withdrawal handling.
 5. Remove researcher-mode access from the participant executable.
 
+**Phase 2 implementation note (2026-11-02):** The application-level placeholder menu is registered in CMake and is the default no-argument startup path. It routes to the existing General Interaction and guided-study modes, provides a Main Menu return from General Interaction, and exits cleanly. The participant target rejects command-line arguments so developer/researcher launch modes are not available through the participant executable. The menu is intentionally replaceable by the owner's menu implementation. Build and integrated runtime verification are deferred until the full client conversion is assembled, as requested.
+
 ### Phase 3 — Study data and owner-provided code
 1. Integrate the owner's supplied study-flow code at the menu boundary when provided.
 2. Confirm that one participant run covers both conditions and that the form/log join keys still work.
