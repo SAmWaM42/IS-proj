@@ -824,12 +824,11 @@ void CompanionUI::openStudyForm() {
         appendLog(std::string("Study form configuration could not be read: ") + error.what());
         return;
     }
-    if (configuredUrl.empty()) {
-        if (const char* value = std::getenv("ANIMAL_AGENT_STUDY_FORM_URL")) configuredUrl = value;
-        if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_SESSION")) sessionEntry = value;
-        if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_CONDITION")) conditionEntry = value;
-        if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_RUN")) runEntry = value;
-    }
+    // Environment variables deliberately override the packaged template for researcher testing.
+    if (const char* value = std::getenv("ANIMAL_AGENT_STUDY_FORM_URL")) configuredUrl = value;
+    if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_SESSION")) sessionEntry = value;
+    if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_CONDITION")) conditionEntry = value;
+    if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_RUN")) runEntry = value;
     if (configuredUrl.empty() || configuredUrl.find("REPLACE_WITH_") != std::string::npos ||
         sessionEntry.empty() || sessionEntry.find("REPLACE_WITH_") != std::string::npos ||
         conditionEntry.empty() || conditionEntry.find("REPLACE_WITH_") != std::string::npos ||
