@@ -29,7 +29,10 @@ if ($LASTEXITCODE -ne 0) { throw "Build failed." }
 
 if (Test-Path $Stage) { Remove-Item $Stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
-Copy-Item (Join-Path $BuildDir "AnimalAgent.exe") $Stage
+$Executable = Join-Path $BuildDir "AnimalAgent.exe"
+if (-not (Test-Path $Executable)) { $Executable = Join-Path $BuildDir "Release/AnimalAgent.exe" }
+if (-not (Test-Path $Executable)) { throw "Could not locate the built AnimalAgent.exe." }
+Copy-Item $Executable $Stage
 Copy-Item $env:ANIMAL_AGENT_SFML_DLL_DIR/*.dll $Stage
 New-Item -ItemType Directory -Force -Path (Join-Path $Stage "Data/Assets/white_dog_by_Brysia"), (Join-Path $Stage "Data/Study"), (Join-Path $Stage "Components/NLP"), (Join-Path $Stage "Policies"), (Join-Path $Stage "runtime/python") | Out-Null
 Copy-Item (Join-Path $Root "Data/Assets/free version/free.png") (Join-Path $Stage "Data/Assets/free.png")
