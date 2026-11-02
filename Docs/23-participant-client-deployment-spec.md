@@ -118,9 +118,9 @@ Proposed logical layout:
 - Do not create `run-<timestamp>-session.json`, `session-<counter>.json`, or equivalent files for every general interaction launch.
 - Saving should update the one state file atomically (write a temporary file, flush/close it, then replace the previous file where supported). A failed save must not destroy the last valid state.
 - If a state file is missing on first launch, initialise a clean state. If it is malformed or has an unsupported schema version, preserve the file, report the problem, and use a safe recovery path rather than silently overwriting it.
-- A reset option, if retained, must be explicit and clearly warn that it resets the local companion state. It must not delete study records.
+- A General Interaction reset must be researcher-only. There must be no reset control in the ordinary participant menu or simulation UI. The researcher-only reset must clearly confirm the action, reset only General Interaction state, and must not delete study records.
 
-The exact user-data path should be platform-appropriate. Do not write participant state into the executable directory, source tree, or `build/` directory. For the first Linux-only package, use an appropriate per-user data directory (for example, under `~/.local/share/`); isolate path selection behind one helper so Windows/macOS paths can be added later.
+The exact user-data path must be platform-appropriate for both supported release targets. Do not write participant state into the executable directory, source tree, or `build/` directory. On Linux, use an appropriate per-user data directory (for example, under `~/.local/share/`). On Windows, use the user's application data directory (for example, `%LOCALAPPDATA%`). Isolate path selection behind one helper so persistence logic is platform-independent.
 
 ### 6.3 Separate trained policy from mutable user state
 
@@ -136,11 +136,22 @@ The distributed baseline and proposed policy files are trained inputs and must b
 
 The study is different from General Interaction: it must preserve the evidence required to join participant questionnaire responses to the two companion conditions.
 
-Use **one participant study run** per installed copy. A run contains both condition encounters (session index 1 and 2), their condition codes, and all required phase/step/interaction records.
+Use **one study attempt per installation by default**, containing both condition encounters (session index 1 and 2), their condition codes, and all required phase/step/interaction records. A completed attempt is locked against another ordinary participant-initiated run.
 
-Do not create a separate participant identity or unrelated session summary for every individual interaction. Prefer one stable study run identifier and one manifest for the participant, with condition/session fields identifying the two encounters. The logs may remain append-only JSONL files or be consolidated into one participant bundle, provided all required fields and event ordering are preserved.
+Separate the stable participant identifier from the attempt/run identifier:
 
-Before changing the current study code, compare its existing run-ID and form-prefill behaviour with this target. In particular, the Google Form join keys must remain unambiguous. If the current form integration requires a distinct run ID per condition, document that as a deliberate exception rather than silently breaking the form pipeline.
+- `participant_id`: stable identifier for the person, for example `P014`.
+- `attempt_number`: starts at 1 and increments only when a researcher authorises a reset/re-run.
+- `run_id`: combine the two, for example `P014-A01` or `P014-A02`.
+- `session_index`: `1` for the first companion encounter and `2` for the second encounter within that attempt.
+
+Both condition forms for one attempt must receive the same `run_id` and different `session_index` values. The manifest and every relevant log row must also retain `participant_id`, `attempt_number`, `run_id`, and attempt status. This makes the two forms joinable while preserving the fact that multiple attempts belong to the same person.
+
+A researcher-only reset may unlock a new attempt and increment `attempt_number`. It must not erase the previous attempt. Mark earlier attempts as `incomplete`, `completed`, or `superseded` as appropriate, and retain their records for audit. A second attempt must never be silently treated as a new participant. The analysis workflow must group by `participant_id` and apply a documented rule for selecting or excluding repeat attempts; multiple attempts from one person must not be counted as independent participants. The default main-study rule should be one valid completed attempt per participant, with any replacement attempt explicitly marked and justified.
+
+Interaction history generated during the study itself is not needed for future companion behaviour and may be discarded when the study attempt is reset, but the research records and audit metadata for the previous attempt must be retained or exported before reset. Do not conflate disposable in-memory interaction history with required study evidence.
+
+Before changing the current study code, compare its existing run-ID and form-prefill behaviour with this target. In particular, verify that the Google Form accepts the same `run_id` for both condition forms and distinguishes them using `session_index`. If the form currently uses separate run IDs per condition, update the prefill mapping and downstream join logic together; do not retain inconsistent identifiers merely to avoid changing the form.
 
 The study must continue to:
 - keep the A/B mapping counterbalanced as specified;
@@ -155,9 +166,9 @@ A participant who exits or crashes partway through must not have an incomplete r
 
 ### 6.5 Data export
 
-The application should provide a simple way to locate or export the participant's study data after completion. Initially, a local folder or ZIP export is sufficient; no server is required.
+The distributed application itself will be delivered as **one common ZIP package** that can be sent to every participant. Each participant extracts and runs their own local copy; participant data is generated locally and is not included in the common distribution ZIP.
 
-The export must contain only the participant's study records and necessary metadata. It must not include trained policy files, source code, local configuration secrets, unrelated general-interaction history, or analysis scripts.
+The application should provide a simple way for the researcher to locate or export the study data generated by one installation. A participant-specific ZIP export is acceptable for collection, but it is distinct from the common application ZIP. The data export must contain only that participant's study records and necessary metadata. It must not include trained policy files, source code, local configuration secrets, unrelated general-interaction history, or analysis scripts.
 
 Do not automatically upload data. The researcher will provide the collection method and destination separately.
 
@@ -197,7 +208,7 @@ The exact directory names may change after the dependency audit. Do not bundle t
 
 The package must include all runtime dependencies or clearly identify any unavoidable operating-system prerequisites. Participants should not need to install a compiler, CMake, Python development headers, spaCy, or download an NLP model themselves.
 
-The first release target should be Linux if that is the only platform available for reliable testing. Add a separate Windows package only after it has been built and tested on Windows.
+The first release must target both Linux and Windows. Produce separate platform-specific ZIP packages from the same source revision; do not assume a Linux executable or bundled runtime will run on Windows. Each package must include the appropriate launcher and runtime dependencies and must be tested on a clean machine for its target OS.
 
 ## 9. Build and runtime configuration
 
@@ -225,7 +236,7 @@ The first release target should be Linux if that is the only platform available 
 2. Inventory runtime files, researcher-only files, data assets, policy files, and current save/load paths.
 3. Trace every call to `saveSession()`, study manifest/log writers, and policy persistence.
 4. Record the exact files required by General Interaction and the guided study.
-5. Confirm which operating system is the first release target.
+5. Confirm the Linux and Windows toolchain/runtime strategy and identify a clean test machine for each target.
 
 ### Phase 1 — Persistence contract
 1. Introduce one stable General Interaction data directory and fixed state/history filenames.
@@ -245,7 +256,9 @@ The first release target should be Linux if that is the only platform available 
 1. Integrate the owner's supplied study-flow code at the menu boundary.
 2. Confirm that one participant run covers both conditions and that the form/log join keys still work.
 3. Verify counterbalancing, memory reset between conditions, policy immutability, and incomplete-run handling.
-4. Add a single exportable study-data bundle or an equivalent clearly documented folder structure.
+4. Implement one participant ID plus attempt-number run IDs (`P014-A01`), shared across both condition forms with session indices 1 and 2.
+5. Lock completed attempts against ordinary re-entry; provide a researcher-only reset that increments the attempt number and preserves previous research records.
+6. Add a participant-specific export bundle or an equivalent clearly documented folder structure.
 
 ### Phase 4 — Release cleanup and packaging
 1. Remove analysis/researcher-only functionality from the participant branch/package after dependency checks.
@@ -256,12 +269,13 @@ The first release target should be Linux if that is the only platform available 
 
 ### Phase 5 — Clean-machine verification
 1. Build from a clean checkout of this branch.
-2. Run on a machine without the development environment installed.
-3. Test General Interaction persistence across multiple launches.
-4. Test the full guided study, including both condition orders and form-prefill linking.
-5. Confirm no researcher controls or analysis tools are visible or included.
-6. Confirm all participant data is outside the repository and policy checksums remain unchanged.
-7. Test missing/corrupt state files, missing assets, NLP startup failure, and interrupted study recovery.
+2. Run the Linux ZIP on a clean Linux machine and the Windows ZIP on a clean Windows machine, neither with the development environment installed.
+3. Test General Interaction persistence across multiple launches and verify that reset is researcher-only.
+4. Test the full guided study, both condition orders, same-run-ID/different-session-index form-prefill linking, completion lockout, and researcher-authorised repeat attempts.
+5. Confirm repeat attempts retain the same participant ID, increment the attempt number, and are not counted as independent participants by the analysis workflow.
+6. Confirm no researcher controls or analysis tools are visible or included in either package.
+7. Confirm all participant data is outside the repository and policy checksums remain unchanged.
+8. Test missing/corrupt state files, missing assets, NLP startup failure, and interrupted study recovery.
 
 ## 12. Acceptance criteria
 
@@ -272,24 +286,30 @@ The deployment branch is ready for a pilot only when:
 - [ ] General Interaction loads the same user's saved companion state after application restart.
 - [ ] General Interaction does not create a new session-summary file for every launch or interaction sequence.
 - [ ] General Interaction state is stored outside the repository and build directory.
+- [ ] General Interaction reset is unavailable to participants and accessible only through a researcher-controlled mechanism.
 - [ ] Trained baseline/proposed policies are unchanged by participant interaction.
 - [ ] The guided study uses the supplied study-flow implementation and retains the approved protocol.
-- [ ] Both study conditions remain distinguishable in the records and form responses join correctly.
+- [ ] Both study conditions use one attempt `run_id` with `session_index` 1 and 2, and form responses join correctly.
+- [ ] A completed study attempt is locked against ordinary re-entry.
+- [ ] A researcher-authorised repeat attempt increments the attempt number while retaining the same participant ID and previous attempt records.
+- [ ] Repeat attempts are identifiable and cannot be counted as independent participants by the analysis workflow.
 - [ ] Participant logs preserve the required research fields without raw free-text capture.
 - [ ] Incomplete studies are distinguishable from completed studies.
 - [ ] Researcher screens, analysis commands, analysis scripts, and analysis outputs are absent from the participant release package.
-- [ ] The package contains all runtime assets and NLP dependencies needed on the target OS.
-- [ ] The package runs on a clean machine without development tools installed.
+- [ ] Separate Linux and Windows ZIP packages contain all runtime assets and NLP dependencies needed for their respective OS.
+- [ ] Both packages run on clean machines without development tools installed.
 - [ ] No participant data, secrets, or local machine paths are committed to Git.
 
-## 13. Decisions to confirm during implementation
+## 13. Confirmed deployment decisions
 
-The following are intentionally left open until the code and the owner's study changes are reviewed:
+The following decisions have been confirmed for this branch:
 
-1. **First release OS:** Linux only, or Linux and Windows?
-2. **General Interaction reset:** Should the participant have a reset button, or should reset be researcher-only?
-3. **Study re-run policy:** Should a completed study be locked against a second run on the same installation, or should a deliberate researcher reset be supported?
-4. **Study export format:** One ZIP per participant, or a fixed study folder that the researcher copies?
-5. **Form integration:** Does the owner-provided code retain the current separate condition run IDs, or move to one participant run ID with a session index?
+1. **Release operating systems:** Linux and Windows. Produce and test separate platform-specific ZIP packages.
+2. **General Interaction reset:** researcher-only; no participant-facing reset control.
+3. **Study re-runs:** completed attempts are locked. A deliberate researcher-only reset starts a new attempt number while retaining the same participant ID and preserving the previous attempt's research records.
+4. **Application distribution:** one common ZIP package per operating system, sent to all participants. Each installation generates its own local data. A separate participant-specific data export may be collected after the study.
+5. **Form integration:** one run ID per participant attempt, shared across both condition encounters, with `session_index` 1 and 2 distinguishing the two forms/conditions.
 
-Do not block the first implementation on cross-platform support or cloud upload. Resolve the persistence and menu contracts first.
+The exact researcher-only reset mechanism (for example, a researcher launch option or protected maintenance screen) can be chosen during implementation. It must not be presented as a normal participant feature. Local controls are a workflow safeguard, not strong security against a technically capable participant inspecting the distributed program.
+
+Do not block implementation on cloud upload. Resolve the persistence, attempt identity, form-prefill, and menu contracts first.
