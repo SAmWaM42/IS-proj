@@ -27,6 +27,8 @@ add_executable(IS-2
    Components/Simulation/backyard-environment.cpp
 )
 
+set_target_properties(IS-2 PROPERTIES OUTPUT_NAME AnimalAgent)
+
 target_compile_definitions(IS-2 PRIVATE IS2_PARTICIPANT_BUILD=1 IS2_SOURCE_DIR="${CMAKE_SOURCE_DIR}" IS2_GIT_REVISION="${IS2_GIT_REVISION}")
 
 target_include_directories(IS-2 PRIVATE
