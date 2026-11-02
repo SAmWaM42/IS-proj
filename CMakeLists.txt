@@ -44,11 +44,15 @@ target_link_libraries(IS-2 PRIVATE
    sfml-window
    sfml-system
 )
+if(WIN32)
+   target_link_libraries(IS-2 PRIVATE shell32)
+endif()
 
-target_compile_options(IS-2 PRIVATE
-   -Wall
-   -Wextra
-)
+if(MSVC)
+   target_compile_options(IS-2 PRIVATE /W4)
+else()
+   target_compile_options(IS-2 PRIVATE -Wall -Wextra)
+endif()
 
 enable_testing()
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
