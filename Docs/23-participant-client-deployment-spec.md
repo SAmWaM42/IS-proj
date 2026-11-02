@@ -115,10 +115,10 @@ Proposed logical layout:
 ```
 
 - `companion-state.json` stores the latest persistent companion state needed to continue General Interaction (for example, memory and affect, plus a schema version).
-- `interaction-history.jsonl` may be retained locally for General Interaction continuity/debugging, but it is not part of the research data collection or participant export by default.
+- General Interaction interaction history is not persisted by the participant client. Only the proposed agent's memory and affect sidecars are saved locally.
 - Do not create `run-<timestamp>-session.json`, `session-<counter>.json`, or equivalent files for every general interaction launch.
 - Saving should update the one state file atomically (write a temporary file, flush/close it, then replace the previous file where supported). A failed save must not destroy the last valid state.
-- If a state file is missing on first launch, initialise a clean state. If it is malformed or has an unsupported schema version, preserve the file, report the problem, and use a safe recovery path rather than silently overwriting it.
+- If a state file is missing on first launch, initialise a clean state. Malformed memory/affect sidecars are quarantined with a `.corrupt` suffix and the corresponding state falls back to defaults. Sidecar schema versioning remains a follow-up hardening item.
 - No participant-facing or researcher-only reset workflow is required in the deployed application. Memory testing/resetting remains a development-time concern. Participants simply use the application; their local General Interaction state may persist across launches.
 
 The exact user-data path must be platform-appropriate for both supported release targets. Do not write participant state into the executable directory, source tree, or `build/` directory. On Linux, use an appropriate per-user data directory (for example, under `~/.local/share/`). On Windows, use the user's application data directory (for example, `%LOCALAPPDATA%`). Isolate path selection behind one helper so persistence logic is platform-independent.
@@ -137,7 +137,7 @@ The distributed baseline and proposed policy files are trained inputs and must b
 
 The study is different from General Interaction: it must preserve the evidence required to join participant questionnaire responses to the two companion conditions.
 
-Use **one study attempt per installation by default**, containing both condition encounters (session index 1 and 2), their condition codes, and the identifiers needed to link questionnaire responses. The application should not collect or export interaction history, companion state, or other local runtime data merely because it exists on the participant's machine.
+Use **one study attempt per installation by default**, containing both condition encounters (session index 1 and 2), their condition codes, and the identifiers needed to link questionnaire responses. The application should not collect or export interaction history, companion state, or other local runtime data merely because it exists on the participant's machine. Participant builds must not write raw interaction text, affect traces, or step-level logs to local study files.
 
 Separate the stable participant identifier from the attempt/run identifier:
 
@@ -145,7 +145,7 @@ Separate the stable participant identifier from the attempt/run identifier:
 - `run_id`: combine the two, for example `P014-A01` or `P014-A02`.
 - `session_index`: `1` for the first companion encounter and `2` for the second encounter within that attempt.
 
-Both condition forms must receive the same `run_id` and different `session_index` values. The manifest and relevant form-linkage records must retain `participant_id`, `run_id`, and `session_index` so the two responses can be joined.
+Both condition forms must receive the same `run_id` and different `session_index` values. The forms must retain `run_id` and `session_index` so the two responses can be joined. The run ID must be unique per participant attempt; do not rely on a per-installation counter as a globally unique participant ID.
 
 No reset/re-run workflow is required for participants or the researcher in the deployed application. The study attempt identifier remains useful for linking the two condition forms, but attempt-number incrementing, completed-attempt lockout, and preservation of repeat-attempt records are out of scope unless the study protocol later requires them. If a participant needs to repeat the study, handle that administratively and ensure questionnaire records are not accidentally treated as independent participants.
 
@@ -168,7 +168,7 @@ A participant who exits or crashes partway through must not have an incomplete r
 
 The distributed application itself will be delivered as **one common ZIP package** that can be sent to every participant. Each participant extracts and runs their own local copy; participant data is generated locally and is not included in the common distribution ZIP.
 
-The primary collected data is the questionnaire form data, which is submitted through the existing form workflow. The application must preserve the identifiers required to join the two condition responses. No participant data export workflow is required if the form captures all required research data. If useful for later analysis, the researcher may separately retrieve an optional Q-table snapshot; this must not be treated as required participant data or uploaded automatically. Do not export general-interaction history, raw participant text, memory records, or affective state by default.
+The primary collected data is the questionnaire form data, which is submitted through the existing form workflow. The application preserves the identifiers required to join the two condition responses. No participant data export workflow is required. The trained Q-tables are fixed and shared across participants, so copying them from each participant installation would not create participant-specific observations. Do not export general-interaction history, raw participant text, memory records, or affective state.
 
 Do not automatically upload data. The researcher will provide the collection method and destination separately.
 
@@ -254,6 +254,8 @@ The first release must target both Linux and Windows. Produce separate platform-
 
 **Phase 2 implementation note (2026-11-02):** The application-level placeholder menu is registered in CMake and is the default no-argument startup path. It routes to the existing General Interaction and guided-study modes, provides a Main Menu return from General Interaction, and exits cleanly. The participant target rejects command-line arguments so developer/researcher launch modes are not available through the participant executable. The menu is intentionally replaceable by the owner's menu implementation. Build and integrated runtime verification are deferred until the full client conversion is assembled, as requested.
 
+**Phase 1 implementation note (2026-11-02):** General Interaction now stores proposed-agent memory and affect sidecars under the platform user-data directory, separate from trained policy files. The sidecars are written through temporary files and replacement; malformed sidecars are quarantined and default state is used. The fixed `simulation-session.json` and baseline-session Q-table writes have been removed from the participant save path. Participant study builds suppress local interaction/step/manifest log files; form responses remain the primary research dataset. Persistence and recovery have not yet been runtime-tested.
+
 ### Phase 3 — Study data and owner-provided code
 1. Integrate the owner's supplied study-flow code at the menu boundary when provided.
 2. Confirm that one participant run covers both conditions and that the form/log join keys still work.
@@ -262,12 +264,16 @@ The first release must target both Linux and Windows. Produce separate platform-
 5. Keep questionnaire responses as the primary collected data. Do not build participant reset/re-run or local data-export workflows unless the study protocol requires them.
 6. Optionally support a researcher-triggered Q-table snapshot/export if it is useful for the planned analysis.
 
+**Phase 3 implementation note (2026-11-02):** Added `Data/Study/form-config.json` as the packaged source for the Google Form URL and prefill entry IDs, with environment-variable overrides for researcher testing. The existing guided flow retains one `run_id` across both conditions and changes `session_index` from 1 to 2. The configuration still contains placeholders and must be completed before release. Important: the existing participant counter is local to each installation, so it cannot provide global A/B counterbalancing across participants on separate machines. A researcher-issued participant assignment or another cross-installation assignment method must be agreed before collecting data.
+
 ### Phase 4 — Release cleanup and packaging
 1. Remove analysis/researcher-only functionality from the participant branch/package after dependency checks.
 2. Update CMake and build scripts so the participant target has no references to excluded analysis files.
 3. Add a release staging script with an explicit allow-list.
 4. Package the executable, assets, policies, NLP runtime/model, launcher, and participant README.
 5. Confirm that no build cache, test data, research analysis, developer notes, or secrets are shipped.
+
+**Phase 4 implementation note (2026-11-02):** Added allow-list staging scripts for Linux and Windows under `Deployment/`. They package only the participant executable, launcher, required assets, study JSON/configuration, NLP service, Python runtime, SFML runtime dependencies, and the two trained policies. The scripts require a relocatable Python runtime with spaCy/model already prepared, and matching SFML runtime files. They are packaging scaffolding only; no ZIP has been produced or clean-machine verified.
 
 ### Phase 5 — Clean-machine verification
 1. Build from a clean checkout of this branch.
@@ -306,7 +312,7 @@ The following decisions have been confirmed for this branch:
 1. **Release operating systems:** Linux and Windows. Produce and test separate platform-specific ZIP packages.
 2. **Reset workflow:** no participant-facing or researcher-only reset is required in the deployed application. Memory reset/testing remains a development-time operation.
 3. **Research data:** questionnaire form responses are the primary dataset. Q-table collection is optional; local interaction history, companion state, memory, and affect are not collected by default.
-4. **Application distribution:** one common ZIP package per operating system, sent to all participants. Each installation generates its own local data. A separate participant-specific data export may be collected after the study.
-5. **Form integration:** one run ID per participant attempt, shared across both condition encounters, with `session_index` 1 and 2 distinguishing the two forms/conditions.
+4. **Application distribution:** one common ZIP package per operating system, sent to all participants. Runtime state remains on each participant's machine; questionnaire responses are collected through the forms. No participant-specific local export is required.
+5. **Form integration:** one unique run ID per participant attempt, shared across both condition encounters, with `session_index` 1 and 2 distinguishing the two forms/conditions.
 
 Do not block implementation on cloud upload. Resolve local persistence, participant/run identity, form-prefill, and menu contracts first. Do not add reset or local data-export functionality without a demonstrated research need.
