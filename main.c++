@@ -11,6 +11,7 @@
 #include "Components/Simulation/companion-ui.h"
 #include "Components/Simulation/participant-menu.h"
 #include "Components/Simulation/runtime-paths.h"
+#include "Components/Simulation/submission-manager.h"
 
 namespace
 {
@@ -57,6 +58,11 @@ int main(int argc, char **argv)
     if (!std::filesystem::exists(appRoot / "Data" / "Assets") && std::filesystem::exists(IS2_SOURCE_DIR))
         appRoot = IS2_SOURCE_DIR;
     const auto userDataRoot = runtime_paths::userDataDirectory();
+#ifdef _WIN32
+    const auto bundledPython = appRoot / "runtime" / "python" / "python.exe";
+#else
+    const auto bundledPython = appRoot / "runtime" / "python" / "bin" / "python3";
+#endif
     std::error_code pathError;
     std::filesystem::create_directories(userDataRoot, pathError);
     if (pathError) {
