@@ -90,10 +90,11 @@ bool SubmissionManager::writeAtomically(const std::filesystem::path& destination
     return true;
 }
 
-bool SubmissionManager::queueSubmission(int participantNumber, int sessionIndex,
+bool SubmissionManager::queueSubmission(int participantNumber, int sessionIndex, char condition,
                                         const nlohmann::json& responses) {
     if (participantNumber < 1 || participantNumber > 9999 ||
-        (sessionIndex != 1 && sessionIndex != 2) || !responses.is_object()) {
+        (sessionIndex != 1 && sessionIndex != 2) ||
+        (condition != 'A' && condition != 'B') || !responses.is_object()) {
         return false;
     }
 
@@ -103,6 +104,7 @@ bool SubmissionManager::queueSubmission(int participantNumber, int sessionIndex,
     record["submission_id"] = id;
     record["participant_number"] = participantNumber;
     record["session_index"] = sessionIndex;
+    record["condition"] = std::string(1, condition);
 
     const auto destination = pendingDirectory_ / (id + ".json");
     // A repeated submit for the same participant/session must not silently
