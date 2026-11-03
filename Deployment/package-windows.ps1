@@ -18,6 +18,8 @@ if ($LASTEXITCODE -ne 0) { throw "Bundled Python runtime cannot load spaCy en_co
 
 $formConfig = Get-Content (Join-Path $Root "Data/Study/form-config.json") -Raw
 if ($formConfig.Contains("REPLACE_WITH_")) { throw "Complete Data/Study/form-config.json before packaging." }
+$uploadConfig = Get-Content (Join-Path $Root "Data/Study/upload-config.json") -Raw
+if ($uploadConfig.Contains("REPLACE_WITH_")) { throw "Configure Data/Study/upload-config.json before packaging." }
 foreach ($policy in @("baseline.qtable", "proposed.qtable")) {
     if (-not (Test-Path (Join-Path $Root "artifacts/training/$policy"))) { throw "Missing trained policy $policy" }
 }
