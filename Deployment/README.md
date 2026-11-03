@@ -39,3 +39,18 @@ The ZIPs contain the executable, launcher, participant README, required image as
 - The collection function stores questionnaire JSON in Google Drive using the researcher's Google OAuth credentials held in Vercel environment variables. Never place OAuth credentials in the desktop package.
 - Drive lookup followed by create prevents ordinary retry duplicates but is not transactional under simultaneous duplicate requests.
 - The Q-tables are loaded as fixed trained policies and study learning is disabled. An optional Q-table copy is therefore the same policy artifact, not a participant-specific outcome, unless a separate policy-update/measurement requirement is introduced.
+
+
+## Collection transport status
+
+Questionnaire collection is being moved from Google Forms to the Vercel endpoint documented in `CollectionBackend/README.md`. The participant application queues a response locally, uploads it with the participant's bearer token, and removes the queue file only after a valid durable-storage acknowledgement. Pending responses are retried on the next application launch.
+
+The queue API now requires the participant token:
+
+```cpp
+queueSubmission(participantNumber, sessionIndex, condition, participantToken, responses);
+```
+
+The token is saved in the local pending record to support offline retry, but the Python uploader removes it from the JSON body and sends it only as an HTTPS Bearer token. Participants must receive their number and token separately from the common ZIP.
+
+**Release blocker:** the final participant menu/questionnaire flow has not yet been connected to this API. The current package scripts are infrastructure only; do not distribute a participant build until the in-app questionnaire, token entry, and study-flow integration are complete and tested.
