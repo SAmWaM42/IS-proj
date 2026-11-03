@@ -26,6 +26,7 @@ add_executable(IS-2
    Components/Memory/memory.cpp
    Components/Simulation/companion-ui.cpp
    Components/Simulation/participant-menu.cpp
+   Components/Simulation/submission-manager.cpp
    Components/Simulation/backyard-environment.cpp
 )
 
