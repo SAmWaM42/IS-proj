@@ -18,15 +18,13 @@ public:
                       std::filesystem::path applicationDirectory,
                       std::filesystem::path pythonExecutable);
 
-    // Persists the response first, then immediately attempts to upload it.
-    // The submission key is deterministic: P{participantNumber}-S{sessionIndex}.
+    // Persists questionnaire responses and the participant's upload token locally,
+    // then attempts delivery. The token is stripped before the HTTP payload is sent.
     bool queueSubmission(int participantNumber, int sessionIndex, char condition,
+                         const std::string& participantToken,
                          const nlohmann::json& responses);
 
-    // Retries every pending JSON response. Successfully acknowledged files
-    // are deleted; failed or ambiguous uploads remain queued.
     SubmissionUploadSummary uploadPendingSubmissions();
-
     std::filesystem::path pendingDirectory() const;
 
 private:
