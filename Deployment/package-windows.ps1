@@ -39,6 +39,7 @@ Copy-Item (Join-Path $Root "Data/Assets/free version/free.png") (Join-Path $Stag
 Copy-Item (Join-Path $Root "Data/Assets/white_dog_by_Brysia/*.png") (Join-Path $Stage "Data/Assets/white_dog_by_Brysia/")
 Copy-Item (Join-Path $Root "Data/Study/*.json") (Join-Path $Stage "Data/Study/")
 Copy-Item (Join-Path $Root "Components/NLP/nlp_intent_service.py") (Join-Path $Stage "Components/NLP/")
+Copy-Item (Join-Path $Root "Components/NLP/upload_submission.py") (Join-Path $Stage "Components/NLP/")
 Copy-Item (Join-Path $Root "artifacts/training/baseline.qtable") (Join-Path $Root "artifacts/training/proposed.qtable") (Join-Path $Stage "Policies/")
 Copy-Item (Join-Path $env:ANIMAL_AGENT_PYTHON_RUNTIME "*") (Join-Path $Stage "runtime/python/") -Recurse
 $StagedPython = Join-Path $Stage "runtime/python/python.exe"
@@ -60,7 +61,7 @@ Animal Agent participant application
 5. Do not move or delete files while the application is running.
 
 The application stores General Interaction memory locally in your user data directory.
-Study questionnaire responses are submitted through the forms. No automatic data upload occurs.
+Study questionnaire responses are submitted by the application. Failed uploads are retained locally and retried on the next launch.
 '@ | Set-Content (Join-Path $Stage "README.txt") -Encoding UTF8
 
 New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
