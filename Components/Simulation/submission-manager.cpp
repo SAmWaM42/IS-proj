@@ -113,8 +113,12 @@ bool SubmissionManager::queueSubmission(int participantNumber, int sessionIndex,
 
     if (!writeAtomically(destination, record.dump(2) + "\n")) return false;
 
-    // Best effort immediate delivery. If it fails, the durable queue entry stays.
-    uploadOne(destination);
+    // Best effort immediate delivery. Delete only after the server's durable
+    // acknowledgement; failed or ambiguous uploads remain in the pending queue.
+    if (uploadOne(destination)) {
+        std::error_code error;
+        std::filesystem::remove(destination, error);
+    }
     return true;
 }
 
