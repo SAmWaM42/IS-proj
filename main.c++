@@ -74,6 +74,17 @@ int main(int argc, char **argv)
         std::cerr << "Unable to locate application resources: " << pathError.message() << '\n';
         return 1;
     }
+    try {
+        SubmissionManager submissions(userDataRoot, appRoot, bundledPython);
+        const auto uploadSummary = submissions.uploadPendingSubmissions();
+        if (uploadSummary.pending > 0) {
+            std::cerr << uploadSummary.pending
+                      << " questionnaire submission(s) remain pending upload.\\n";
+        }
+    } catch (const std::exception& error) {
+        std::cerr << "Pending questionnaire uploads could not be checked: "
+                  << error.what() << '\\n';
+    }
     const auto packagedPolicies = appRoot / "Policies";
     const std::string policyDirectory =
         (std::filesystem::exists(packagedPolicies) ? packagedPolicies : appRoot / "artifacts" / "training").string();
