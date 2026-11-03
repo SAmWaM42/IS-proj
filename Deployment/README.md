@@ -15,23 +15,27 @@ The packager itself needs the relevant platform compiler, CMake, and SFML 3 deve
 
 ## Before packaging
 
-1. Fill in `Data/Study/form-config.json` with the published Google Form prefill URL and the three entry IDs.
-2. Confirm `artifacts/training/baseline.qtable` and `proposed.qtable` are the final trained policies.
-3. Prepare and validate the relocatable Python runtime on the target OS.
-4. Prepare the matching SFML runtime libraries.
-5. Run the platform package script on that platform.
+1. Deploy `CollectionBackend/` to Vercel with its root directory set to that folder.
+2. Configure Google OAuth, the destination Drive folder, and participant-token mapping in Vercel environment variables. See `CollectionBackend/README.md`.
+3. Set the deployed HTTPS function URL in `Data/Study/upload-config.json`.
+4. Confirm `artifacts/training/baseline.qtable` and `proposed.qtable` are the final trained policies.
+5. Prepare and validate the relocatable Python runtime on the target OS.
+6. Prepare the matching SFML runtime libraries.
+7. Run the platform package script on that platform.
 
 ## Output
 
 - Linux: `dist/linux/AnimalAgent-Linux.zip`
 - Windows: `dist/windows/AnimalAgent-Windows.zip`
 
-The ZIPs contain only the executable, launcher, participant README, required image assets, study configuration/scenarios, NLP service/model runtime, and the two read-only policy files. They do not contain the repository's analysis scripts or tests.
+The ZIPs contain the executable, launcher, participant README, required image assets, non-secret endpoint configuration, NLP service/model runtime, and the two read-only policy files. Participant upload tokens are assigned and entered separately; they must not be embedded in the common ZIP. They do not contain the repository's analysis scripts or tests.
 
 ## Important limitations
 
 - A package script completing does not replace a clean-machine extraction and launch test.
 - Linux and Windows builds must be produced on their respective target platforms.
 - SFML and Python runtime portability must be verified on a clean machine.
-- The current study participant counter is stored locally on each installation. That does **not** provide global counterbalancing across participants using separate machines. The study needs a researcher-issued participant assignment or another shared assignment mechanism before data collection. Do not interpret the local counter as a global participant sequence.
+- Participant numbers and their unique upload tokens must be issued by the researcher. A participant number alone is not authentication. The participant token is retained with a pending local response for retry and stripped from the questionnaire JSON before transmission.
+- The collection function stores questionnaire JSON in Google Drive using the researcher's Google OAuth credentials held in Vercel environment variables. Never place OAuth credentials in the desktop package.
+- Drive lookup followed by create prevents ordinary retry duplicates but is not transactional under simultaneous duplicate requests.
 - The Q-tables are loaded as fixed trained policies and study learning is disabled. An optional Q-table copy is therefore the same policy artifact, not a participant-specific outcome, unless a separate policy-update/measurement requirement is introduced.
