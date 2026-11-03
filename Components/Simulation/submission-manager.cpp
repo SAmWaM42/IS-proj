@@ -1,7 +1,6 @@
 #include "submission-manager.h"
 
 #include <algorithm>
-#include <cctype>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -29,12 +28,11 @@ std::string submissionId(int participantNumber, int sessionIndex) {
 
 #ifdef _WIN32
 std::string quoteWindowsArgument(const std::string& value) {
-    std::string quoted = "\"" ;
+    std::string quoted = "\"";
     std::size_t backslashes = 0;
     for (char ch : value) {
-        if (ch == '\\') {
-            ++backslashes;
-        } else if (ch == '"') {
+        if (ch == '\\') ++backslashes;
+        else if (ch == '"') {
             quoted.append(backslashes * 2 + 1, '\\');
             quoted.push_back('"');
             backslashes = 0;
@@ -49,7 +47,7 @@ std::string quoteWindowsArgument(const std::string& value) {
     return quoted;
 }
 #endif
-} // namespace
+}
 
 SubmissionManager::SubmissionManager(std::filesystem::path userDataDirectory,
                                      std::filesystem::path applicationDirectory,
@@ -75,10 +73,8 @@ bool SubmissionManager::writeAtomically(const std::filesystem::path& destination
         output.flush();
         if (!output.good()) return false;
     }
-
     std::error_code error;
 #ifdef _WIN32
-    // std::filesystem::rename does not replace an existing destination on Windows.
     std::filesystem::remove(destination, error);
     error.clear();
 #endif
@@ -91,12 +87,12 @@ bool SubmissionManager::writeAtomically(const std::filesystem::path& destination
 }
 
 bool SubmissionManager::queueSubmission(int participantNumber, int sessionIndex, char condition,
+                                        const std::string& participantToken,
                                         const nlohmann::json& responses) {
     if (participantNumber < 1 || participantNumber > 9999 ||
         (sessionIndex != 1 && sessionIndex != 2) ||
-        (condition != 'A' && condition != 'B') || !responses.is_object()) {
-        return false;
-    }
+        (condition != 'A' && condition != 'B') ||
+        participantToken.empty() || !responses.is_object()) return false;
 
     const std::string id = submissionId(participantNumber, sessionIndex);
     nlohmann::json record = responses;
@@ -105,16 +101,12 @@ bool SubmissionManager::queueSubmission(int participantNumber, int sessionIndex,
     record["participant_number"] = participantNumber;
     record["session_index"] = sessionIndex;
     record["condition"] = std::string(1, condition);
+    record["_upload_token"] = participantToken;
 
     const auto destination = pendingDirectory_ / (id + ".json");
-    // A repeated submit for the same participant/session must not silently
-    // overwrite the original response or create a second queued record.
     if (std::filesystem::exists(destination)) return false;
-
     if (!writeAtomically(destination, record.dump(2) + "\n")) return false;
 
-    // Best effort immediate delivery. Delete only after the server's durable
-    // acknowledgement; failed or ambiguous uploads remain in the pending queue.
     if (uploadOne(destination)) {
         std::error_code error;
         std::filesystem::remove(destination, error);
@@ -126,15 +118,13 @@ bool SubmissionManager::uploadOne(const std::filesystem::path& responseFile) con
     const auto uploader = applicationDirectory_ / "Components" / "NLP" / "upload_submission.py";
     const auto config = applicationDirectory_ / "Data" / "Study" / "upload-config.json";
     if (!std::filesystem::exists(uploader) || !std::filesystem::exists(config) ||
-        !std::filesystem::exists(pythonExecutable_)) {
-        return false;
-    }
+        !std::filesystem::exists(pythonExecutable_)) return false;
 
 #ifdef _WIN32
     std::string command = quoteWindowsArgument(pythonExecutable_.string()) + " " +
-                          quoteWindowsArgument(uploader.string()) + " " +
-                          quoteWindowsArgument(config.string()) + " " +
-                          quoteWindowsArgument(responseFile.string());
+        quoteWindowsArgument(uploader.string()) + " " +
+        quoteWindowsArgument(config.string()) + " " +
+        quoteWindowsArgument(responseFile.string());
     STARTUPINFOA startup{};
     startup.cb = sizeof(startup);
     PROCESS_INFORMATION process{};
@@ -142,9 +132,7 @@ bool SubmissionManager::uploadOne(const std::filesystem::path& responseFile) con
     mutableCommand.push_back('\0');
     if (!CreateProcessA(nullptr, mutableCommand.data(), nullptr, nullptr, FALSE,
                         CREATE_NO_WINDOW, nullptr, applicationDirectory_.string().c_str(),
-                        &startup, &process)) {
-        return false;
-    }
+                        &startup, &process)) return false;
     CloseHandle(process.hThread);
     const DWORD waitResult = WaitForSingleObject(process.hProcess, 20000);
     DWORD exitCode = 1;
@@ -176,7 +164,6 @@ SubmissionUploadSummary SubmissionManager::uploadPendingSubmissions() {
             files.push_back(entry.path());
     }
     std::sort(files.begin(), files.end());
-
     for (const auto& file : files) {
         ++summary.attempted;
         if (uploadOne(file)) {
@@ -184,9 +171,7 @@ SubmissionUploadSummary SubmissionManager::uploadPendingSubmissions() {
             std::filesystem::remove(file, error);
             if (!error) ++summary.uploaded;
             else ++summary.pending;
-        } else {
-            ++summary.pending;
-        }
+        } else ++summary.pending;
     }
     return summary;
 }
