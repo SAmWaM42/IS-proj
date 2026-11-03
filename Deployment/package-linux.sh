@@ -36,6 +36,7 @@ mkdir -p "$STAGE/Data/Assets/white_dog_by_Brysia"
 find "$ROOT/Data/Assets/white_dog_by_Brysia" -maxdepth 1 -type f -name '*.png' -exec cp {} "$STAGE/Data/Assets/white_dog_by_Brysia/" \;
 cp "$ROOT"/Data/Study/*.json "$STAGE/Data/Study/"
 cp "$ROOT/Components/NLP/nlp_intent_service.py" "$STAGE/Components/NLP/"
+cp "$ROOT/Components/NLP/upload_submission.py" "$STAGE/Components/NLP/"
 cp "$ROOT/artifacts/training/baseline.qtable" "$ROOT/artifacts/training/proposed.qtable" "$STAGE/Policies/"
 cp -a "$ANIMAL_AGENT_PYTHON_RUNTIME" "$STAGE/runtime/python"
 LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" "$STAGE/runtime/python/bin/python3" -c 'import spacy; spacy.load("en_core_web_sm")'
@@ -69,7 +70,7 @@ Animal Agent participant application
 5. Do not move or delete files while the application is running.
 
 The application stores General Interaction memory locally in your user data directory.
-Study questionnaire responses are submitted through the forms. No automatic data upload occurs.
+Study questionnaire responses are submitted by the application. Failed uploads are retained locally and retried on the next launch.
 README
 
 mkdir -p "$DIST_DIR"
