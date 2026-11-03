@@ -19,7 +19,7 @@ public:
 
     // Persists the response first, then immediately attempts to upload it.
     // The submission key is deterministic: P{participantNumber}-S{sessionIndex}.
-    bool queueSubmission(int participantNumber, int sessionIndex,
+    bool queueSubmission(int participantNumber, int sessionIndex, char condition,
                          const nlohmann::json& responses);
 
     // Retries every pending JSON response. Successfully acknowledged files
