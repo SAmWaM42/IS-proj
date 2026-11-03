@@ -79,7 +79,7 @@ int main(int argc, char **argv)
         const auto uploadSummary = submissions.uploadPendingSubmissions();
         if (uploadSummary.pending > 0) {
             std::cerr << uploadSummary.pending
-                      << " questionnaire submission(s) remain pending upload.\\n";
+                      << " questionnaire submission(s) remain pending upload.\n";
         }
     } catch (const std::exception& error) {
         std::cerr << "Pending questionnaire uploads could not be checked: "
