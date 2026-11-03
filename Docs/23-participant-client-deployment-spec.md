@@ -315,3 +315,52 @@ The following decisions have been confirmed for this branch:
 5. **Form integration:** one unique run ID per participant attempt, shared across both condition encounters, with `session_index` 1 and 2 distinguishing the two forms/conditions.
 
 Do not block implementation on cloud upload. Resolve local persistence, participant/run identity, form-prefill, and menu contracts first. Do not add reset or local data-export functionality without a demonstrated research need.
+
+
+---
+
+## Collection-mode amendment (2026-11-03)
+
+This amendment supersedes earlier statements in this document that require Google Forms or prohibit cloud upload. The approved collection direction is now an in-app questionnaire with automatic HTTPS submission to a Vercel function, which stores questionnaire JSON in the researcher's Google Drive using Google OAuth.
+
+### Collection architecture
+
+```text
+Participant questionnaire
+        |
+        v
+SubmissionManager (local durable queue)
+        |
+        v
+Bundled Python HTTPS uploader
+        |
+        v
+Vercel Node.js function
+        |
+        v
+Google Drive folder (OAuth refresh token held by Vercel)
+```
+
+- The participant client sends questionnaire response fields only. Do not send raw interaction text, memory/affect traces, Q-tables, or application diagnostics.
+- Each participant receives a researcher-issued participant number and a unique high-entropy upload token. The participant number identifies the response; the token authenticates the upload. The common ZIP must not contain participant tokens.
+- The token is entered/provided through the participant study flow and retained only in the local pending submission record so a failed upload can be retried. The uploader removes the token before serialising the request body.
+- Submission IDs remain deterministic as `P{participantNumber}-S{sessionIndex}`, with session index 1 or 2. The same ID is used as the idempotency key.
+- The client deletes a queued response only after receiving `{"stored":true,"submission_id":"..."}` from the endpoint. Failed or ambiguous uploads remain queued and are retried on application launch.
+- The Vercel function validates the schema and participant token, then stores a JSON file in the configured Drive folder. OAuth client credentials, refresh token, folder ID, and participant-token mapping are Vercel environment variables and must never be committed or included in the desktop ZIP.
+- Drive lookup-before-create handles normal retries but does not guarantee uniqueness under simultaneous duplicate requests. A transactional database with a unique key would be required for that stronger guarantee.
+
+### Current implementation status
+
+- [x] Add Vercel backend source under `CollectionBackend/`.
+- [x] Add Google OAuth Drive storage and participant-token validation contract.
+- [x] Add client uploader Authorization header and strip token from transmitted JSON.
+- [x] Persist participant token with local pending submission for retry.
+- [x] Change packaging validation to require a configured HTTPS Vercel endpoint.
+- [x] Update deployment instructions for Vercel and Google OAuth.
+- [ ] Connect the new `queueSubmission(..., participantToken, responses)` API to the final in-app questionnaire and participant assignment UI.
+- [ ] Remove obsolete Google Forms prefill dependencies once the supplied study-flow/menu code has been integrated.
+- [ ] Deploy the Vercel project and configure OAuth and participant tokens.
+- [ ] Test endpoint authentication, durable Drive storage, duplicate retry, and offline queue recovery.
+- [ ] Build and test both platform ZIPs on clean Linux and Windows systems.
+
+**Important:** The current menu/questionnaire flow has not yet been replaced. The collection transport and server infrastructure are now present, but the participant-facing questionnaire integration is not complete. Do not recruit participants or distribute a release package until the remaining items above are completed and tested.
