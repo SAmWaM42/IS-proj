@@ -15,11 +15,8 @@ if [[ ! -x "$PYTHON" ]]; then
 fi
 "$PYTHON" -c 'import spacy; spacy.load("en_core_web_sm")'
 
-if grep -q "REPLACE_WITH_" "$ROOT/Data/Study/form-config.json"; then
-  echo "Complete Data/Study/form-config.json before packaging." >&2; exit 1
-fi
-if grep -q "REPLACE_WITH_" "$ROOT/Data/Study/upload-config.json"; then
-  echo "Configure Data/Study/upload-config.json before packaging." >&2; exit 1
+if grep -q "YOUR-VERCEL-PROJECT" "$ROOT/Data/Study/upload-config.json"; then
+  echo "Configure the Vercel endpoint in Data/Study/upload-config.json before packaging." >&2; exit 1
 fi
 for policy in baseline.qtable proposed.qtable; do
   [[ -s "$ROOT/artifacts/training/$policy" ]] || { echo "Missing trained policy: $policy" >&2; exit 1; }
