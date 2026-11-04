@@ -1,4 +1,5 @@
 #include "Components/Study/study-session-data.h"
+#include "Components/Study/questionnaire-definition.h"
 
 #include <cassert>
 #include <iostream>
@@ -143,8 +144,32 @@ void invalidResponsesAreRejected() {
 }
 }
 
+void companionQuestionnaireDefinitionIsComplete() {
+    const auto definition = study::companionBelievabilityQuestionnaire();
+    assert(definition.version == "companion-believability-v1");
+    assert(definition.conditionQuestions.size() == 26);
+    assert(definition.comparisonQuestions.size() == 8);
+
+    for (const auto& question : definition.conditionQuestions) {
+        assert(!question.id.empty());
+        assert(!question.prompt.empty());
+        if (question.type == study::AnswerType::Likert) {
+            assert(question.minimum && *question.minimum == 1);
+            assert(question.maximum && *question.maximum == 5);
+        }
+    }
+    for (const auto& question : definition.comparisonQuestions) {
+        assert(!question.id.empty());
+        assert(!question.prompt.empty());
+    }
+    assert(definition.conditionQuestions[20].id == "attention_check_agree");
+    assert(definition.conditionQuestions[24].id == "session_technical_issue");
+    assert(definition.comparisonQuestions[5].id == "comparison_blinding_check");
+}
+
 int main() {
     validPayloadsAndAssignment();
     invalidResponsesAreRejected();
+    companionQuestionnaireDefinitionIsComplete();
     std::cout << "[PASS] questionnaire response contract and validation\n";
 }
