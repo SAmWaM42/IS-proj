@@ -86,7 +86,11 @@ std::vector<std::string> validateSection(
         if (definition.type == AnswerType::Likert || definition.type == AnswerType::Integer ||
             definition.type == AnswerType::Number) {
             double numeric = 0.0;
-            if (!isNumericValue(answer.value, numeric)) continue;
+            if (!isNumericValue(answer.value, numeric)) {
+                errors.push_back(sectionName + ": non-finite numeric answer for '" +
+                                 answer.questionId + "'.");
+                continue;
+            }
             if (definition.minimum && numeric < *definition.minimum)
                 errors.push_back(sectionName + ": answer below allowed minimum for '" +
                                  answer.questionId + "'.");
