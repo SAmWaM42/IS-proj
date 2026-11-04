@@ -29,7 +29,7 @@ The participant executable is a single CMake target named IS-2 with output name 
 |---|---|---|
 | Participant menu | Free Roam / Research Session selection | Regression-test packaged build. |
 | Guided study | Consent, warm-up, 12 guided interactions, bounded free-interaction phase, per-condition rating phase | Replace browser form and finish complete in-app flow. |
-| A/B allocation | Odd/even alternation using a local counter | Load assigned ID from participant credentials; remove local counter as participant identity source. |
+| A/B allocation | Odd/even alternation now derived from ParticipantConfig in source | Build/runtime verification and stable restart recovery remain. |
 | Questionnaires | External Google Form launch and prefill configuration | Embedded SFML condition-A, condition-B, and final comparison questionnaires. |
 | Participant data | Some study JSON objects are constructed in code | Structured participant-mode response ownership, atomic local persistence, and recovery. |
 | Upload queue | Local queue, Python uploader, startup retry | Wire questionnaire completion to queue; configure real endpoint; surface acknowledged/pending state. |
