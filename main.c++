@@ -13,6 +13,12 @@
 #include "Components/Simulation/runtime-paths.h"
 #include "Components/Simulation/submission-manager.h"
 
+// CMake supplies the source-tree path for normal builds. Keep a safe fallback
+// for editors or direct compiler invocations that do not load CMake definitions.
+#ifndef IS2_SOURCE_DIR
+#define IS2_SOURCE_DIR "."
+#endif
+
 namespace
 {
     bool parsePositiveInt(const char *value, int &result)
