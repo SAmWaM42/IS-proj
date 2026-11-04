@@ -402,7 +402,8 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
                          const std::string& outputDirectoryValue,
                          bool researcherModeValue,
                          bool guidedStudyModeValue,
-                         const std::string& runtimeStatePathValue)
+                         const std::string& runtimeStatePathValue,
+                         const study::ParticipantConfig& participantConfigValue)
     : window(sf::VideoMode(sf::Vector2u(1280u, 900u)), "Animal Agent | Companion Simulation"),
       policyDirectory(policyDirectoryValue),
       outputDirectory(outputDirectoryValue),
@@ -411,6 +412,7 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
       proposed(EnvironmentConfig{}) {
     researcherMode = researcherModeValue;
     guidedStudyMode = guidedStudyModeValue;
+    participantConfig = participantConfigValue;
     baseline.setLearningEnabled(false);
     proposed.setLearningEnabled(false);
     baseline.setExplorationRate(0.0f);
@@ -488,12 +490,6 @@ bool CompanionUI::run() {
                     window.close();
                 } else if (guidedStudyMode && studyPhase == "consent" &&
                            (key->code == sf::Keyboard::Key::Y || key->code == sf::Keyboard::Key::Enter)) {
-                    {
-                        const auto counterPath = std::filesystem::path(outputDirectory) / "study-participant-counter.txt";
-                        std::ofstream counterOut(counterPath, std::ios::trunc);
-                        if (counterOut) counterOut << studyParticipantCounter << '\n';
-                        else appendLog("WARNING: participant counter could not be saved; counterbalancing may repeat on the next launch.");
-                    }
                     studyPhase = "warm_up";
                     studyStartedAt = utcTimestamp();
                     logStudyPhaseEvent("consent_accepted", "warm_up");
@@ -633,20 +629,11 @@ void CompanionUI::startNewParticipant() {
 }
 
 void CompanionUI::initialiseGuidedStudy() {
-    const auto counterPath = std::filesystem::path(outputDirectory) / "study-participant-counter.txt";
-    std::filesystem::create_directories(outputDirectory);
-    int previousCounter = 0;
-    {
-        std::ifstream input(counterPath);
-        if (input) input >> previousCounter;
-    }
-    // Reserve the next code in memory only. A declined consent must not consume
-    // a participant number or change the counterbalance sequence.
-    studyParticipantCounter = previousCounter + 1;
-    studyParticipantCode = "P" + (studyParticipantCounter < 10 ? std::string("0") : std::string()) +
-        std::to_string(studyParticipantCounter);
-    // Strict alternation: odd participants see A=baseline, even participants A=proposed.
-    agentAIsProposed = (studyParticipantCounter % 2) == 0;
+    // Assigned identity is read from credentials.json in the extracted
+    // application root. No machine-local participant counter is used.
+    studyParticipantCode = participantConfig.participantCode();
+    // Odd IDs see A=baseline; even IDs see A=proposed.
+    agentAIsProposed = participantConfig.conditionAIsProposed();
     studySessionIndex = 1;
     studyStepIndex = 0;
     studyPhase = "consent";
