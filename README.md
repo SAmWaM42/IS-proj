@@ -4,7 +4,7 @@ A C++/SFML simulated companion-animal application and research prototype. The re
 
 The project is not a general-purpose chatbot and does not currently control a physical robot. The participant application presents a bounded simulated companion in a shared environment.
 
-> **Current status (4 November 2026):** the participant executable, Free Roam / Research Session menu, guided interaction flow, baseline/proposed agents, local submission queue, and a separate authenticated web-backend implementation exist in source. The participant study pipeline is **not yet ready for real data collection**: the current questionnaire opens an external browser form, participant credentials are loaded from the extracted application root; the project owner confirms successful valid credentials.json loading, successful application/test builds, and passing focused tests, participant-mode response persistence is incomplete, the submission queue is not connected to questionnaire completion, and the endpoint is still a placeholder. See [the milestone tracker](Docs/21-participant-study-milestones.md).
+> **Current status (4 November 2026):** the participant executable, Free Roam / Research Session menu, guided interaction flow, baseline/proposed agents, local submission queue, and a separate authenticated web-backend implementation exist in source. The participant study pipeline is **not yet ready for real data collection**: the current questionnaire opens an external browser form, participant credentials are loaded from the extracted application root; the project owner confirms successful valid credentials.json loading, successful application/test builds, and passing focused tests, participant-mode response persistence is incomplete, a generic typed questionnaire response model/schema has been added but is not yet locally verified, the submission queue is not connected to questionnaire completion, and the endpoint is still a placeholder. See [the milestone tracker](Docs/21-participant-study-milestones.md).
 
 ## Research design
 
@@ -117,7 +117,7 @@ The external form launcher considers a successful browser launch sufficient to p
 2. **Participant ID source:** assigned participant number and token come from a private credentials.json placed in the root of each participant's extracted application directory (beside AnimalAgent). It is supplied separately per participant, not committed or included in the common ZIP.
 3. **A/B assignment:** odd IDs receive baseline then proposed; even IDs receive proposed then baseline. The participant number is stable across the entire study.
 4. **Questionnaires are the uploaded research dataset:** do not upload raw interaction text, memory records, affect traces, Q-table contents, or diagnostic logs. If additional derived metrics are later required, define them explicitly and check the approved protocol/consent first.
-5. **Final comparison payload:** the simplest compatible option is to attach the final comparison responses as a distinct comparison object to the second-session submission (Pxx-S2). This is a proposed schema decision to confirm before backend validation; a separate Pxx-COMP submission would require an API contract change.
+5. **Final comparison payload:** attach final comparison responses as a distinct comparison_questionnaire object to the second-session submission (Pxx-S2); session 1 carries null. This is the adopted implementation design to preserve the current two-session API pattern.
 6. **Local durability before upload:** write a complete response payload atomically to the local queue before attempting HTTP delivery. A failed upload must not discard responses.
 7. **Queueing is not acknowledgement:** UI wording must distinguish “saved locally / pending upload” from “received by server”.
 8. **Backend implementation:** SAmWaM42/IS-proj-web branch test currently contains the HMAC-authenticated API implementation. It is not yet a confirmed production deployment. Do not treat its existence as proof that Vercel/Google Drive is configured or live.
@@ -187,3 +187,16 @@ Build the participant application with `cmake --build build --target IS-2`. The 
 ### Questionnaire styling hand-off
 
 The project owner will provide a questionnaire styling template for later integration. Implement the questionnaire content/data contract and functional in-app flow without locking in final styling until that template is supplied.
+
+
+## Questionnaire response contract (M1.2)
+
+A generic typed response model has been added in Components/Study/study-session-data.h/.cpp, with the envelope schema at Data/Study/questionnaire-submission.schema.json. Each answer is identified by a stable question_id, has an answer_type, and stores a typed value. Supported generic types are likert, integer, number, single_choice, multiple_choice, text, and boolean. Each question definition can specify required status, numeric bounds, allowed options, and maximum text length.
+
+A session payload contains:
+- participant and submission metadata (Pxx-S1 or Pxx-S2);
+- questionnaire_version;
+- responses.condition_questionnaire.answers for the current condition;
+- responses.comparison_questionnaire, which is null in session 1 and contains the final A/B comparison answers in session 2.
+
+This contract does not invent the research questions or rating scales. Synthetic IDs in tests are fixtures only. The final approved question wording, scales, required status, and version must be supplied before the questionnaire is populated. The functional model is independent of the styling template the project owner will provide later. The new study_session_data_test target has been added but still needs to be built and run locally. The current web API does not yet strictly validate this schema; that is M2 work.
