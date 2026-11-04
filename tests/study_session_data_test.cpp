@@ -126,11 +126,15 @@ void invalidResponsesAreRejected() {
     });
     assert(!unknownQuestion.validate(definition).empty());
 
+    auto numericDefinition = definition;
+    numericDefinition.conditionQuestions.push_back(
+        {"optional_number_test", study::AnswerType::Number, false, {}, {}, {}, 2000});
     auto nonFinite = validSessionOne();
-    nonFinite.conditionQuestionnaire.answers[0].type = study::AnswerType::Number;
-    nonFinite.conditionQuestionnaire.answers[0].value =
-        std::numeric_limits<double>::quiet_NaN();
-    assert(!nonFinite.validate(definition).empty());
+    nonFinite.conditionQuestionnaire.answers.push_back({
+        "optional_number_test", study::AnswerType::Number,
+        std::numeric_limits<double>::quiet_NaN()
+    });
+    assert(!nonFinite.validate(numericDefinition).empty());
 
     auto duplicateDefinition = definition;
     duplicateDefinition.conditionQuestions.push_back(
