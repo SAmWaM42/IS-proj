@@ -109,8 +109,13 @@ QuestionnaireDefinition companionBelievabilityQuestionnaire() {
         choice("session_technical_issue",
                "Did anything not work properly during this session (for example a freeze or a delay)?",
                {"No", "Yes"}),
-        paragraph("session_technical_issue_details",
-                  "If yes, what happened?")
+        [] {
+            auto q = paragraph("session_technical_issue_details",
+                               "If yes, what happened?");
+            q.visibleWhenQuestionId = "session_technical_issue";
+            q.visibleWhenValues = {"Yes"};
+            return q;
+        }()
     };
 
     // Section 4: presented once, after both condition questionnaires.
@@ -134,8 +139,13 @@ QuestionnaireDefinition companionBelievabilityQuestionnaire() {
         choice("comparison_blinding_check",
                "Did you think the two companions were built differently?",
                {"Yes", "No", "Not sure"}),
-        paragraph("comparison_perceived_differences",
-                  "If yes or not sure, what did you think was different?"),
+        [] {
+            auto q = paragraph("comparison_perceived_differences",
+                               "If yes or not sure, what did you think was different?");
+            q.visibleWhenQuestionId = "comparison_blinding_check";
+            q.visibleWhenValues = {"Yes", "Not sure"};
+            return q;
+        }(),
         paragraph("comparison_additional_comments",
                   "Anything else you would like to tell us?")
     };
