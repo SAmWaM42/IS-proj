@@ -203,7 +203,7 @@ The following reflects static source inspection of deployment/participant-client
 
 ### M0 — Documentation and shared project context
 
-**Status: completed as a documentation change; GitHub commit verification pending.**
+**Status: completed and verified on the target branch (documentation only).**
 
 Goal: establish one consistent source of truth before implementation resumes.
 
