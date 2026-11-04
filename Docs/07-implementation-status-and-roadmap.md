@@ -8,7 +8,7 @@
 
 The core simulated companion and its baseline/proposed agent architecture exist. The current participant application is a single CMake executable whose output name is AnimalAgent. It opens an SFML menu with **Free Roam** and **Research Session** choices.
 
-The participant research workflow is a prototype, not a completed data-collection pipeline. Participant credentials are now parsed from credentials.json beside AnimalAgent and the guided-study local counter has been removed, but this change is not yet build/runtime verified. The application still opens an external browser questionnaire, gates study event/manifest persistence behind researcher mode, and does not call the submission manager when a participant completes a questionnaire. The upload endpoint configuration is a placeholder.
+The participant research workflow is a prototype, not a completed data-collection pipeline. Participant credentials are parsed from credentials.json beside AnimalAgent and the guided-study local counter has been removed. The project owner reports successful builds of IS-2 and participant_config_test, a passing focused CTest run, and valid credentials loading in the application; negative-path and packaged-release checks remain. The application still opens an external browser questionnaire, gates study event/manifest persistence behind researcher mode, and does not call the submission manager when a participant completes a questionnaire. The upload endpoint configuration is a placeholder.
 
 No real participant data should be collected using the current build.
 
@@ -21,7 +21,7 @@ No real participant data should be collected using the current build.
 | Shared simulation/action environment | Implemented in source | Maintain identical conditions and shared physical variables. |
 | Participant executable/menu | Implemented in source | One executable; menu selects Free Roam or Research Session. |
 | Guided study sequence | Partially implemented | Consent, warm-up, 12 prompts, bounded free period, per-condition rating phase. |
-| Stable participant identity | Partially implemented | Credentials parser and root-of-extracted-directory loading are wired; build/runtime and recovery verification remain. |
+| Stable participant identity | Partially verified | Credentials parser and A/B assignment tests pass; valid credentials loading appears to work. Invalid-file UI, packaged release path, and restart recovery remain. |
 | Embedded questionnaires | Missing | Current flow launches external browser forms. |
 | Final comparison questionnaire | Missing | Must be added to the in-app sequence. |
 | Participant response persistence | Incomplete | Participant mode does not currently persist study responses/manifests. |
