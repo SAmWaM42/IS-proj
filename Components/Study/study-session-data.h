@@ -32,6 +32,7 @@ struct QuestionDefinition {
     std::optional<double> maximum;
     std::vector<std::string> options;
     std::size_t maxLength = 2000;
+    std::string prompt;
 };
 
 struct QuestionnaireDefinition {
