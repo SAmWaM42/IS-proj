@@ -1,14 +1,107 @@
 # Project Hand-Off: Memory- and Affect-Augmented Companion Agent
 
 **Document type:** Development hand-off and specification baseline  
-**Project stage:** Architecture and initial implementation  
+**Project stage:** Participant study integration and research-pipeline completion  
 **Development approach:** Specification-driven development (SDD)  
 **Primary language:** C++  
 **NLP component:** Python + spaCy  
-**Simulation:** SFML (planned/intended)  
+**Simulation:** SFML 3 interactive participant application  
 **Persistence:** JSON using `nlohmann/json`  
 **Learning approach:** Tabular Q-learning  
-**Status:** Initial architecture defined; implementation details and interfaces require validation against the existing codebase.
+**Status:** Core simulation and agent components exist; participant identity, embedded questionnaires, response persistence, and submission integration remain incomplete.
+
+
+## Current implementation hand-off — 4 November 2026
+
+> **Authority note:** This section records the current participant-client branch and supersedes older planning statements below wherever they conflict. The detailed component sketches later in this document remain useful background, but they are not proof that a component or interface is implemented. Use the source code and [the live milestone tracker](21-participant-study-milestones.md) for current status.
+
+### Current project stage
+
+The core C++ companion simulation, baseline/proposed agent work, memory/affect components, participant menu, and a guided-study prototype are present in SAmWaM42/IS-proj branch deployment/participant-client.
+
+The immediate task is **not** to redesign the agent's behaviour or add more model features. It is to complete the participant research pipeline: assigned identity, in-app questionnaires, reliable local response persistence, authenticated submission, packaging, and end-to-end verification.
+
+The participant executable is a single CMake target named IS-2 with output name AnimalAgent. The current CMake configuration defines IS2_PARTICIPANT_BUILD=1; participants launch the executable without command-line options and choose Free Roam or Research Session from the SFML menu. The menu is a separate window, not a separate executable.
+
+### Current implementation versus intended implementation
+
+| Area | Present in source | Still required |
+|---|---|---|
+| Participant menu | Free Roam / Research Session selection | Regression-test packaged build. |
+| Guided study | Consent, warm-up, 12 guided interactions, bounded free-interaction phase, per-condition rating phase | Replace browser form and finish complete in-app flow. |
+| A/B allocation | Odd/even alternation using a local counter | Load assigned ID from participant credentials; remove local counter as participant identity source. |
+| Questionnaires | External Google Form launch and prefill configuration | Embedded SFML condition-A, condition-B, and final comparison questionnaires. |
+| Participant data | Some study JSON objects are constructed in code | Structured participant-mode response ownership, atomic local persistence, and recovery. |
+| Upload queue | Local queue, Python uploader, startup retry | Wire questionnaire completion to queue; configure real endpoint; surface acknowledged/pending state. |
+| Backend | Separate Vercel API implementation on IS-proj-web/test | Production deployment, strict response-schema validation, and live Drive verification. |
+
+Static source review found that study event/manifest writes are gated on researcherMode, but the participant application constructs the guided study with researcherMode=false. The participant path therefore does not currently persist the response dataset required by the intended study. The existing SubmissionManager is also not called by the questionnaire completion flow. These are integration gaps, not reasons to rewrite the Q-learning or memory subsystems.
+
+### Intended participant workflow
+
+~~~text
+AnimalAgent executable
+  |
+  +-- Free Roam
+  |     +-- Companion simulation
+  |
+  +-- Research Session
+        +-- Load participant credentials
+        +-- Consent
+        +-- Condition A (12 guided prompts + bounded free interaction)
+        +-- Embedded questionnaire A
+        +-- Condition B (same protocol)
+        +-- Embedded questionnaire B
+        +-- Final A/B comparison questionnaire
+        +-- Save structured responses locally
+        +-- Queue/upload questionnaire dataset
+        +-- Acknowledge success or retain for retry
+~~~
+
+### Intended architecture and file organisation
+
+New study responsibilities should be grouped under Components/Study/, incrementally:
+
+- ParticipantConfig: load the externally assigned participant number and private token.
+- StudyController: own consent, phase transitions, deterministic condition assignment, session sequence, and recovery.
+- QuestionnaireUI: display approved questions, collect answers, and validate required responses.
+- StudySessionData: own the response schema, validation, serialisation, and local draft/completion state.
+- SubmissionManager: own local queueing, HTTP delivery, retry, and upload status. It must not depend on SFML.
+
+CompanionUI remains responsible for simulation rendering and interaction. It should expose structured interaction events/results to the study controller, not own questionnaire rendering or HTTP submission. The existing SubmissionManager is currently in Components/Simulation/; do not move it as unrelated cleanup.
+
+### Important decisions and constraints
+
+1. **One participant executable:** Free Roam and Research Session are choices in the menu, not separate participant builds.
+2. **Assigned participant identity:** use a private per-participant credentials file. Proposed path: userDataRoot/credentials.json. Never include real tokens in Git or the common application package.
+3. **Counterbalancing:** odd participant IDs receive A = baseline and B = proposed; even IDs receive A = proposed and B = baseline. The same assigned ID persists across both conditions and recovery.
+4. **Frozen comparison:** both agents use the same environment, action vocabulary, scenarios, timing, and instructions. Participant sessions disable policy learning and exploration.
+5. **Questionnaire-only upload by default:** do not send raw interaction text, memory records, affect traces, Q-table data, or diagnostic logs. Any additional derived metric requires an explicit analysis purpose and protocol/consent review.
+6. **Comparison questionnaire contract:** recommended minimum-change option is to store comparison answers as a separate comparison object in the second session payload (Pxx-S2). This remains a decision to confirm before the server schema is finalised.
+7. **Local durability:** persist a complete response payload locally before upload. Failed uploads remain queued. The UI must distinguish local queueing from server acknowledgement.
+8. **Backend:** SAmWaM42/IS-proj-web branch test contains the current HMAC-authenticated API implementation; it is not evidence of a production deployment. Its current API validates metadata/condition mapping but does not yet strictly validate questionnaire answer fields.
+9. **Ethics gate:** do not collect real participant data until supervisor/institutional approval, approved consent, and a piloted questionnaire/protocol are in place.
+
+### Current build and verification facts
+
+The current CMakeLists.txt requires CMake 3.16+, C++17, SFML 3 Graphics/Window/System, and Threads. It builds target IS-2, whose output name is AnimalAgent. Optional research tests are enabled with -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=ON.
+
+The participant uploader expects a bundled Python executable under runtime/python/; it does not have the same system-Python fallback as the NLP interaction service. Data/Study/upload-config.json currently contains a placeholder Vercel URL.
+
+The documentation update was based on static source inspection only. No build, CTest run, live Vercel deployment, OAuth/Drive verification, or end-to-end participant submission was performed. Record new verification in [21-participant-study-milestones.md](21-participant-study-milestones.md).
+
+### Open decisions
+
+- Final questionnaire items, scales, question IDs, and version.
+- Whether the final comparison object is bundled into session 2 or submitted separately.
+- Whether any derived behavioural metrics are required. The default remains questionnaire-only.
+- Confirmation that userDataRoot/credentials.json is the correct per-participant installation path.
+
+### AI-assisted implementation protocol
+
+For every milestone task, inspect the current branch and relevant source/spec first; make a small change; explain design decisions; build and run focused tests; report exact files and verification; update the milestone tracker. Do not modify agent behaviour, policy design, study scenarios, or the research protocol unless the current task requires it or the project owner explicitly approves it. Ask before changing the data schema or collecting additional participant data.
+
+---
 
 ---
 
