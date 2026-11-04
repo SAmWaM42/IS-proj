@@ -168,6 +168,10 @@ void companionQuestionnaireDefinitionIsComplete() {
     assert(definition.comparisonQuestions[5].id == "comparison_blinding_check");
     assert(definition.conditionQuestions[21].scaleLabels.front() == "Not at all believable");
     assert(definition.comparisonQuestions[4].scaleLabels.front() == "I was guessing");
+    assert(definition.conditionQuestions[25].visibleWhenQuestionId == "session_technical_issue");
+    assert(definition.conditionQuestions[25].visibleWhenValues == std::vector<std::string>{"Yes"});
+    assert(definition.comparisonQuestions[6].visibleWhenQuestionId == "comparison_blinding_check");
+    assert(definition.comparisonQuestions[6].visibleWhenValues == (std::vector<std::string>{"Yes", "Not sure"}));
 }
 
 int main() {
