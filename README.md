@@ -4,7 +4,7 @@ A C++/SFML simulated companion-animal application and research prototype. The re
 
 The project is not a general-purpose chatbot and does not currently control a physical robot. The participant application presents a bounded simulated companion in a shared environment.
 
-> **Current status (4 November 2026):** the participant executable, Free Roam / Research Session menu, guided interaction flow, baseline/proposed agents, local submission queue, and a separate authenticated web-backend implementation exist in source. The participant study pipeline is **not yet ready for real data collection**: the current questionnaire opens an external browser form, participant credentials are now loaded from the extracted application root but the flow is not yet runtime-verified, participant-mode response persistence is incomplete, the submission queue is not connected to questionnaire completion, and the endpoint is still a placeholder. See [the milestone tracker](Docs/21-participant-study-milestones.md).
+> **Current status (4 November 2026):** the participant executable, Free Roam / Research Session menu, guided interaction flow, baseline/proposed agents, local submission queue, and a separate authenticated web-backend implementation exist in source. The participant study pipeline is **not yet ready for real data collection**: the current questionnaire opens an external browser form, participant credentials are loaded from the extracted application root; the project owner reports successful build, focused tests, and valid-file loading, participant-mode response persistence is incomplete, the submission queue is not connected to questionnaire completion, and the endpoint is still a placeholder. See [the milestone tracker](Docs/21-participant-study-milestones.md).
 
 ## Research design
 
@@ -107,7 +107,7 @@ The guided-study implementation includes consent, warm-up, 12 guided prompts, a 
 
 SubmissionManager can queue and upload a response object and retries pending files on application startup. However, the current participant flow does not call queueSubmission() when a questionnaire is completed. It is infrastructure, not an integrated participant pipeline.
 
-The participant identity is now loaded from credentials.json beside the AnimalAgent executable in the extracted application directory. The previous study-participant-counter.txt allocation has been removed from guided-study initialization. This source change is not yet build- or runtime-verified.
+The participant identity is now loaded from credentials.json beside the AnimalAgent executable in the extracted application directory. The previous study-participant-counter.txt allocation has been removed from guided-study initialization. The project owner reports successful builds, passing focused tests, and valid credentials loading. Invalid-file handling and packaged-release checks remain to be verified.
 
 The external form launcher considers a successful browser launch sufficient to proceed; it cannot verify that the participant actually submitted the form. The participant questionnaire must be brought inside the SFML application.
 
