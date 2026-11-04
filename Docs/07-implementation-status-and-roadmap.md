@@ -22,12 +22,12 @@ No real participant data should be collected using the current build.
 | Participant executable/menu | Implemented in source | One executable; menu selects Free Roam or Research Session. |
 | Guided study sequence | Partially implemented | Consent, warm-up, 12 prompts, bounded free period, per-condition rating phase. |
 | Stable participant identity | Partially verified | Credentials parser and A/B assignment tests pass; valid credentials loading is confirmed by the owner. Invalid-file handling, packaged release path, and restart recovery remain. |
-| Embedded questionnaires | Missing | Current flow launches external browser forms. |
+| Embedded questionnaires | Missing | Current flow launches external browser forms; a generic typed response model/schema has now been added, but no questionnaire UI or approved question content exists yet. |
 | Final comparison questionnaire | Missing | Must be added to the in-app sequence. |
 | Participant response persistence | Incomplete | Participant mode does not currently persist study responses/manifests. |
 | Local submission queue | Implemented, unconnected | Queue/retry code exists; questionnaire completion does not call it. |
 | Authenticated web API | Implemented in separate repo branch | IS-proj-web/test contains HMAC token validation and Drive storage code; deployment is unverified. |
-| Server-side questionnaire validation | Incomplete | Metadata is validated; arbitrary response fields are currently accepted. |
+| Server-side questionnaire validation | Incomplete | Client-side response model/schema drafted; current API still accepts arbitrary response fields. Align in M2. |
 | Packaging and live integration | Unverified | Bundled Python, assets, endpoint, Vercel, OAuth and Drive need tests. |
 | Research protocol/ethics | Not ready | Questionnaire/protocol approval and ethics gate remain. |
 
@@ -64,7 +64,7 @@ New study-specific code should be grouped under Components/Study/. Do not perfor
 - Both conditions use the same environment, action space, scenarios and frozen policy settings.
 - Upload questionnaire responses and required metadata only. Do not upload raw interaction text, memory records, affect traces, Q-tables or diagnostics by default.
 - Persist locally before attempting network delivery. “Queued locally” is not the same as “stored by server”.
-- Keep the final comparison questionnaire in the data contract; whether it is bundled into session 2 or sent separately remains to be confirmed.
+- Store final comparison answers in a separate comparison_questionnaire object in session 2 (Pxx-S2); session 1 carries null. This preserves the current two-submission API pattern.
 - Do not collect real participant data until the supervisor/institutional ethics process, approved consent, and questionnaire/protocol requirements are satisfied.
 - Synthetic rewards and policy metrics are engineering diagnostics, not perceived-believability results.
 
@@ -82,3 +82,8 @@ See [README.md](../README.md) for build and launch instructions, and [project-co
 **Build target clarification:** `IS-2` is the sole participant application CMake target and produces the executable file `AnimalAgent`. Free Roam and Research Session are runtime menu choices in that executable. `participant_config_test` and other optional targets enabled by `ANIMAL_AGENT_BUILD_RESEARCH_TESTS` are developer/test executables, not additional participant application builds.
 
 **Questionnaire styling:** the project owner will supply a styling template for later integration. Until then, proceed with questionnaire content/data contract and functional flow; do not assume final visual styling. The external browser form launcher remains to be replaced by an embedded SFML questionnaire.
+
+
+### M1.2 progress
+
+A generic, style-independent questionnaire response model, schema version 1, and focused C++ test source have been added under Components/Study, Data/Study, and tests. The model supports typed answers, required/optional fields, allowed options, numeric bounds, text limits, versioning, and A/B metadata validation. The final comparison is included as a separate object in Pxx-S2. No approved questionnaire content or visual styling has been invented. The new test target still requires a local build and CTest run. The web API contract has not yet been updated; that belongs to M2.
