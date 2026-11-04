@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://animal-agent.invalid/schemas/questionnaire-submission-v1.json",
+  "title": "Animal Agent questionnaire submission",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "submission_id",
+    "participant_number",
+    "session_index",
+    "condition",
+    "questionnaire_version",
+    "responses"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "submission_id": {
+      "type": "string",
+      "pattern": "^P[0-9]{2,4}-S[12]$"
+    },
+    "participant_number": { "type": "integer", "minimum": 1, "maximum": 9999 },
+    "session_index": { "enum": [1, 2] },
+    "condition": { "enum": ["A", "B"] },
+    "questionnaire_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "responses": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["condition_questionnaire", "comparison_questionnaire"],
+      "properties": {
+        "condition_questionnaire": { "$ref": "#/$defs/questionnaireResponse" },
+        "comparison_questionnaire": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/questionnaireResponse" }
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "questionnaireResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["answers"],
+      "properties": {
+        "answers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/answer" }
+        }
+      }
+    },
+    "answer": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_id", "answer_type", "value"],
+          "properties": {
+            "question_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+            "answer_type": { "const": "likert" },
+            "value": { "type": "integer" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_id", "answer_type", "value"],
+          "properties": {
+            "question_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+            "answer_type": { "const": "integer" },
+            "value": { "type": "integer" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_id", "answer_type", "value"],
+          "properties": {
+            "question_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+            "answer_type": { "const": "number" },
+            "value": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_id", "answer_type", "value"],
+          "properties": {
+            "question_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+            "answer_type": { "const": "single_choice" },
+            "value": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_id", "answer_type", "value"],
+          "properties": {
+            "question_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+            "answer_type": { "const": "multiple_choice" },
+            "value": {
+              "type": "array",
+              "items": { "type": "string" },
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_id", "answer_type", "value"],
+          "properties": {
+            "question_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+            "answer_type": { "const": "text" },
+            "value": { "type": "string", "maxLength": 2000 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question_id", "answer_type", "value"],
+          "properties": {
+            "question_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+            "answer_type": { "const": "boolean" },
+            "value": { "type": "boolean" }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "session_index": { "const": 1 } }, "required": ["session_index"] },
+      "then": { "properties": { "responses": { "properties": { "comparison_questionnaire": { "type": "null" } } } } }
+    },
+    {
+      "if": { "properties": { "session_index": { "const": 2 } }, "required": ["session_index"] },
+      "then": { "properties": { "responses": { "properties": { "comparison_questionnaire": { "$ref": "#/$defs/questionnaireResponse" } } } } }
+    }
+  ]
+}
