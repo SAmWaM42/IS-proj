@@ -71,13 +71,21 @@ Launch AnimalAgent
 - Internal agent state, memory contents, Q-values, and condition labels must not be exposed in the participant-facing UI.
 - The uploaded dataset contains questionnaire responses and required metadata only. Raw interaction text, memory records, affect traces, Q-table data, and debug logs are excluded unless the research protocol is explicitly revised and approved.
 
-### 2.2 Decisions still requiring confirmation
+### 2.2 Questionnaire content decision — 4 November 2026
+
+The project owner confirmed that `Docs/Google Form Template Companion Believability Study.md` is the source questionnaire template, and that the Google Forms implementation was abandoned due to setup difficulties. The app will use an embedded SFML questionnaire; no live Google Form URL is required. Section 2 (age range, pet ownership, virtual-pet familiarity, and computer-use comfort) is omitted. Consent remains a separate gate, while participant number, session, condition, and run metadata are supplied by the application rather than re-entered by participants.
+
+A first versioned C++ definition now transcribes the per-condition questions and final comparison questions. It includes the original Likert statements, attention check, optional free-text prompts, technical-issue report, A/B comparison, confidence, and neutral blinding check. The 3 engagement statements and comparison item are retained as secondary/exploratory measures rather than being elevated to primary outcomes. Reverse-scoring and subscale definitions remain documented in the source template and should be carried into analysis code, not used to alter participant-facing responses.
+
+This is a source transcription for implementation, not evidence of supervisor/ethics approval or psychometric validation. The consent text still contains placeholders and must be reviewed before recruitment.
+
+### 2.3 Decisions still requiring confirmation
 
 | ID | Decision | Current recommendation | Status |
 |---|---|---|---|
 | D-01 | Where is the final A/B comparison stored? | Store it as a distinct comparison_questionnaire object in Pxx-S2; Pxx-S1 contains null. This preserves the existing two-session API contract. | **Adopted for implementation; can be revised before deployment** |
 | D-02 | What research data is uploaded? | Questionnaire responses and required submission metadata only. No raw interaction text, memory/affect traces, Q-tables, or diagnostics by default. | **Adopted implementation default; protocol review still required** |
-| D-03 | Exact questionnaire items, response scales, and mandatory/optional fields. | Use a versioned questionnaire definition approved by the supervisor/protocol; do not invent items during implementation. | **Blocked on approved questionnaire content** |
+| D-03 | Exact questionnaire items, response scales, and mandatory/optional fields. | Transcribe the supplied Docs template into a versioned definition; obtain supervisor/ethics approval before recruitment. | **Draft transcribed; approval/pilot outstanding** |
 | D-04 | Where should participant credentials live? | appRoot/credentials.json, beside AnimalAgent in the root of each participant's extracted application directory; supplied separately per participant. | **Confirmed by project owner** |
 
 These decisions do not block implementing the generic questionnaire renderer or participant-credential parser, but they must be resolved before final backend validation and real data collection.
@@ -506,6 +514,10 @@ M1.1 still has separate follow-up work for missing/malformed credentials feedbac
 
 
 ### M1.2 implementation update — 4 November 2026
+
+The questionnaire source has now been transcribed into `Components/Study/questionnaire-definition.h/.cpp` as `companion-believability-v1`. It defines 26 per-condition items and 8 final comparison items, including question IDs, prompts, types, required flags, options, numeric bounds, text limits, and Likert endpoint labels. The CMake application and focused test targets include the definition; tests now check its item counts and required metadata. Section 2 demographic/context questions are intentionally excluded. Consent remains separate from questionnaire responses, and participant/session metadata is populated by the application.
+
+The Google Forms configuration is legacy and is not part of the new embedded workflow. The current implementation only defines the content/data model; it does not yet render an SFML questionnaire, persist completed responses, or connect submission. No local build or test has been run against these latest commits, so this remains implemented — unverified.
 
 A generic questionnaire response contract has been added to the participant-client branch. It is deliberately independent of the future visual template. The data model supports typed answers and separates each condition's questionnaire from the final comparison questionnaire. The comparison is stored in Pxx-S2 under a distinct object to preserve the backend's existing two-session ID pattern. The project owner has not yet supplied the approved question content, so no real prompts or rating scales are included.
 
