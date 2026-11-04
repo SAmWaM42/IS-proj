@@ -29,6 +29,7 @@ add_executable(IS-2
    Components/Simulation/submission-manager.cpp
    Components/Simulation/backyard-environment.cpp
    Components/Study/participant-config.cpp
+   Components/Study/study-session-data.cpp
 )
 
 set_target_properties(IS-2 PROPERTIES OUTPUT_NAME AnimalAgent)
@@ -86,6 +87,14 @@ add_executable(participant_config_test
 target_include_directories(participant_config_test PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/Inc)
 target_compile_options(participant_config_test PRIVATE -Wall -Wextra)
 add_test(NAME participant_config_test COMMAND participant_config_test)
+
+add_executable(study_session_data_test
+   tests/study_session_data_test.cpp
+   Components/Study/study-session-data.cpp
+)
+target_include_directories(study_session_data_test PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/Inc)
+target_compile_options(study_session_data_test PRIVATE -Wall -Wextra)
+add_test(NAME study_session_data_test COMMAND study_session_data_test)
 
 add_executable(tokenizer_probe
    tests/tokenizer_probe.cpp
