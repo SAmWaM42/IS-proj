@@ -35,6 +35,8 @@ void invalidCredentialsAreRejected() {
         R"({"participant_number":"1","token":"x"})",
         R"({"participant_number":0,"token":"x"})",
         R"({"participant_number":10000,"token":"x"})",
+        R"({"participant_number":4294967296,"token":"x"})",
+        R"({"participant_number":18446744073709551615,"token":"x"})",
         R"({"participant_number":1,"token":""})",
         R"({"participant_number":1,"token":"   "})",
         R"({"participant_number":1,"token":42})"
