@@ -1,5 +1,7 @@
 #include "questionnaire-definition.h"
 
+#include <utility>
+
 namespace study {
 namespace {
 
