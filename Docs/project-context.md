@@ -102,7 +102,7 @@ The documentation update was based on static source inspection only. No build, C
 
 ### Open decisions
 
-- Final questionnaire items, scales, question IDs, and version.
+- Supervisor/ethics approval and piloting of the transcribed questionnaire wording, scales, consent text, and analysis plan.
 - Whether the final comparison object is bundled into session 2 or submitted separately.
 - Whether any derived behavioural metrics are required. The default remains questionnaire-only.
 - Path confirmed: credentials.json is inserted into the root of the extracted application directory, beside AnimalAgent.
