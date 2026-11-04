@@ -181,6 +181,7 @@ public:
     explicit ProposedAgent(const EnvironmentConfig& config = EnvironmentConfig{});
 
     void reset();
+    void resetForStudy();
     void setExplorationRate(float epsilon);
     void advanceTime(float elapsedSeconds);
     void setLearningEnabled(bool enabled);
@@ -201,7 +202,7 @@ public:
     void loadPersistentState(const std::string& path);
     void savePersistentState(const std::string& path);
     void savePersistentContext(const std::string& path);
-
+  
     const state& getCurrentState() const;
     const SessionContext& getSessionContext() const;
     const std::vector<InteractionEvent>& getInteractionHistory() const;

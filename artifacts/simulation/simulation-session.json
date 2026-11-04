@@ -1,12 +1,22 @@
 {
-  "baseline_action": "IDLE",
-  "condition_code": "A",
-  "interaction_count": 0,
+  "baseline_action": "PLAY",
+  "condition_code": "B",
+  "interaction_count": 9,
   "interactions": [
-    "Loaded backyard atlas (free.png)",
-    "Simulation ready. Select an interaction or enter a short message."
+    "Autonomous environment-driven action: PLAY",
+    "Autonomous environment-driven action: PLAY",
+    "Autonomous environment-driven action: PLAY",
+    "Autonomous environment-driven action: PLAY",
+    "Autonomous environment-driven action: PLAY",
+    "Queued interaction (1 waiting): A sudden loud noise occurs",
+    "You: A sudden loud noise occurs",
+    "Baseline: Hides or moves away",
+    "Proposed: Vocalises",
+    "Autonomous environment-driven action: PLAY",
+    "Loaded blind condition B",
+    "Autonomous environment-driven action: PLAY"
   ],
-  "latest_stimulus": "Welcome. Choose an interaction to begin.",
-  "proposed_action": "IDLE",
-  "run_id": "run-1793274131407"
+  "latest_stimulus": "The companion responds to its surroundings.",
+  "proposed_action": "PLAY",
+  "run_id": "run-1793341125589"
 }
