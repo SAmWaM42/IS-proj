@@ -4,10 +4,12 @@ The participant release is a desktop application, not a server deployment. Build
 
 ## Runtime prerequisites for the packager
 
-The Linux and Windows scripts expect a **relocatable Python runtime** supplied through `ANIMAL_AGENT_PYTHON_RUNTIME`. It must contain the platform's Python executable, spaCy, and the `en_core_web_sm` model. Do not point this at an ordinary virtual environment unless you have verified that it is relocatable after extraction to a different path.
+The Linux script can use the project's Python virtual environment directly. Set `ANIMAL_AGENT_PYTHON_RUNTIME` to that environment's directory, or let the script auto-detect `wordTokenizer/`, `.venv/`, or `venv/` at the repository root. It copies the environment and checks that the staged interpreter can import spaCy and load `en_core_web_sm`.
 
-- Linux: `bin/python3` must exist.
-- Windows: `python.exe` must exist.
+**Important portability limitation:** a standard `venv` is not a self-contained Python distribution. Its interpreter commonly links to the base Python installation used when the environment was created. Copying it can therefore work on the build machine but fail on a participant's machine that lacks a compatible Python installation. The staged `ldd` checks catch missing shared libraries on the build machine, but cannot prove portability to a clean machine. Before distribution, test the ZIP on a clean Linux installation. If that machine does not have the matching base Python/runtime dependencies, supply a genuinely standalone Python runtime instead of the ordinary venv.
+
+- Linux: `bin/python` or `bin/python3` must exist.
+- Windows: the existing Windows script still expects a standalone runtime with `python.exe`; the Linux venv auto-detection does not apply to Windows.
 
 The Linux script also expects `ANIMAL_AGENT_SFML_RUNTIME`, containing SFML 3 shared libraries and the required non-system shared dependencies. It checks the staged executable with `ldd`. The Windows script expects `ANIMAL_AGENT_SFML_DLL_DIR` containing the SFML 3 runtime DLLs.
 
@@ -19,7 +21,7 @@ The packager itself needs the relevant platform compiler, CMake, and SFML 3 deve
 2. Configure Google OAuth, the destination Drive folder, and participant-token mapping in Vercel environment variables. See `CollectionBackend/README.md`.
 3. Set the deployed HTTPS function URL in `Data/Study/upload-config.json`.
 4. Confirm `artifacts/training/baseline.qtable` and `proposed.qtable` are the final trained policies.
-5. Prepare and validate the relocatable Python runtime on the target OS.
+5. Prepare the Python environment for the target OS. On Linux, the script can use the project venv, subject to the clean-machine portability check above. On Windows, supply a standalone runtime.
 6. Prepare the matching SFML runtime libraries.
 7. Run the platform package script on that platform.
 
