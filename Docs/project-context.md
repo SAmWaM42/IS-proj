@@ -30,7 +30,7 @@ The participant executable is a single CMake target named IS-2 with output name 
 | Participant menu | Free Roam / Research Session selection | Regression-test packaged build. |
 | Guided study | Consent, warm-up, 12 guided interactions, bounded free-interaction phase, per-condition rating phase | Replace browser form and finish complete in-app flow. |
 | A/B allocation | Odd/even alternation now derived from ParticipantConfig in source | Build/runtime verification and stable restart recovery remain. |
-| Questionnaires | External Google Form launch and prefill configuration | Embedded SFML condition-A, condition-B, and final comparison questionnaires. |
+| Questionnaires | Versioned C++ definition transcribes 26 per-condition and 8 comparison items from the Docs template; Google Forms config is legacy | Embedded SFML rendering, answer collection, validation UI, and workflow integration. |
 | Participant data | Some study JSON objects are constructed in code | Structured participant-mode response ownership, atomic local persistence, and recovery. |
 | Upload queue | Local queue, Python uploader, startup retry | Wire questionnaire completion to queue; configure real endpoint; surface acknowledged/pending state. |
 | Backend | Separate Vercel API implementation on IS-proj-web/test | Production deployment, strict response-schema validation, and live Drive verification. |
