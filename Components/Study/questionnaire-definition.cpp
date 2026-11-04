@@ -5,7 +5,7 @@
 namespace study {
 namespace {
 
-QuestionDefinition likert(const char* id, const char* prompt) {
+QuestionDefinition likert(const char* id, const char* prompt,\n                         std::vector<std::string> labels = {\n                             "Strongly disagree", "Disagree", "Neutral",\n                             "Agree", "Strongly agree"}) {
     QuestionDefinition q;
     q.id = id;
     q.type = AnswerType::Likert;
