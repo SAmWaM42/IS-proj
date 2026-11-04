@@ -8,7 +8,7 @@
 
 The core simulated companion and its baseline/proposed agent architecture exist. The current participant application is a single CMake executable whose output name is AnimalAgent. It opens an SFML menu with **Free Roam** and **Research Session** choices.
 
-The participant research workflow is a prototype, not a completed data-collection pipeline. Participant credentials are parsed from credentials.json beside AnimalAgent and the guided-study local counter has been removed. The project owner reports successful builds of IS-2 and participant_config_test, a passing focused CTest run, and valid credentials loading in the application; negative-path and packaged-release checks remain. The application still opens an external browser questionnaire, gates study event/manifest persistence behind researcher mode, and does not call the submission manager when a participant completes a questionnaire. The upload endpoint configuration is a placeholder.
+The participant research workflow is a prototype, not a completed data-collection pipeline. Participant credentials are parsed from credentials.json beside AnimalAgent and the guided-study local counter has been removed. The project owner confirms valid credentials.json loading; IS-2 and participant_config_test build successfully and the focused CTest passes. Negative-path and packaged-release checks remain. The application still opens an external browser questionnaire, gates study event/manifest persistence behind researcher mode, and does not call the submission manager when a participant completes a questionnaire. The upload endpoint configuration is a placeholder.
 
 No real participant data should be collected using the current build.
 
@@ -21,7 +21,7 @@ No real participant data should be collected using the current build.
 | Shared simulation/action environment | Implemented in source | Maintain identical conditions and shared physical variables. |
 | Participant executable/menu | Implemented in source | One executable; menu selects Free Roam or Research Session. |
 | Guided study sequence | Partially implemented | Consent, warm-up, 12 prompts, bounded free period, per-condition rating phase. |
-| Stable participant identity | Partially verified | Credentials parser and A/B assignment tests pass; valid credentials loading appears to work. Invalid-file UI, packaged release path, and restart recovery remain. |
+| Stable participant identity | Partially verified | Credentials parser and A/B assignment tests pass; valid credentials loading is confirmed by the owner. Invalid-file handling, packaged release path, and restart recovery remain. |
 | Embedded questionnaires | Missing | Current flow launches external browser forms. |
 | Final comparison questionnaire | Missing | Must be added to the in-app sequence. |
 | Participant response persistence | Incomplete | Participant mode does not currently persist study responses/manifests. |
@@ -77,3 +77,8 @@ New study-specific code should be grouped under Components/Study/. Do not perfor
 - Record exact changed files, branch/revision, commands, outcomes, and known limitations.
 
 See [README.md](../README.md) for build and launch instructions, and [project-context.md](project-context.md) for the full project hand-off.
+
+
+**Build target clarification:** `IS-2` is the sole participant application CMake target and produces the executable file `AnimalAgent`. Free Roam and Research Session are runtime menu choices in that executable. `participant_config_test` and other optional targets enabled by `ANIMAL_AGENT_BUILD_RESEARCH_TESTS` are developer/test executables, not additional participant application builds.
+
+**Questionnaire styling:** the project owner will supply a styling template for later integration. Until then, proceed with questionnaire content/data contract and functional flow; do not assume final visual styling. The external browser form launcher remains to be replaced by an embedded SFML questionnaire.
