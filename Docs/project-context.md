@@ -21,7 +21,7 @@ The core C++ companion simulation, baseline/proposed agent work, memory/affect c
 
 The immediate task is **not** to redesign the agent's behaviour or add more model features. It is to complete the participant research pipeline: assigned identity, in-app questionnaires, reliable local response persistence, authenticated submission, packaging, and end-to-end verification.
 
-The participant executable is a single CMake target named IS-2 with output name AnimalAgent. The current CMake configuration defines IS2_PARTICIPANT_BUILD=1; participants launch the executable without command-line options and choose Free Roam or Research Session from the SFML menu. The menu is a separate window, not a separate executable.
+The participant executable is a single CMake target named IS-2 with output name AnimalAgent. These are the target name and output filename for one executable, not two applications. The participant_config_test and other optional validation targets are developer/test executables only; Free Roam and Research Session remain menu choices in AnimalAgent. The current CMake configuration defines IS2_PARTICIPANT_BUILD=1; participants launch the executable without command-line options and choose Free Roam or Research Session from the SFML menu. The menu is a separate window, not a separate executable.
 
 ### Current implementation versus intended implementation
 
@@ -90,7 +90,7 @@ The participant executable now looks for credentials.json at appRoot/credentials
 
 Guided-study initialization no longer reads or writes study-participant-counter.txt. CompanionUI receives the ParticipantConfig and derives the participant code and A/B mapping from it. The token remains in the in-memory configuration for the later submission integration; this milestone does not yet submit anything.
 
-A focused C++ test source and optional CTest target cover valid odd/even participants, formatting, malformed JSON, missing fields, invalid ranges, and empty/wrong-type tokens. The project owner subsequently built both `participant_config_test` and `IS-2`, ran the focused CTest successfully, and confirmed that valid credentials loading appears to work. The initial test failure was a mistaken expectation for even participant 100; the assertion was corrected in commit 3f09f40. M1.1 is therefore verified for compilation, parser/allocation tests, and the valid-credentials startup path as manually checked. Missing/malformed credentials UI behaviour, release-layout verification, and stable run/session recovery remain outstanding.
+A focused C++ test source and optional CTest target cover valid odd/even participants, formatting, malformed JSON, missing fields, invalid ranges, and empty/wrong-type tokens. The project owner subsequently built both `participant_config_test` and `IS-2`, ran the focused CTest successfully, and confirmed that valid credentials.json loading works in the application. The initial test failure was a mistaken expectation for even participant 100; the assertion was corrected in commit 3f09f40. M1.1 is therefore verified for compilation, parser/allocation tests, and the valid-credentials startup path as manually checked. Missing/malformed credentials behaviour, release-layout verification, and stable run/session recovery remain outstanding.
 
 ### Current build and verification facts
 
@@ -1017,3 +1017,8 @@ Produce:
 Do not rewrite the system or generate every class at once. Use the specifications to guide incremental development and validate each increment before moving on.
 
 **Primary objective:** Deliver the smallest complete, scientifically defensible companion-agent experiment within the available time, without sacrificing architectural clarity or the ability to explain the implementation.
+
+
+### Questionnaire styling hand-off — 4 November 2026
+
+The project owner will prepare a visual styling template for the questionnaire and provide it for integration later. Do not finalise the questionnaire's visual styling before receiving that template. Continue with the questionnaire structure, approved question content, response schema, and functional in-app flow independently. The existing external browser form launcher is not considered an embedded questionnaire implementation.
