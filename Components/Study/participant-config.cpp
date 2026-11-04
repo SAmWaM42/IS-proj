@@ -2,6 +2,7 @@
 
 #include <json.hpp>
 
+#include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -34,7 +35,16 @@ ParticipantConfig ParticipantConfig::parse(std::istream& input) {
         !document.at("participant_number").is_number_integer())
         throw std::runtime_error("credentials.json must contain an integer participant_number.");
 
-    const int number = document.at("participant_number").get<int>();
+    const auto& numberValue = document.at("participant_number");
+    std::int64_t number = 0;
+    if (numberValue.is_number_unsigned()) {
+        const auto unsignedNumber = numberValue.get<std::uint64_t>();
+        if (unsignedNumber > 9999)
+            throw std::runtime_error("participant_number must be between 1 and 9999.");
+        number = static_cast<std::int64_t>(unsignedNumber);
+    } else {
+        number = numberValue.get<std::int64_t>();
+    }
     if (number < 1 || number > 9999)
         throw std::runtime_error("participant_number must be between 1 and 9999.");
 
@@ -45,7 +55,7 @@ ParticipantConfig ParticipantConfig::parse(std::istream& input) {
     if (tokenValue.empty())
         throw std::runtime_error("The participant upload token in credentials.json is empty.");
 
-    return ParticipantConfig{number, tokenValue};
+    return ParticipantConfig{static_cast<int>(number), tokenValue};
 }
 
 ParticipantConfig ParticipantConfig::load(const std::filesystem::path& path) {
