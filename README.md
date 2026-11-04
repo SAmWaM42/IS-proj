@@ -4,7 +4,7 @@ A C++/SFML simulated companion-animal application and research prototype. The re
 
 The project is not a general-purpose chatbot and does not currently control a physical robot. The participant application presents a bounded simulated companion in a shared environment.
 
-> **Current status (4 November 2026):** the participant executable, Free Roam / Research Session menu, guided interaction flow, baseline/proposed agents, local submission queue, and a separate authenticated web-backend implementation exist in source. The participant study pipeline is **not yet ready for real data collection**: the current questionnaire opens an external browser form, participant identity still comes from a machine-local counter, participant-mode response persistence is incomplete, the submission queue is not connected to questionnaire completion, and the endpoint is still a placeholder. See [the milestone tracker](Docs/21-participant-study-milestones.md).
+> **Current status (4 November 2026):** the participant executable, Free Roam / Research Session menu, guided interaction flow, baseline/proposed agents, local submission queue, and a separate authenticated web-backend implementation exist in source. The participant study pipeline is **not yet ready for real data collection**: the current questionnaire opens an external browser form, participant credentials are now loaded from the extracted application root but the flow is not yet runtime-verified, participant-mode response persistence is incomplete, the submission queue is not connected to questionnaire completion, and the endpoint is still a placeholder. See [the milestone tracker](Docs/21-participant-study-milestones.md).
 
 ## Research design
 
@@ -59,7 +59,7 @@ main.c++
       CompanionUI
     Research Session
       ParticipantConfig
-        credentials.json (per-participant, private, outside the repository)
+        credentials.json (per-participant, private, placed beside AnimalAgent after extraction)
       StudyController
         Consent
         Condition A
@@ -107,14 +107,14 @@ The guided-study implementation includes consent, warm-up, 12 guided prompts, a 
 
 SubmissionManager can queue and upload a response object and retries pending files on application startup. However, the current participant flow does not call queueSubmission() when a questionnaire is completed. It is infrastructure, not an integrated participant pipeline.
 
-The current participant identity is generated from study-participant-counter.txt in the local study output directory. This is unsuitable for participants on separate machines or fresh installations. The intended per-participant credentials.json loader is not yet wired into the participant path.
+The participant identity is now loaded from credentials.json beside the AnimalAgent executable in the extracted application directory. The previous study-participant-counter.txt allocation has been removed from guided-study initialization. This source change is not yet build- or runtime-verified.
 
 The external form launcher considers a successful browser launch sufficient to proceed; it cannot verify that the participant actually submitted the form. The participant questionnaire must be brought inside the SFML application.
 
 ## Important decisions and constraints
 
 1. **Single participant executable:** Free Roam and Research Session are menu choices in one application, not separate participant executables.
-2. **Participant ID source:** assigned participant number and token come from a private per-participant credentials file in the OS user-data directory (proposed path: userDataRoot/credentials.json). Do not commit or bundle real credentials.
+2. **Participant ID source:** assigned participant number and token come from a private credentials.json placed in the root of each participant's extracted application directory (beside AnimalAgent). It is supplied separately per participant, not committed or included in the common ZIP.
 3. **A/B assignment:** odd IDs receive baseline then proposed; even IDs receive proposed then baseline. The participant number is stable across the entire study.
 4. **Questionnaires are the uploaded research dataset:** do not upload raw interaction text, memory records, affect traces, Q-table contents, or diagnostic logs. If additional derived metrics are later required, define them explicitly and check the approved protocol/consent first.
 5. **Final comparison payload:** the simplest compatible option is to attach the final comparison responses as a distinct comparison object to the second-session submission (Pxx-S2). This is a proposed schema decision to confirm before backend validation; a separate Pxx-COMP submission would require an API contract change.
@@ -160,7 +160,7 @@ Run these checks on the exact revision being evaluated. A historical test report
 - Data/Study/upload-config.json must contain the real deployed /api/submissions endpoint before upload can work. It currently contains a placeholder.
 - The participant uploader expects the bundled Python runtime at runtime/python/ (python.exe on Windows or bin/python3 on Linux). Unlike the NLP interaction path, the uploader does not fall back to a system Python executable.
 - The NLP interaction service can use a bundled or system Python runtime and has a keyword fallback when the spaCy service is unavailable.
-- Real participant tokens must be held in the per-participant credentials file, not in source control, upload-config.json, or the common application package.
+- Real participant tokens must be held only in the per-participant credentials.json beside AnimalAgent, not in source control, upload-config.json, or the common application ZIP.
 
 ## Documentation map
 
