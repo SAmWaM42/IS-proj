@@ -76,8 +76,8 @@ CompanionUI remains responsible for simulation rendering and interaction. It sho
 2. **Assigned participant identity:** use a private per-participant credentials file. Confirmed path: appRoot/credentials.json, beside the executable in the root of the extracted application directory. Never include real tokens in Git or the common application package.
 3. **Counterbalancing:** odd participant IDs receive A = baseline and B = proposed; even IDs receive A = proposed and B = baseline. The same assigned ID persists across both conditions and recovery.
 4. **Frozen comparison:** both agents use the same environment, action vocabulary, scenarios, timing, and instructions. Participant sessions disable policy learning and exploration.
-5. **Questionnaire-only upload by default:** do not send raw interaction text, memory records, affect traces, Q-table data, or diagnostic logs. Any additional derived metric requires an explicit analysis purpose and protocol/consent review.
-6. **Comparison questionnaire contract:** recommended minimum-change option is to store comparison answers as a separate comparison object in the second session payload (Pxx-S2). This remains a decision to confirm before the server schema is finalised.
+5. **Questionnaire-only upload:** send questionnaire responses and required metadata only. Do not send raw interaction text, memory records, affect traces, Q-table data, or diagnostic logs. Any additional derived metric requires an explicit analysis purpose and protocol/consent review.
+6. **Comparison questionnaire contract:** adopted implementation design is to store comparison answers as a separate comparison_questionnaire object in the second session payload (Pxx-S2); session 1 carries null. This keeps the current two-session submission ID/API shape.
 7. **Local durability:** persist a complete response payload locally before upload. Failed uploads remain queued. The UI must distinguish local queueing from server acknowledgement.
 8. **Backend:** SAmWaM42/IS-proj-web branch test contains the current HMAC-authenticated API implementation; it is not evidence of a production deployment. Its current API validates metadata/condition mapping but does not yet strictly validate questionnaire answer fields.
 9. **Ethics gate:** do not collect real participant data until supervisor/institutional approval, approved consent, and a piloted questionnaire/protocol are in place.
@@ -1022,3 +1022,18 @@ Do not rewrite the system or generate every class at once. Use the specification
 ### Questionnaire styling hand-off — 4 November 2026
 
 The project owner will prepare a visual styling template for the questionnaire and provide it for integration later. Do not finalise the questionnaire's visual styling before receiving that template. Continue with the questionnaire structure, approved question content, response schema, and functional in-app flow independently. The existing external browser form launcher is not considered an embedded questionnaire implementation.
+
+
+### M1.2 response contract implementation update — 4 November 2026
+
+The participant-client branch now contains a generic, style-independent response model:
+- Components/Study/study-session-data.h/.cpp defines AnswerType, a typed AnswerValue, question definitions, questionnaire responses, and StudySessionData.
+- Data/Study/questionnaire-submission.schema.json describes schema version 1.
+- tests/study_session_data_test.cpp contains synthetic validation and serialization fixtures.
+- CMakeLists.txt includes the model in the participant executable and registers a focused test target when research tests are enabled.
+
+The envelope contains participant/session/condition metadata, questionnaire version, condition answers, and an optional comparison answer section. The comparison is required in session 2 and forbidden in session 1. Generic answer types are Likert/integer/number/single-choice/multiple-choice/text/boolean. Per-question validation can enforce required status, numeric bounds, choice options, and text length.
+
+This is a generic data contract only. It does not define or imply the approved study questions, item wording, Likert endpoints, or scales. Synthetic test IDs are not research items. The project owner will provide the final question content and a separate styling template; the data model must not constrain that visual styling.
+
+The new C++ target and CTest have not yet been run by the project owner. The web endpoint in IS-proj-web/test still does not validate these answer fields; backend alignment is deferred to M2.
