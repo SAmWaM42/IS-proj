@@ -37,7 +37,7 @@ elseif(MSVC)
    set_property(TARGET IS-2 PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-target_compile_definitions(IS-2 PRIVATE IS2_PARTICIPANT_BUILD=1 IS2_SOURCE_DIR="." IS2_GIT_REVISION="${IS2_GIT_REVISION}")
+target_compile_definitions(IS-2 PRIVATE IS2_PARTICIPANT_BUILD=1 IS2_SOURCE_DIR="${CMAKE_SOURCE_DIR}" IS2_GIT_REVISION="${IS2_GIT_REVISION}")
 
 target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}
@@ -117,8 +117,5 @@ add_test(NAME legacy_believability_study_pipeline_tests
 
 add_test(NAME companion_believability_analysis_tests
    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_companion_believability_analysis.py
-)
-target_compile_definitions(main.c++ PRIVATE
-    IS2_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 endif() # ANIMAL_AGENT_BUILD_RESEARCH_TESTS
