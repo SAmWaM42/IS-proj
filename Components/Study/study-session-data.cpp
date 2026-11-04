@@ -1,6 +1,7 @@
 #include "study-session-data.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <set>
 #include <sstream>
@@ -16,6 +17,7 @@ bool isNumericValue(const AnswerValue& value, double& output) {
         return true;
     }
     if (const auto* number = std::get_if<double>(&value)) {
+        if (!std::isfinite(*number)) return false;
         output = *number;
         return true;
     }
@@ -48,7 +50,16 @@ std::vector<std::string> validateSection(
 
     std::vector<std::string> errors;
     std::unordered_map<std::string, const QuestionDefinition*> definitions;
-    for (const auto& question : questions) definitions.emplace(question.id, &question);
+    for (const auto& question : questions) {
+        if (question.id.empty()) {
+            errors.push_back(sectionName + ": questionnaire definition contains an empty question ID.");
+            continue;
+        }
+        if (!definitions.emplace(question.id, &question).second)
+            errors.push_back(sectionName + ": duplicate question definition ID '" + question.id + "'.");
+        if (question.minimum && question.maximum && *question.minimum > *question.maximum)
+            errors.push_back(sectionName + ": invalid numeric range for question '" + question.id + "'.");
+    }
 
     std::set<std::string> seen;
     for (const auto& answer : response.answers) {
@@ -91,7 +102,7 @@ std::vector<std::string> validateSection(
         } else if (definition.type == AnswerType::MultipleChoice) {
             const auto& selected = std::get<std::vector<std::string>>(answer.value);
             std::set<std::string> unique;
-            if (selected.empty())
+            if (selected.empty() && definition.required)
                 errors.push_back(sectionName + ": empty selection for question '" +
                                  answer.questionId + "'.");
             for (const auto& option : selected) {
