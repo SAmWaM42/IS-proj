@@ -22,8 +22,8 @@ No real participant data should be collected using the current build.
 | Participant executable/menu | Implemented in source | One executable; menu selects Free Roam or Research Session. |
 | Guided study sequence | Partially implemented | Consent, warm-up, 12 prompts, bounded free period, per-condition rating phase. |
 | Stable participant identity | Partially verified | Credentials parser and A/B assignment tests pass; valid credentials loading is confirmed by the owner. Invalid-file handling, packaged release path, and restart recovery remain. |
-| Embedded questionnaires | Missing | Current flow launches external browser forms; a generic typed response model/schema has now been added, but no questionnaire UI or approved question content exists yet. |
-| Final comparison questionnaire | Missing | Must be added to the in-app sequence. |
+| Questionnaire content/data model | Implemented — unverified | `companion-believability-v1` transcribes 26 per-condition items and 8 comparison items from the Docs template; demographic/context questions are omitted. No SFML questionnaire UI yet. |
+| Final comparison questionnaire content | Defined — unverified | Eight comparison items are defined in the same versioned questionnaire source; rendering and workflow integration remain. |
 | Participant response persistence | Incomplete | Participant mode does not currently persist study responses/manifests. |
 | Local submission queue | Implemented, unconnected | Queue/retry code exists; questionnaire completion does not call it. |
 | Authenticated web API | Implemented in separate repo branch | IS-proj-web/test contains HMAC token validation and Drive storage code; deployment is unverified. |
@@ -86,4 +86,4 @@ See [README.md](../README.md) for build and launch instructions, and [project-co
 
 ### M1.2 progress
 
-A generic, style-independent questionnaire response model, schema version 1, and focused C++ test source have been added under Components/Study, Data/Study, and tests. The model supports typed answers, required/optional fields, allowed options, numeric bounds, text limits, versioning, and A/B metadata validation. The final comparison is included as a separate object in Pxx-S2. No approved questionnaire content or visual styling has been invented. The new test target still requires a local build and CTest run. The web API contract has not yet been updated; that belongs to M2.
+The generic response model is now populated by `companion-believability-v1` in Components/Study/questionnaire-definition.h/.cpp. It defines 26 per-condition items and 8 final comparison items from `Docs/Google Form Template Companion Believability Study.md`, with stable IDs, prompts, types, required flags, options, 1–5 bounds, text limits, and scale endpoint labels. Section 2 demographic/context questions are omitted; consent is a separate gate and session metadata comes from the app. Engagement remains secondary/exploratory. The CMake application and test targets include the definition, and the focused test checks its structure. This is still an unverified draft transcription: no local build/CTest run has been reported, no SFML questionnaire UI exists yet, and supervisor/ethics approval and piloting remain necessary. The web API contract has not yet been updated; that belongs to M2.
