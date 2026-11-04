@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <variant>
 #include <vector>
@@ -118,6 +119,23 @@ void invalidResponsesAreRejected() {
         std::string(41, 'x')
     });
     assert(!oversizedText.validate(definition).empty());
+
+    auto unknownQuestion = validSessionOne();
+    unknownQuestion.conditionQuestionnaire.answers.push_back({
+        "not_in_questionnaire", study::AnswerType::Boolean, true
+    });
+    assert(!unknownQuestion.validate(definition).empty());
+
+    auto nonFinite = validSessionOne();
+    nonFinite.conditionQuestionnaire.answers[0].type = study::AnswerType::Number;
+    nonFinite.conditionQuestionnaire.answers[0].value =
+        std::numeric_limits<double>::quiet_NaN();
+    assert(!nonFinite.validate(definition).empty());
+
+    auto duplicateDefinition = definition;
+    duplicateDefinition.conditionQuestions.push_back(
+        duplicateDefinition.conditionQuestions.front());
+    assert(!validSessionOne().validate(duplicateDefinition).empty());
 }
 }
 
