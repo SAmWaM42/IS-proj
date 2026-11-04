@@ -118,5 +118,7 @@ add_test(NAME legacy_believability_study_pipeline_tests
 add_test(NAME companion_believability_analysis_tests
    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_companion_believability_analysis.py
 )
-
+target_compile_definitions(main.c++ PRIVATE
+    IS2_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+)
 endif() # ANIMAL_AGENT_BUILD_RESEARCH_TESTS
