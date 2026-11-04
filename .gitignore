@@ -9,6 +9,8 @@ compile_commands.json
 CTestTestfile.cmake
 _deps/
 build/
+dist
+build-linux-release
 
 # ====================================================================
 # IDE & System Files (Optional but Recommended)
