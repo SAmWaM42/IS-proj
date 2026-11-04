@@ -21,6 +21,7 @@
 
 namespace
 {
+#ifndef IS2_PARTICIPANT_BUILD
     bool parsePositiveInt(const char *value, int &result)
     {
         if (value == nullptr || *value == '\0')
@@ -51,6 +52,7 @@ namespace
             << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
             << "Run --train before --validate, --compare, --study, --diagnose-idle, or --diagnose-temporal. --resume-training continues existing Q-tables. Evaluation disables policy updates.\n";
     }
+#endif
 } // namespace
 
 int main(int argc, char **argv)
