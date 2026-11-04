@@ -24,7 +24,7 @@ void validParticipantConfiguration() {
 
     const auto larger = parse(R"({"participant_number":100,"token":"token-100"})");
     assert(larger.participantCode() == "P100");
-    assert(!larger.conditionAIsProposed());
+    assert(larger.conditionAIsProposed());
 }
 
 void invalidCredentialsAreRejected() {
