@@ -82,6 +82,12 @@ CompanionUI remains responsible for simulation rendering and interaction. It sho
 8. **Backend:** SAmWaM42/IS-proj-web branch test contains the current HMAC-authenticated API implementation; it is not evidence of a production deployment. Its current API validates metadata/condition mapping but does not yet strictly validate questionnaire answer fields.
 9. **Ethics gate:** do not collect real participant data until supervisor/institutional approval, approved consent, and a piloted questionnaire/protocol are in place.
 
+### M1.2 questionnaire content update — 4 November 2026
+
+The source template at `Docs/Google Form Template Companion Believability Study.md` is now treated as the questionnaire source. The project owner clarified that a document-based template was chosen because Google Forms setup was problematic; a live Google Form is not required. Section 2 demographic/context questions are omitted. Consent remains a separate gate, and session/condition/run/participant metadata are supplied by the application.
+
+`Components/Study/questionnaire-definition.h/.cpp` defines `companion-believability-v1` with 26 per-condition items and 8 comparison items. It preserves the template's prompts, 1–5 scales and endpoint labels, answer options, optional text questions, attention check, technical-issue reporting, and neutral blinding check. Engagement items are retained as secondary/exploratory measures, not reclassified as primary outcomes. This is a draft transcription, not supervisor/ethics approval or validation. The definition is registered in the application and focused test targets, but the latest revision has not been built or tested locally. SFML questionnaire rendering and participant-flow integration remain outstanding.
+
 ### M1.1 implementation update — 4 November 2026
 
 The first M1.1 source increment adds Components/Study/participant-config.h/.cpp. It parses a JSON object containing integer participant_number (1–9999) and non-empty string token. Participant codes are formatted as P01, P02, etc.; odd IDs map condition A to baseline and even IDs map condition A to proposed.
