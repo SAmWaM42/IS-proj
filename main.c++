@@ -91,7 +91,7 @@ int main(int argc, char **argv)
         }
     } catch (const std::exception& error) {
         std::cerr << "Pending questionnaire uploads could not be checked: "
-                  << error.what() << '\\n';
+                  << error.what() << '\n';
     }
     const auto packagedPolicies = appRoot / "Policies";
     const std::string policyDirectory =
