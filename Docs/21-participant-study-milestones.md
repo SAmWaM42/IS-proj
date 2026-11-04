@@ -75,8 +75,8 @@ Launch AnimalAgent
 
 | ID | Decision | Current recommendation | Status |
 |---|---|---|---|
-| D-01 | Should the final A/B comparison be stored as a separate submission or included with session 2? | Include a separate comparison object in Pxx-S2 to preserve the current two-session API contract. | **Proposed — confirm before backend schema work** |
-| D-02 | Should any derived behavioural metrics be uploaded in addition to questionnaires? | No. Keep uploads questionnaire-only unless a specific metric, analysis purpose, consent basis, and retention rule are agreed. | **Default recommendation; confirm if scope changes** |
+| D-01 | Where is the final A/B comparison stored? | Store it as a distinct comparison_questionnaire object in Pxx-S2; Pxx-S1 contains null. This preserves the existing two-session API contract. | **Adopted for implementation; can be revised before deployment** |
+| D-02 | What research data is uploaded? | Questionnaire responses and required submission metadata only. No raw interaction text, memory/affect traces, Q-tables, or diagnostics by default. | **Adopted implementation default; protocol review still required** |
 | D-03 | Exact questionnaire items, response scales, and mandatory/optional fields. | Use a versioned questionnaire definition approved by the supervisor/protocol; do not invent items during implementation. | **Blocked on approved questionnaire content** |
 | D-04 | Where should participant credentials live? | appRoot/credentials.json, beside AnimalAgent in the root of each participant's extracted application directory; supplied separately per participant. | **Confirmed by project owner** |
 
@@ -270,18 +270,38 @@ The initial CTest run failed because the test incorrectly expected participant 1
 
 #### M1.2 — Questionnaire content and data contract
 
+**Status: in progress — generic response model and schema drafted; approved question content remains outstanding.**
+
 - [ ] Obtain the final approved per-condition questionnaire items and response scales.
 - [ ] Obtain the final approved A/B comparison items.
-- [ ] Define required/optional questions, allowed values, unanswered handling, and questionnaire version.
-- [ ] Define a typed JSON representation in StudySessionData.
-- [ ] Decide D-01 (comparison object bundled into session 2 or separate submission).
-- [ ] Confirm D-02 (questionnaire-only upload; current recommendation is yes).
+- [ ] Define the final required/optional status and allowed values for each approved item.
+- [x] Define a typed response model and JSON representation in StudySessionData (generic model; no research prompts or scales invented).
+- [x] Adopt D-01: comparison answers are stored as a separate comparison_questionnaire object in Pxx-S2; Pxx-S1 contains null.
+- [x] Adopt D-02 as the implementation default: upload questionnaire answers and required metadata only.
+- [x] Add a versioned submission JSON Schema and focused C++ validation test target.
+- [ ] Confirm the actual questionnaire version and question IDs once the approved instrument is supplied.
+- [ ] Align and strictly validate the same contract in IS-proj-web before any live submissions.
+
+**Current response contract (schema version 1):**
+- Top-level metadata: schema_version, submission_id (Pxx-S1 or Pxx-S2), participant_number, session_index, condition (A/B), and questionnaire_version.
+- responses.condition_questionnaire.answers: array of {question_id, answer_type, value} records for the condition just completed.
+- responses.comparison_questionnaire: null for session 1; an answer object for session 2.
+- Supported generic answer types: likert, integer, number, single_choice, multiple_choice, text, and boolean.
+- Each question definition provides a stable ID, type, required flag, optional numeric bounds, allowed options, and text length limit.
+- Validation rejects unknown/duplicate answer IDs, missing required answers, type mismatches, out-of-range numbers, invalid choices, duplicate multi-select options, oversized text, wrong A/B assignment, version mismatch, and comparison answers in the wrong session.
+- No question wording, rating scale, or research item has been assumed. The current test question IDs are explicitly synthetic fixtures.
+
+**Source changes added (not yet built or executed):**
+- Components/Study/study-session-data.h/.cpp — typed answer model, session metadata, validation, submission ID and JSON serialization.
+- Data/Study/questionnaire-submission.schema.json — JSON Schema for the submission envelope and answer types.
+- tests/study_session_data_test.cpp — synthetic valid/invalid response fixtures.
+- CMakeLists.txt — adds study-session-data.cpp to IS-2 and registers study_session_data_test under ANIMAL_AGENT_BUILD_RESEARCH_TESTS.
 
 **Acceptance criteria**
-- Every question has a stable key, type, prompt, allowed answer range/options, and required/optional rule.
-- Invalid or missing required answers cannot be marked complete.
-- The payload records the questionnaire version and distinguishes condition A, condition B, and comparison answers.
-- The UI does not expose internal condition identity (baseline/proposed) to participants.
+- Every approved question has a stable key, type, prompt, allowed answer range/options, and required/optional rule (blocked on approved content).
+- Invalid or missing required answers cannot be marked complete (generic validator implemented; tests pending).
+- The payload records questionnaire version and separates condition and comparison responses (source implemented; tests pending).
+- The UI does not expose internal condition identity (UI integration is later in M1.3).
 
 #### M1.3 — Embedded questionnaire UI
 
@@ -489,3 +509,10 @@ Add one row per meaningful verification. Include command, environment, and exact
 Continue M1.1 with missing/malformed credentials handling and stable session/restart identity. The valid credentials path, focused test, and participant application build have been verified. For questionnaire work, define the data contract and implement the functional embedded flow first; integrate the project owner's styling template when supplied.
 
 Before editing, inspect the current participant startup and guided-study initialization again. Implement the credential schema/loader and assignment tests as a small increment. Do not yet change the agent's memory/affect model, Q-learning policy, scenario design, or visual theme; those are outside the first milestone.
+
+
+### M1.2 implementation update — 4 November 2026
+
+A generic questionnaire response contract has been added to the participant-client branch. It is deliberately independent of the future visual template. The data model supports typed answers and separates each condition's questionnaire from the final comparison questionnaire. The comparison is stored in Pxx-S2 under a distinct object to preserve the backend's existing two-session ID pattern. The project owner has not yet supplied the approved question content, so no real prompts or rating scales are included.
+
+The new source and test target have been added to CMake, but the project owner has not yet built or run them. Do not mark M1.2 verified until the new target and tests pass on the current branch revision. The web API still accepts arbitrary response fields; strict server-side validation and deployment alignment are M2 tasks.
