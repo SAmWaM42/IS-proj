@@ -4,7 +4,7 @@ A C++/SFML simulated companion-animal application and research prototype. The re
 
 The project is not a general-purpose chatbot and does not currently control a physical robot. The participant application presents a bounded simulated companion in a shared environment.
 
-> **Current status (4 November 2026):** the participant executable, Free Roam / Research Session menu, guided interaction flow, baseline/proposed agents, local submission queue, and a separate authenticated web-backend implementation exist in source. The participant study pipeline is **not yet ready for real data collection**: the current questionnaire opens an external browser form, participant credentials are loaded from the extracted application root; the project owner reports successful build, focused tests, and valid-file loading, participant-mode response persistence is incomplete, the submission queue is not connected to questionnaire completion, and the endpoint is still a placeholder. See [the milestone tracker](Docs/21-participant-study-milestones.md).
+> **Current status (4 November 2026):** the participant executable, Free Roam / Research Session menu, guided interaction flow, baseline/proposed agents, local submission queue, and a separate authenticated web-backend implementation exist in source. The participant study pipeline is **not yet ready for real data collection**: the current questionnaire opens an external browser form, participant credentials are loaded from the extracted application root; the project owner confirms successful valid credentials.json loading, successful application/test builds, and passing focused tests, participant-mode response persistence is incomplete, the submission queue is not connected to questionnaire completion, and the endpoint is still a placeholder. See [the milestone tracker](Docs/21-participant-study-milestones.md).
 
 ## Research design
 
@@ -143,7 +143,7 @@ cmake --build build --target IS-2
 ./build/AnimalAgent
 ~~~
 
-The CMake target is named IS-2, but its output executable is AnimalAgent. The current CMake target defines IS2_PARTICIPANT_BUILD=1; the participant executable is launched without command-line modes and opens the menu. Do not use older README instructions such as ./build/IS-2 --sim for this participant build.
+The CMake target is named IS-2, but its output executable is AnimalAgent. These refer to the same single participant application; Free Roam and Research Session are runtime menu choices. Additional targets such as participant_config_test are developer/test executables, not alternative participant applications. The current CMake target defines IS2_PARTICIPANT_BUILD=1; the participant executable is launched without command-line modes and opens the menu. Do not use older README instructions such as ./build/IS-2 --sim for this participant build.
 
 Optional research tests are configured with:
 
@@ -178,3 +178,12 @@ Run these checks on the exact revision being evaluated. A historical test report
 - Ask before making a decision that changes the research protocol or the submitted data schema.
 - Update the milestone tracker and context documents when a decision or verified implementation status changes.
 - Report exact files changed and tests run. Never claim a build, deployment, or end-to-end workflow was verified unless it was actually executed.
+
+
+### Build target note
+
+Build the participant application with `cmake --build build --target IS-2`. The produced executable is named `AnimalAgent`. The CMake target name and output filename are two names for the same application. Optional research-test targets (for example `participant_config_test`) are separate test executables and are not participant-facing builds or modes.
+
+### Questionnaire styling hand-off
+
+The project owner will provide a questionnaire styling template for later integration. Implement the questionnaire content/data contract and functional in-app flow without locking in final styling until that template is supplied.
