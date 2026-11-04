@@ -34,6 +34,8 @@ struct QuestionDefinition {
     std::size_t maxLength = 2000;
     std::string prompt;
     std::vector<std::string> scaleLabels;
+    std::string visibleWhenQuestionId;
+    std::vector<std::string> visibleWhenValues;
 };
 
 struct QuestionnaireDefinition {
