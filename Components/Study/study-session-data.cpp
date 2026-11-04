@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <set>
 #include <sstream>
-#include <type_traits>
+#include <utility>
 #include <unordered_map>
 
 namespace study {
