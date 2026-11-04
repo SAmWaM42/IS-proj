@@ -4,6 +4,8 @@
 
 class ParticipantMenu {
 public:
+    // The visual labels are Free Play and Research Session; these choices map
+    // onto the existing application flow without changing its study logic.
     enum class Choice { GeneralInteraction, BelievabilityStudy, Exit };
 
     ParticipantMenu();
@@ -12,8 +14,6 @@ public:
 private:
     sf::RenderWindow window;
     sf::Font font;
-    bool fontLoaded = false;
 
     void draw();
-    void drawOption(const sf::String& label, float y, bool hovered);
 };
