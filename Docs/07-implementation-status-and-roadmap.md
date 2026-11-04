@@ -8,7 +8,7 @@
 
 The core simulated companion and its baseline/proposed agent architecture exist. The current participant application is a single CMake executable whose output name is AnimalAgent. It opens an SFML menu with **Free Roam** and **Research Session** choices.
 
-The participant research workflow is a prototype, not a completed data-collection pipeline. In particular, the current source still uses a machine-local participant counter, opens an external browser questionnaire, gates study event/manifest persistence behind researcher mode, and does not call the submission manager when a participant completes a questionnaire. The upload endpoint configuration is a placeholder.
+The participant research workflow is a prototype, not a completed data-collection pipeline. Participant credentials are now parsed from credentials.json beside AnimalAgent and the guided-study local counter has been removed, but this change is not yet build/runtime verified. The application still opens an external browser questionnaire, gates study event/manifest persistence behind researcher mode, and does not call the submission manager when a participant completes a questionnaire. The upload endpoint configuration is a placeholder.
 
 No real participant data should be collected using the current build.
 
@@ -21,7 +21,7 @@ No real participant data should be collected using the current build.
 | Shared simulation/action environment | Implemented in source | Maintain identical conditions and shared physical variables. |
 | Participant executable/menu | Implemented in source | One executable; menu selects Free Roam or Research Session. |
 | Guided study sequence | Partially implemented | Consent, warm-up, 12 prompts, bounded free period, per-condition rating phase. |
-| Stable participant identity | Missing | Local counter is unsuitable; use assigned credentials. |
+| Stable participant identity | Partially implemented | Credentials parser and root-of-extracted-directory loading are wired; build/runtime and recovery verification remain. |
 | Embedded questionnaires | Missing | Current flow launches external browser forms. |
 | Final comparison questionnaire | Missing | Must be added to the in-app sequence. |
 | Participant response persistence | Incomplete | Participant mode does not currently persist study responses/manifests. |
@@ -59,7 +59,7 @@ New study-specific code should be grouped under Components/Study/. Do not perfor
 ## 5. Important project decisions
 
 - One participant-facing executable, with Free Roam and Research Session selected from an in-app menu.
-- Participant number is assigned externally and loaded from a private per-participant credentials file; it is not incremented locally.
+- Participant number is assigned externally and loaded from a private per-participant credentials.json placed beside AnimalAgent in the extracted application root; it is not incremented locally.
 - Odd participant numbers: A = baseline, B = proposed. Even participant numbers: A = proposed, B = baseline.
 - Both conditions use the same environment, action space, scenarios and frozen policy settings.
 - Upload questionnaire responses and required metadata only. Do not upload raw interaction text, memory records, affect traces, Q-tables or diagnostics by default.
