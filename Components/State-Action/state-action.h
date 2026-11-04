@@ -119,8 +119,6 @@ public:
     explicit BaselineAgent(const EnvironmentConfig& config = EnvironmentConfig{});
 
     void reset();
-    // Reset participant-specific memory/affect while retaining the loaded Q-table.
-    void resetForStudy();
     void setExplorationRate(float epsilon);
     void setLearningEnabled(bool enabled);
     // Advance time-dependent affect without inventing a user interaction or reward.
@@ -181,6 +179,8 @@ public:
     explicit ProposedAgent(const EnvironmentConfig& config = EnvironmentConfig{});
 
     void reset();
+    // Reset participant-specific memory/affect while retaining the loaded Q-table.
+    void resetForStudy();
     void setExplorationRate(float epsilon);
     void advanceTime(float elapsedSeconds);
     void setLearningEnabled(bool enabled);
