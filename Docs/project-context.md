@@ -90,7 +90,7 @@ The participant executable now looks for credentials.json at appRoot/credentials
 
 Guided-study initialization no longer reads or writes study-participant-counter.txt. CompanionUI receives the ParticipantConfig and derives the participant code and A/B mapping from it. The token remains in the in-memory configuration for the later submission integration; this milestone does not yet submit anything.
 
-A focused C++ test source and optional CTest target cover valid odd/even participants, formatting, malformed JSON, missing fields, invalid ranges, and empty/wrong-type tokens. These tests have **not yet been built or executed**. M1.1 remains in progress because runtime/build verification, a proper participant-visible error screen, and stable run/session recovery are still outstanding.
+A focused C++ test source and optional CTest target cover valid odd/even participants, formatting, malformed JSON, missing fields, invalid ranges, and empty/wrong-type tokens. The project owner subsequently built both `participant_config_test` and `IS-2`, ran the focused CTest successfully, and confirmed that valid credentials loading appears to work. The initial test failure was a mistaken expectation for even participant 100; the assertion was corrected in commit 3f09f40. M1.1 is therefore verified for compilation, parser/allocation tests, and the valid-credentials startup path as manually checked. Missing/malformed credentials UI behaviour, release-layout verification, and stable run/session recovery remain outstanding.
 
 ### Current build and verification facts
 
