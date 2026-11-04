@@ -10,6 +10,7 @@
 #include <SFML/Graphics.hpp>
 
 #include "Components/State-Action/state-action.h"
+#include "Components/Study/participant-config.h"
 
 class CompanionUI {
 public:
@@ -19,7 +20,8 @@ public:
                          const std::string& outputDirectory = "artifacts/simulation",
                          bool researcherMode = false,
                          bool guidedStudyMode = false,
-                         const std::string& runtimeStatePath = "");
+                         const std::string& runtimeStatePath = "",
+                         const study::ParticipantConfig& participantConfig = {});
     // Returns true when General Interaction requests a return to the application menu.
     bool run();
 
@@ -32,7 +34,7 @@ private:
     bool studyFormOpenedCurrentCondition = false;
     bool studyGuidedComplete = false;
     bool studyFreeFinished = false;
-    int studyParticipantCounter = 0;
+    study::ParticipantConfig participantConfig;
     int studySessionIndex = 1;
     int studyStepIndex = 0;
     float studyIdleElapsed = 0.0f;
