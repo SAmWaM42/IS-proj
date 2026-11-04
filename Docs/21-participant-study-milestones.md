@@ -212,9 +212,15 @@ Goal: establish one consistent source of truth before implementation resumes.
 - [x] Record A/B counterbalancing and data-handling constraints.
 - [x] Separate current implementation from intended architecture.
 - [x] Add milestone tracker and link it from README/context/roadmap.
-- [ ] Verify the documentation commit is visible on the target branch.
+- [x] Verify the documentation updates are visible on the target branch.
 
-Completion evidence: GitHub commit SHA will be recorded after the documentation updates complete. No application build or runtime test is implied by M0.
+Completion evidence (all files re-fetched successfully from the target branch after writing):
+- README.md: b607938e2087a9cca93fc32f2818e89960c482ee
+- Docs/project-context.md: 66c2a3c76a5b0947f5a3b3bd463c0ea66fdf685c
+- Docs/07-implementation-status-and-roadmap.md: 8cc1db3b37afe48d3e040d78c2c3e2458427adb4
+- Docs/21-participant-study-milestones.md: 84feb1333516dba21bf154b6ee18b7eaca064430
+
+The re-fetch confirms the files are present on deployment/participant-client. The milestone file was then updated to record this verification. No application build or runtime test is implied by M0.
 
 ### M1 — Complete local participant identity and questionnaire workflow
 
