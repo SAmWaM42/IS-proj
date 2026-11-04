@@ -12,6 +12,7 @@
 #include "Components/Simulation/participant-menu.h"
 #include "Components/Simulation/runtime-paths.h"
 #include "Components/Simulation/submission-manager.h"
+#include "Components/Study/participant-config.h"
 
 // CMake supplies the source-tree path for normal builds. Keep a safe fallback
 // for editors or direct compiler invocations that do not load CMake definitions.
@@ -104,8 +105,19 @@ int main(int argc, char **argv)
             const auto choice = menu.run();
             if (choice == ParticipantMenu::Choice::Exit) break;
             if (choice == ParticipantMenu::Choice::BelievabilityStudy) {
-                CompanionUI study(policyDirectory, studyOutputDirectory, false, true, runtimeStatePath);
-                study.run();
+                try {
+                    // Credentials are installed beside the executable in the
+                    // root of the extracted application directory.
+                    const auto credentialsPath = appRoot / "credentials.json";
+                    const auto participantConfig = study::ParticipantConfig::load(credentialsPath);
+                    CompanionUI study(policyDirectory, studyOutputDirectory, false, true,
+                                      runtimeStatePath, participantConfig);
+                    study.run();
+                } catch (const std::exception& error) {
+                    std::cerr << "Research Session cannot start: " << error.what() << '\n';
+                    // Return to the menu; Free Roam remains available without credentials.
+                    continue;
+                }
                 break;
             }
             CompanionUI simulation(policyDirectory, (userDataRoot / "general-interaction").string(),
