@@ -33,6 +33,7 @@ struct QuestionDefinition {
     std::vector<std::string> options;
     std::size_t maxLength = 2000;
     std::string prompt;
+    std::vector<std::string> scaleLabels;
 };
 
 struct QuestionnaireDefinition {
