@@ -159,8 +159,7 @@ Data/
   Study/
     upload-config.json              # endpoint only; no secrets
     questionnaire-config.json       # approved question definitions/version
-    credentials.example.json        # placeholder format only, no real token
-    (real credentials installed in OS user-data directory)
+    (credentials.json is inserted beside AnimalAgent in the extracted application root; never committed or included in the common ZIP)
 ~~~
 
 This is an intended structure, not a list of files already present. The current SubmissionManager is under Components/Simulation/; do not move it as a standalone cleanup task. New components should be added only when their responsibility is clear and independently testable.
@@ -230,19 +229,27 @@ Goal: a participant can complete the full research sequence offline, with the co
 
 #### M1.1 — Participant configuration and deterministic assignment
 
-- [ ] Define and document the exact credentials JSON schema.
-- [ ] Load credentials from the agreed per-user data path.
-- [ ] Validate participant number range and non-empty token; reject malformed/missing credentials with a clear participant-facing error.
-- [ ] Stop using the local incrementing counter for participant allocation.
-- [ ] Derive A/B mapping from participant number: odd = baseline first; even = proposed first.
+- [x] Define and document the credentials JSON schema: participant_number (integer 1–9999), token (non-empty string).
+- [x] Load credentials from appRoot/credentials.json, beside AnimalAgent in the root of the extracted application directory.
+- [x] Validate participant number range and non-empty token; malformed/missing credentials prevent entry into Research Session and report an error to stderr.
+- [x] Stop using the local incrementing counter for participant allocation; the study counter file read/write was removed.
+- [x] Derive A/B mapping from participant number: odd = baseline first; even = proposed first.
 - [ ] Keep the participant number and run/session identifier stable through both conditions and restart recovery.
-- [ ] Ensure no real credentials are written to logs, manifests, source control, or common packages.
+- [x] Keep the token out of logs, manifests, source control, and the common package; it is held only in the loaded ParticipantConfig for now.
+
+**Source changes added (not yet build/runtime verified):**
+- Components/Study/participant-config.h/.cpp — credentials parsing, validation, participant-code formatting, odd/even allocation.
+- Components/Simulation/companion-ui.h/.cpp — receive ParticipantConfig and initialise participant identity/condition mapping from it; remove machine-local counter use.
+- main.c++ — load appRoot/credentials.json only after Research Session is selected; on failure report and return to menu so Free Roam remains available.
+- tests/participant_config_test.cpp and CMakeLists.txt — focused parser/allocation test target.
+
+The error currently goes to stderr; a participant-visible in-app error screen is still required before the acceptance criterion can be considered fully met.
 
 **Acceptance criteria**
-- Participant 1 loads baseline as A and proposed as B.
-- Participant 2 loads proposed as A and baseline as B.
+- Participant 1 loads baseline as A and proposed as B (unit test source added; execution pending).
+- Participant 2 loads proposed as A and baseline as B (unit test source added; execution pending).
 - Invalid/missing credentials prevent entry into Research Session but do not prevent Free Roam (source path implemented; visible UI feedback and runtime test still pending).
-- Restarting the same participant does not allocate a new ID or reverse the condition order.
+- Restarting the same participant does not allocate a new ID or reverse the condition order (the ID comes from credentials, but stable run/session recovery is not implemented).
 
 #### M1.2 — Questionnaire content and data contract
 
