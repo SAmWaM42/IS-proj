@@ -6,9 +6,19 @@ BUILD_DIR="${ROOT}/build-participant-linux"
 DIST_DIR="${ROOT}/dist/linux"
 STAGE="${DIST_DIR}/AnimalAgent"
 
-: "${ANIMAL_AGENT_PYTHON_RUNTIME:?Set this to a relocatable Linux Python runtime containing bin/python3 and spaCy en_core_web_sm}"
-: "${ANIMAL_AGENT_SFML_RUNTIME:?Set this to a directory containing the SFML 3 shared libraries and required non-system dependencies}"
-PYTHON="${ANIMAL_AGENT_PYTHON_RUNTIME}/bin/python3"
+# Prefer an explicitly supplied environment; otherwise detect common project venv names.
+if [[ -z "${ANIMAL_AGENT_PYTHON_RUNTIME:-}" ]]; then
+  for candidate in "$ROOT/wordTokenizer" "$ROOT/.venv" "$ROOT/venv"; do
+    if [[ -x "$candidate/bin/python" || -x "$candidate/bin/python3" ]]; then
+      ANIMAL_AGENT_PYTHON_RUNTIME="$candidate"
+      break
+    fi
+  done
+fi
+: "${ANIMAL_AGENT_PYTHON_RUNTIME:?Set ANIMAL_AGENT_PYTHON_RUNTIME to the project venv directory}"
+: "${ANIMAL_AGENT_SFML_RUNTIME:?Set this to a directory containing SFML 3 shared libraries and required non-system dependencies}"
+PYTHON="$ANIMAL_AGENT_PYTHON_RUNTIME/bin/python"
+[[ -x "$PYTHON" ]] || PYTHON="$ANIMAL_AGENT_PYTHON_RUNTIME/bin/python3"
 
 if [[ ! -x "$PYTHON" ]]; then
   echo "Missing executable: $PYTHON" >&2; exit 1
@@ -38,8 +48,11 @@ cp "$ROOT"/Data/Study/*.json "$STAGE/Data/Study/"
 cp "$ROOT/Components/NLP/nlp_intent_service.py" "$STAGE/Components/NLP/"
 cp "$ROOT/Components/NLP/upload_submission.py" "$STAGE/Components/NLP/"
 cp "$ROOT/artifacts/training/baseline.qtable" "$ROOT/artifacts/training/proposed.qtable" "$STAGE/Policies/"
+# Copy the project venv, including its installed spaCy packages and model.
 cp -a "$ANIMAL_AGENT_PYTHON_RUNTIME" "$STAGE/runtime/python"
-LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" "$STAGE/runtime/python/bin/python3" -c 'import spacy; spacy.load("en_core_web_sm")'
+STAGED_PYTHON="$STAGE/runtime/python/bin/python"
+[[ -x "$STAGED_PYTHON" ]] || STAGED_PYTHON="$STAGE/runtime/python/bin/python3"
+LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" "$STAGED_PYTHON" -c 'import spacy; spacy.load("en_core_web_sm")'
 find "$ANIMAL_AGENT_SFML_RUNTIME" -maxdepth 1 \( -type f -o -type l \) -name '*.so*' -exec cp -L {} "$STAGE/lib/" \;
 
 cat > "$STAGE/run-animal-agent.sh" <<'LAUNCH'
@@ -55,11 +68,18 @@ chmod +x "$STAGE/run-animal-agent.sh"
 if command -v patchelf >/dev/null 2>&1; then
   patchelf --set-rpath '$ORIGIN/lib' "$STAGE/AnimalAgent"
 fi
-if LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" ldd "$STAGE/AnimalAgent" | grep -q "not found"; then
-  echo "Unresolved shared libraries in staged executable:" >&2
-  LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" ldd "$STAGE/AnimalAgent" | grep "not found" >&2
-  exit 1
-fi
+# Check both the C++ executable and staged Python for missing shared libraries.
+for binary in "$STAGE/AnimalAgent" "$STAGED_PYTHON"; do
+  if ! LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" ldd "$binary" > "$STAGE/.ldd-check.txt"; then
+    echo "ldd could not inspect $binary" >&2; exit 1
+  fi
+  if grep -q "not found" "$STAGE/.ldd-check.txt"; then
+    echo "Unresolved shared libraries for $binary:" >&2
+    grep "not found" "$STAGE/.ldd-check.txt" >&2
+    exit 1
+  fi
+done
+rm -f "$STAGE/.ldd-check.txt"
 
 cat > "$STAGE/README.txt" <<'README'
 Animal Agent participant application
