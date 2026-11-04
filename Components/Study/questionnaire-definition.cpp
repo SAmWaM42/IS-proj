@@ -13,6 +13,7 @@ QuestionDefinition likert(const char* id, const char* prompt,\n                 
     q.minimum = 1;
     q.maximum = 5;
     q.prompt = prompt;
+    q.scaleLabels = std::move(labels);
     return q;
 }
 
@@ -95,7 +96,9 @@ QuestionnaireDefinition companionBelievabilityQuestionnaire() {
 
         // Additional per-condition questions.
         likert("believability_overall_rating",
-               "Overall, how believable was this companion as an animal?"),
+               "Overall, how believable was this companion as an animal?",
+               {"Not at all believable", "Slightly believable", "Moderately believable",
+                "Very believable", "Extremely believable"}),
         paragraph("believability_real_animal_explanation",
                   "What made this companion feel most like a real animal?"),
         paragraph("believability_less_real_moment",
@@ -122,7 +125,9 @@ QuestionnaireDefinition companionBelievabilityQuestionnaire() {
                "Which companion was more believable as an animal overall?",
                {"Companion A", "Companion B", "No noticeable difference"}),
         likert("comparison_believability_confidence",
-               "How confident are you in your answer to the previous question?"),
+               "How confident are you in your answer to the previous question?",
+               {"I was guessing", "Slightly confident", "Moderately confident",
+                "Confident", "Very sure"}),
         choice("comparison_blinding_check",
                "Did you think the two companions were built differently?",
                {"Yes", "No", "Not sure"}),
