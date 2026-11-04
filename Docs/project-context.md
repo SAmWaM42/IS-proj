@@ -73,7 +73,7 @@ CompanionUI remains responsible for simulation rendering and interaction. It sho
 ### Important decisions and constraints
 
 1. **One participant executable:** Free Roam and Research Session are choices in the menu, not separate participant builds.
-2. **Assigned participant identity:** use a private per-participant credentials file. Proposed path: userDataRoot/credentials.json. Never include real tokens in Git or the common application package.
+2. **Assigned participant identity:** use a private per-participant credentials file. Confirmed path: appRoot/credentials.json, beside the executable in the root of the extracted application directory. Never include real tokens in Git or the common application package.
 3. **Counterbalancing:** odd participant IDs receive A = baseline and B = proposed; even IDs receive A = proposed and B = baseline. The same assigned ID persists across both conditions and recovery.
 4. **Frozen comparison:** both agents use the same environment, action vocabulary, scenarios, timing, and instructions. Participant sessions disable policy learning and exploration.
 5. **Questionnaire-only upload by default:** do not send raw interaction text, memory records, affect traces, Q-table data, or diagnostic logs. Any additional derived metric requires an explicit analysis purpose and protocol/consent review.
@@ -81,6 +81,16 @@ CompanionUI remains responsible for simulation rendering and interaction. It sho
 7. **Local durability:** persist a complete response payload locally before upload. Failed uploads remain queued. The UI must distinguish local queueing from server acknowledgement.
 8. **Backend:** SAmWaM42/IS-proj-web branch test contains the current HMAC-authenticated API implementation; it is not evidence of a production deployment. Its current API validates metadata/condition mapping but does not yet strictly validate questionnaire answer fields.
 9. **Ethics gate:** do not collect real participant data until supervisor/institutional approval, approved consent, and a piloted questionnaire/protocol are in place.
+
+### M1.1 implementation update — 4 November 2026
+
+The first M1.1 source increment adds Components/Study/participant-config.h/.cpp. It parses a JSON object containing integer participant_number (1–9999) and non-empty string token. Participant codes are formatted as P01, P02, etc.; odd IDs map condition A to baseline and even IDs map condition A to proposed.
+
+The participant executable now looks for credentials.json at appRoot/credentials.json, where appRoot is the directory containing AnimalAgent. The participant must insert the assigned file into the root of the extracted application directory. The credentials file is not part of the shared repository/package. Missing or invalid credentials prevent entry into Research Session; the application reports the error to stderr and returns to the menu, leaving Free Roam available.
+
+Guided-study initialization no longer reads or writes study-participant-counter.txt. CompanionUI receives the ParticipantConfig and derives the participant code and A/B mapping from it. The token remains in the in-memory configuration for the later submission integration; this milestone does not yet submit anything.
+
+A focused C++ test source and optional CTest target cover valid odd/even participants, formatting, malformed JSON, missing fields, invalid ranges, and empty/wrong-type tokens. These tests have **not yet been built or executed**. M1.1 remains in progress because runtime/build verification, a proper participant-visible error screen, and stable run/session recovery are still outstanding.
 
 ### Current build and verification facts
 
@@ -95,7 +105,7 @@ The documentation update was based on static source inspection only. No build, C
 - Final questionnaire items, scales, question IDs, and version.
 - Whether the final comparison object is bundled into session 2 or submitted separately.
 - Whether any derived behavioural metrics are required. The default remains questionnaire-only.
-- Confirmation that userDataRoot/credentials.json is the correct per-participant installation path.
+- Path confirmed: credentials.json is inserted into the root of the extracted application directory, beside AnimalAgent.
 
 ### AI-assisted implementation protocol
 
