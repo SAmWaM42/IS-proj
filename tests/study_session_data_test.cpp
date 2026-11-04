@@ -156,6 +156,7 @@ void companionQuestionnaireDefinitionIsComplete() {
         if (question.type == study::AnswerType::Likert) {
             assert(question.minimum && *question.minimum == 1);
             assert(question.maximum && *question.maximum == 5);
+            assert(question.scaleLabels.size() == 5);
         }
     }
     for (const auto& question : definition.comparisonQuestions) {
@@ -165,6 +166,8 @@ void companionQuestionnaireDefinitionIsComplete() {
     assert(definition.conditionQuestions[20].id == "attention_check_agree");
     assert(definition.conditionQuestions[24].id == "session_technical_issue");
     assert(definition.comparisonQuestions[5].id == "comparison_blinding_check");
+    assert(definition.conditionQuestions[21].scaleLabels.front() == "Not at all believable");
+    assert(definition.comparisonQuestions[4].scaleLabels.front() == "I was guessing");
 }
 
 int main() {
