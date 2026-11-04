@@ -37,7 +37,7 @@ elseif(MSVC)
    set_property(TARGET IS-2 PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-target_compile_definitions(IS-2 PRIVATE IS2_PARTICIPANT_BUILD=1 IS2_SOURCE_DIR="${IS2_SOURCE_DIR_NORMALIZED}" IS2_GIT_REVISION="${IS2_GIT_REVISION}")
+target_compile_definitions(IS-2 PRIVATE IS2_PARTICIPANT_BUILD=1 IS2_SOURCE_DIR="." IS2_GIT_REVISION="${IS2_GIT_REVISION}")
 
 target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}
