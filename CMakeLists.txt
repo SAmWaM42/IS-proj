@@ -101,6 +101,19 @@ target_include_directories(study_session_data_test PRIVATE ${CMAKE_SOURCE_DIR} $
 target_compile_options(study_session_data_test PRIVATE -Wall -Wextra)
 add_test(NAME study_session_data_test COMMAND study_session_data_test)
 
+add_executable(questionnaire_content_test
+   tests/questionnaire_content_test.cpp
+   Components/Questionnaire/questionnaire_content.cpp
+)
+target_include_directories(questionnaire_content_test PRIVATE
+   ${CMAKE_SOURCE_DIR}
+   ${CMAKE_SOURCE_DIR}/Inc
+   ${CMAKE_SOURCE_DIR}/Components/Questionnaire
+)
+target_link_libraries(questionnaire_content_test PRIVATE sfml-graphics sfml-window sfml-system)
+target_compile_options(questionnaire_content_test PRIVATE -Wall -Wextra)
+add_test(NAME questionnaire_content_test COMMAND questionnaire_content_test)
+
 add_executable(tokenizer_probe
    tests/tokenizer_probe.cpp
 )
