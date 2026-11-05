@@ -421,7 +421,8 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
         std::chrono::system_clock::now().time_since_epoch()).count();
     runId = "run-" + std::to_string(runTicks);
     std::random_device conditionRandom;
-    agentAIsProposed = (conditionRandom() % 2u) == 0u;
+    agentAIsProposed = guidedStudyMode ? participantConfig.conditionAIsProposed()
+                                      : (conditionRandom() % 2u) == 0u;
     if (!font.openFromFile("Data/Fonts/UIFont.ttf") &&
         !font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf") &&
         !font.openFromFile("C:/Windows/Fonts/arial.ttf")) {
@@ -814,11 +815,11 @@ void CompanionUI::openStudyForm() {
     const unsigned int seed = static_cast<unsigned int>(
         participantConfig.participantNumber * 100 + (selectedAgentCode == 'A' ? 1 : 2));
     startQuestionnaire(questionnaire::makeCompanionRating(selectedAgentCode, seed),
-                        std::string("rating-") + selectedAgentCode);
+                        std::string("rating-") + selectedAgentCode, seed);
 }
 
 void CompanionUI::startQuestionnaire(const questionnaire::Definition& definition,
-                                     const std::string& tag) {
+                                     const std::string& tag, unsigned int shuffleSeed) {
     if (!questionnaireView) return;
     nlohmann::json context = {
         {"run_id", runId},
@@ -829,9 +830,7 @@ void CompanionUI::startQuestionnaire(const questionnaire::Definition& definition
         {"tag", tag}
     };
     questionnaireTag = tag;
-    const unsigned int seed = static_cast<unsigned int>(
-        participantConfig.participantNumber * 100 + studySessionIndex);
-    questionnaireView->begin(definition, context, seed);
+    questionnaireView->begin(definition, context, shuffleSeed);
     screen = Screen::Questionnaire;
     appendLog("Opened in-app questionnaire: " + tag);
 }
@@ -2132,7 +2131,9 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                             writeStudyManifest();
                         } else {
                             logStudyPhaseEvent("phase_ended", "rating");
-                            startQuestionnaire(questionnaire::makeComparison(), "comparison");
+                            const unsigned int comparisonSeed = static_cast<unsigned int>(
+                                participantConfig.participantNumber * 100 + 3);
+                            startQuestionnaire(questionnaire::makeComparison(), "comparison", comparisonSeed);
                         }
                     }
                 } else {
@@ -2263,7 +2264,7 @@ void CompanionUI::drawNavigation() {
             continueLabel = studySessionIndex == 1 ? "Continue to Companion B" : "Continue to Comparison";
         drawButton(continueLabel, 185, 12, 160, 42,
                    studyPhase == "free" || (studyPhase == "rating" && studyFormOpenedCurrentCondition));
-        drawButton(studyFormOpenedCurrentCondition ? "Form Opened" : "Answer Form",
+        drawButton(studyFormOpenedCurrentCondition ? "Rating Saved" : "Answer Form",
                    357, 12, 160, 42, studyFormOpenedCurrentCondition);
         drawText("Participant study | Session " + std::to_string(studySessionIndex) + "/2",
                  700, 22, 15, kMuted);
@@ -2429,7 +2430,7 @@ void CompanionUI::drawSimulationScreen() {
                      L.x + 275.0f, L.y + 44.0f, 14, sf::Color::White);
         } else if (studyPhase == "rating") {
             drawText(studyFormOpenedCurrentCondition
-                         ? "Complete the form in your browser, then return and continue."
+                         ? "Questionnaire saved. Continue when ready."
                          : "Guided interaction complete. Open Answer Form before continuing.",
                      L.x + 275.0f, L.y + 18.0f, 16, sf::Color::White);
         } else if (studyPhase == "finished") {
