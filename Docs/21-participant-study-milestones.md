@@ -581,8 +581,8 @@ Following the project owner's runtime feedback, the embedded questionnaire has b
 - `Components/Simulation/companion-ui.h/.cpp` owns a SubmissionManager in Research Session and invokes it at questionnaire completion.
 - Condition A is queued as Pxx-S1 with a null comparison object immediately after rating A.
 - Condition B is retained in memory until the comparison questionnaire is complete; the B answers and comparison answers are then queued together as Pxx-S2, matching D-01.
-- Queueing occurs before upload. The existing manager stores the participant token only in its local pending record and the Python uploader removes that field before sending the JSON body; bearer authentication and the matching Idempotency-Key are sent as headers.
-- Existing startup retry is retained. The UI log reports whether a submission was acknowledged by the server or remains locally queued for retry.
+- Queueing occurs before upload. Linux pending records are mode 0600. The manager writes a token-free local receipt after acknowledgement, preventing a later run from silently reusing the same Pxx-S1/Pxx-S2 identifier. The Python uploader removes the token from the JSON body; bearer authentication and the matching Idempotency-Key are sent as headers.
+- Existing startup retry is retained. The participant UI displays whether a submission was acknowledged by the server or remains locally queued for retry.
 - Developer-only `--study` runs without assigned credentials remain local-only and do not claim to upload.
 - `tests/questionnaire_submission_test.cpp` and the `questionnaire_submission_test` CMake/CTest target cover answer-type mapping, session-one comparison null, session-two comparison inclusion, and rejection of incomplete/unsupported results.
 
