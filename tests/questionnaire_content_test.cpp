@@ -12,9 +12,9 @@ int main() {
 
     assert(ratingA.id == "rating_A");
     assert(ratingB.id == "rating_B");
-    assert(ratingA.pages.size() == 6);
-    assert(ratingB.pages.size() == 6);
-    assert(comparison.pages.size() == 3);
+    assert(ratingA.pages.size() == 3);
+    assert(ratingB.pages.size() == 3);
+    assert(comparison.pages.size() == 2);
     assert(consent.pages.size() == 1); // Demographic questions remain omitted.
 
     std::set<std::string> ratingIds;
@@ -33,16 +33,14 @@ int main() {
             if (question.reverseScored) reverseScoredFound = true;
         }
     }
-    assert(likertCount == 21);
-    assert(ratingIds.size() == 26);
+    assert(likertCount == 8);
+    assert(ratingIds.size() == 10);
     assert(attentionCheckFound);
     assert(reverseScoredFound);
 
-    const auto& technicalPage = ratingA.pages.back();
-    assert(technicalPage.questions.size() == 2);
-    assert(technicalPage.questions[1].visibleWhenQuestionId == "technical_issue");
-    assert(technicalPage.questions[1].visibleWhenValues.size() == 1);
-    assert(technicalPage.questions[1].visibleWhenValues.front() == "Yes");
+    assert(ratingA.pages.back().questions.size() == 2);
+    assert(ratingIds.count("session_feedback") == 1);
+    for (const auto& page : ratingA.pages) assert(page.questions.size() <= 5);
 
     std::set<std::string> comparisonIds;
     for (const auto& page : comparison.pages) {
@@ -51,9 +49,10 @@ int main() {
             assert(comparisonIds.insert(question.id).second);
         }
     }
-    assert(comparisonIds.size() == 8);
+    assert(comparisonIds.size() == 7);
     const auto& comparisonFollowUp = comparison.pages.back().questions[1];
     assert(comparisonFollowUp.visibleWhenQuestionId == "cmp_built_differently");
     assert(comparisonFollowUp.visibleWhenValues.size() == 2);
+    for (const auto& page : comparison.pages) assert(page.questions.size() <= 4);
     return 0;
 }
