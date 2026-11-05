@@ -17,6 +17,8 @@ struct ParticipantConfig {
 
     std::string participantCode() const;
     bool conditionAIsProposed() const noexcept;
+    // Stable counterbalancing by participant number, not by attempt.
+    char firstConditionCode() const noexcept;
 };
 
 } // namespace study
