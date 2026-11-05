@@ -33,7 +33,7 @@ int main() {
     assert(sessionOne.at("responses").at("comparison_questionnaire").is_null());
     const auto& answers = sessionOne.at("responses").at("condition_questionnaire").at("answers");
     assert(answers.size() == 4);
-    assert(answers[0].at("question_id") == "C1");
+    assert(answers[0].at("question_id") == "c1");
     assert(answers[0].at("answer_type") == "likert");
     assert(answers[1].at("answer_type") == "integer");
     assert(answers[2].at("answer_type") == "single_choice");
