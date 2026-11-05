@@ -33,7 +33,7 @@ private:
     bool guidedStudyMode = false;
     bool studyFinished = false;
     bool returnToMenuRequested = false;
-    bool studyFormOpenedCurrentCondition = false;
+    bool conditionQuestionnaireCompleted = false;
     bool studyGuidedComplete = false;
     bool studyFreeFinished = false;
     study::ParticipantConfig participantConfig;
@@ -54,9 +54,6 @@ private:
     std::unique_ptr<questionnaire::View> questionnaireView;
     std::string questionnaireTag;
     bool questionnaireSaveErrorReported = false;
-    nlohmann::json ratingAResult;
-    nlohmann::json ratingBResult;
-    nlohmann::json comparisonResult;
     sf::Texture environmentTexture;
     std::vector<std::unique_ptr<sf::Texture>> idleFrames;
     std::vector<std::unique_ptr<sf::Texture>> walkFrames;
@@ -171,7 +168,6 @@ private:
     void enqueueInteraction(const std::string& label, const EnvironmentObservation& observation, float reward);
 
     std::string nlpMethod = "not used";
-    std::string assetsDirectory = "assets";
     std::string interpretIntent(const std::string& text, EnvironmentObservation& observation, float& reward);
 
     SceneLayout sceneLayout() const;
@@ -185,7 +181,7 @@ private:
     void completeStudyStep(const std::string& interaction);
     bool studyInputMatches(const std::string& interaction, bool isText) const;
     std::string currentStudyPrompt() const;
-    void openStudyForm();
+    void openConditionQuestionnaire();
     void startQuestionnaire(const questionnaire::Definition& definition, const std::string& tag,
                             unsigned int shuffleSeed);
     void finishQuestionnaire();
