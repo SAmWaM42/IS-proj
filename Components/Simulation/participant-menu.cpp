@@ -1,4 +1,5 @@
 #include "participant-menu.h"
+#include "ui-layout.h"
 
 #include <algorithm>
 #include <cmath>
@@ -62,6 +63,7 @@ void drawCircle(sf::RenderTarget& target, float x, float y, float radius,
 
 ParticipantMenu::ParticipantMenu()
     : window(sf::VideoMode(sf::Vector2u(1280u, 900u)), "Animal Agent | Companion Simulation") {
+    ui_layout::applyLetterboxedView(window);
     window.setFramerateLimit(60);
 
     if (!font.openFromFile("Data/Fonts/UIFont.ttf") &&
@@ -77,6 +79,9 @@ ParticipantMenu::Choice ParticipantMenu::run() {
             if (event->is<sf::Event::Closed>()) {
                 window.close();
                 return Choice::Exit;
+            }
+            if (event->is<sf::Event::Resized>()) {
+                ui_layout::applyLetterboxedView(window);
             }
 
             if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
@@ -105,6 +110,7 @@ ParticipantMenu::Choice ParticipantMenu::run() {
 }
 
 void ParticipantMenu::draw() {
+    ui_layout::applyLetterboxedView(window);
     window.clear(kBackground);
 
     auto centred = [&](const std::string& value, float centreX, float y,
