@@ -8,10 +8,10 @@
 **Simulation:** SFML 3 interactive participant application  
 **Persistence:** JSON using `nlohmann/json`  
 **Learning approach:** Tabular Q-learning  
-**Status:** Core simulation and agent components exist; participant identity, embedded questionnaires, response persistence, and submission integration remain incomplete.
+**Status:** Core simulation and agent components exist; participant identity and embedded questionnaires are source-integrated, local questionnaire drafts are persisted, and questionnaire completion is connected to the local submission queue. Build, runtime, participant-client HTTP, restart recovery, packaging, and protocol approval remain outstanding.
 
 
-## Current implementation hand-off — 4 November 2026
+## Current implementation hand-off — 5 November 2026
 
 > **Authority note:** This section records the current participant-client branch and supersedes older planning statements below wherever they conflict. The detailed component sketches later in this document remain useful background, but they are not proof that a component or interface is implemented. Use the source code and [the live milestone tracker](21-participant-study-milestones.md) for current status.
 
@@ -28,14 +28,14 @@ The participant executable is a single CMake target named IS-2 with output name 
 | Area | Present in source | Still required |
 |---|---|---|
 | Participant menu | Free Roam / Research Session selection | Regression-test packaged build. |
-| Guided study | Consent, warm-up, 12 guided interactions, bounded free-interaction phase, per-condition rating phase | Replace browser form and finish complete in-app flow. |
+| Guided study | Consent, warm-up, 12 guided interactions, bounded free-interaction phase, condition A/B ratings, final comparison form | Build and interactive-test the complete sequence; consent/protocol review remains. |
 | A/B allocation | Odd/even alternation now derived from ParticipantConfig in source | Build/runtime verification and stable restart recovery remain. |
-| Questionnaires | Versioned C++ definition transcribes 26 per-condition and 8 comparison items from the Docs template; Google Forms config is legacy | Embedded SFML rendering, answer collection, validation UI, and workflow integration. |
-| Participant data | Some study JSON objects are constructed in code | Structured participant-mode response ownership, atomic local persistence, and recovery. |
-| Upload queue | Local queue, Python uploader, startup retry | Wire questionnaire completion to queue; configure real endpoint; surface acknowledged/pending state. |
+| Questionnaires | Active SFML instrument `companion-believability-short-v2`: 10 questions per condition and 7 comparison questions; Google Forms config is legacy | Build and interactive-test; shortened instrument still needs supervisor/ethics review and piloting. |
+| Participant data | Completed and in-progress questionnaire JSON drafts are atomically saved in user-data `study-linkage` | Automatic draft restoration and full-session recovery remain. |
+| Upload queue | Questionnaire adapter calls SubmissionManager: Pxx-S1 after rating A; Pxx-S2 after rating B plus comparison; startup retry and visible pending/ack status are wired | Build/test; configure participant-accessible endpoint; verify actual client HTTP delivery. |
 | Backend | Separate Vercel API implementation on IS-proj-web/test | Production deployment, strict response-schema validation, and live Drive verification. |
 
-Static source review found that study event/manifest writes are gated on researcherMode, but the participant application constructs the guided study with researcherMode=false. The participant path therefore does not currently persist the response dataset required by the intended study. The existing SubmissionManager is also not called by the questionnaire completion flow. These are integration gaps, not reasons to rewrite the Q-learning or memory subsystems.
+The active questionnaire forms now save their own answer drafts, and completed forms are converted to the submission envelope and passed to SubmissionManager. The study manifest/event writer remains gated on researcherMode, and automatic draft restoration is not implemented. The new adapter and queue integration have not yet been compiled or run. These are remaining integration/verification gaps, not reasons to rewrite the Q-learning or memory subsystems.
 
 ### Intended participant workflow
 
@@ -1057,3 +1057,31 @@ The latest participant feedback requested responsive resizing, no more than ten 
 A shared `Components/Simulation/ui-layout.h` applies uniform scaling from a 1280x900 logical design space to the participant menu and CompanionUI. Questionnaire clipping uses the same viewport and event coordinates are mapped through it. The UI preserves aspect ratio and uses letterbox margins rather than distorting content on unusual aspect ratios.
 
 Questionnaire snapshots are saved immediately on opening and after answer/navigation input to the participant user-data `study-linkage` directory. JSON marks drafts `in_progress` and completed submissions `completed`. Linux default: `~/.local/share/animal-agent/study-linkage`, or `$XDG_DATA_HOME/animal-agent/study-linkage` if XDG_DATA_HOME is set. The draft is not automatically reloaded into the form after restart. These changes are source-integrated but not yet built or interactively verified.
+
+
+### Questionnaire submission integration hand-off — 5 November 2026
+
+The active embedded questionnaire result is adapted by `Components/Study/questionnaire-submission.h/.cpp` to the existing API envelope. The adapter accepts only completed forms, maps `likert`, `scale`, `choice`, and `text` answers to `likert`, `integer`, `single_choice`, and `text`, and lowercases question IDs to fit the drafted client schema. It excludes timing, display-order, scoring, and other presentation metadata from the upload.
+
+`CompanionUI` now owns a SubmissionManager during the credential-backed Research Session:
+- A's questionnaire is queued as Pxx-S1 with a null comparison questionnaire.
+- B's questionnaire is retained until the final comparison is completed; both are then queued as Pxx-S2.
+- The queue is written locally before the upload attempt. The existing Python uploader removes the local `_upload_token` field from the JSON body and sends the participant token as a Bearer header with the matching Idempotency-Key.
+- Startup retry remains in `main.c++`; the participant navigation area now shows whether the latest submission was acknowledged or remains locally pending.
+- A prior pending file for the same deterministic submission ID blocks a new response from silently replacing or reusing that ID.
+- Developer `--study` sessions without assigned credentials remain local-only.
+
+A new `questionnaire_submission_test` CTest target checks answer mapping, the session-one null comparison, session-two comparison inclusion, and rejection of incomplete/unsupported results. The test and application have **not yet been built or run on this revision**.
+
+The Vercel Preview endpoint used for backend smoke tests is Deployment-Protection protected. The local smoke-test script includes a Vercel trusted OIDC header, but the participant uploader intentionally does not and must not embed that local bypass token. Keep Preview protection enabled; do not configure the participant app to call that protected Preview. A participant-accessible deployment endpoint is required. `Data/Study/upload-config.json` still contains a placeholder.
+
+The separate backend's nine API smoke tests and synthetic Drive persistence/duplicate checks were reported successful by the project owner. Those tests verify backend behaviour with a synthetic payload, not the C++ participant client. The backend currently does not strictly validate the active questionnaire's item IDs, types, required answers, questionnaire version, or allowed values. Align server validation before live collection.
+
+**Next verification commands:**
+~~~sh
+cmake -S . -B build -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=ON
+cmake --build build --target questionnaire_submission_test questionnaire_content_test IS-2
+ctest --test-dir build -R 'questionnaire_(submission|content)_test' --output-on-failure
+~~~
+
+Then run a complete synthetic participant session with credentials, inspect the pending queue JSON, test an offline upload followed by startup retry, and verify an actual POST against an approved participant-accessible deployment. Do not recruit participants until questionnaire/consent approval, server-side validation, packaging, and the technical pilot are complete.
