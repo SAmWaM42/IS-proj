@@ -840,6 +840,7 @@ void CompanionUI::startQuestionnaire(const questionnaire::Definition& definition
         {"tag", tag}
     };
     questionnaireTag = tag;
+    questionnaireSaveErrorReported = false;
     questionnaireView->begin(definition, context, shuffleSeed);
     screen = Screen::Questionnaire;
     saveQuestionnaireDraft();
@@ -894,9 +895,13 @@ bool CompanionUI::saveQuestionnaireDraft() {
 void CompanionUI::finishQuestionnaire() {
     if (!questionnaireView || !questionnaireView->finished()) return;
     if (!saveQuestionnaireDraft()) {
-        appendLog("Questionnaire response could not be saved. Please check the application data directory.");
+        if (!questionnaireSaveErrorReported) {
+            appendLog("Questionnaire response could not be saved. Please check the application data directory.");
+            questionnaireSaveErrorReported = true;
+        }
         return;
     }
+    questionnaireSaveErrorReported = false;
     const nlohmann::json result = questionnaireView->result();
     const std::filesystem::path resultPath =
         std::filesystem::path(outputDirectory) /
