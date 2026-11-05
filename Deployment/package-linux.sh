@@ -32,7 +32,7 @@ for policy in baseline.qtable proposed.qtable; do
   [[ -s "$ROOT/artifacts/training/$policy" ]] || { echo "Missing trained policy: $policy" >&2; exit 1; }
 done
 
-cmake -S "$ROOT" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_PARTICIPANT_BUILD=ON -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=OFF
+cmake -S "$ROOT" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_BUILD_TESTS=OFF
 cmake --build "$BUILD_DIR" --config Release --parallel
 
 rm -rf "$STAGE"
