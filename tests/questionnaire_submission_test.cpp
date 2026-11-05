@@ -50,6 +50,16 @@ int main() {
 
     bool rejected = false;
     try {
+        auto wrongSession = conditionB;
+        wrongSession["context"]["condition_code"] = "A";
+        (void)study::makeSubmissionData(wrongSession, comparison);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    assert(rejected);
+
+    rejected = false;
+    try {
         auto partial = condition;
         partial["completion_status"] = "in_progress";
         (void)study::makeSubmissionData(partial);
