@@ -2419,7 +2419,9 @@ void CompanionUI::drawNavigation() {
         std::string continueLabel = "Change Model (locked)";
         if (studyPhase == "free") continueLabel = "Finish Free Phase";
         else if (studyPhase == "rating" && conditionQuestionnaireCompleted)
-            continueLabel = studySessionIndex == 1 ? "Continue to Companion B" : "Continue to Comparison";
+            continueLabel = studySessionIndex == 1
+                ? std::string("Continue to Companion ") + (selectedAgentCode == 'A' ? 'B' : 'A')
+                : "Continue to Comparison";
         drawButton(continueLabel, 185, 12, 160, 42,
                    studyPhase == "free" || (studyPhase == "rating" && conditionQuestionnaireCompleted));
         drawButton(conditionQuestionnaireCompleted ? "Rating Saved" : "Questionnaire",
