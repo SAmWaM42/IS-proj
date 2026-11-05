@@ -1,4 +1,4 @@
 {
   "schema_version": 1,
-  "endpoint": "https://YOUR-VERCEL-PROJECT.vercel.app/api/submissions"
+  "endpoint": "https://is-proj-web.vercel.app/api/submissions"
 }
