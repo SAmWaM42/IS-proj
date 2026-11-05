@@ -148,7 +148,10 @@ Definition makeCompanionRating(char companionCode, unsigned int shuffleSeed) {
     technical.title = "Technical check";
     technical.questions.push_back(choice("technical_issue", "Did anything not work properly during this session (for example a freeze or a delay)?",
                                          {"No", "Yes"}));
-    technical.questions.push_back(freeText("technical_detail", "If yes, what happened?", false));
+    Question technicalDetail = freeText("technical_detail", "If yes, what happened?", true);
+    technicalDetail.visibleWhenQuestionId = "technical_issue";
+    technicalDetail.visibleWhenValues = {"Yes"};
+    technical.questions.push_back(technicalDetail);
     d.pages.push_back(technical);
     return d;
 }
@@ -176,7 +179,10 @@ Definition makeComparison() {
     Page last;
     last.title = "One last thing";
     last.questions.push_back(choice("cmp_built_differently", "Did you think the two companions were built differently?", {"Yes", "No", "Not sure"}));
-    last.questions.push_back(freeText("cmp_difference_detail", "If yes or not sure, what did you think was different?", true));
+    Question differenceDetail = freeText("cmp_difference_detail", "If yes or not sure, what did you think was different?", true);
+    differenceDetail.visibleWhenQuestionId = "cmp_built_differently";
+    differenceDetail.visibleWhenValues = {"Yes", "Not sure"};
+    last.questions.push_back(differenceDetail);
     last.questions.push_back(freeText("cmp_other_comments", "Anything else you would like to tell us?", true));
     d.pages.push_back(last);
     return d;
