@@ -545,10 +545,6 @@ bool CompanionUI::run() {
                     if (screen == Screen::Questionnaire && questionnaireView) {
                         questionnaireView->handleClick(point);
                         saveQuestionnaireDraft();
-                        if (questionnaireView->returnToMenuRequested()) {
-                            saveSession();
-                            returnToMenu = true;
-                        }
                     } else {
                         handleClick(point);
                     }
@@ -2101,7 +2097,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
 
 void CompanionUI::handleClick(sf::Vector2f point) {
     const float x = point.x, y = point.y;
-    if (!researcherMode && (!guidedStudyMode || studyFinished) &&
+    if (!researcherMode && (!guidedStudyMode || studyFinished ||
+                            (screen == Screen::Simulation && studyPhase == "guided")) &&
         y >= 14 && y <= 58 && x >= 1030 && x < 1210) {
         saveSession();
         returnToMenuRequested = true;
@@ -2328,7 +2325,7 @@ void CompanionUI::drawNavigation() {
                    357, 12, 160, 42, conditionQuestionnaireCompleted);
         drawText("Participant study | Session " + std::to_string(studySessionIndex) + "/2",
                  700, 22, 15, kMuted);
-        if (studyFinished)
+        if (studyFinished || (screen == Screen::Simulation && studyPhase == "guided"))
             drawButton("Return to Menu", 1030, 12, 180, 42);
     } else {
         drawButton("Change Model", 185, 12, 160, 42);
