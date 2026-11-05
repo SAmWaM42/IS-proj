@@ -1,79 +1,58 @@
-# Participant client packaging
+# Participant client packaging notes
 
-This branch produces a desktop participant application, not a server deployment. The scripts build an explicit allow-list ZIP for one target operating system.
+The participant release is a desktop application, not a server deployment. Build one ZIP per operating system from this branch. The package scripts use an explicit allow-list and do not copy the repository, tests, analysis scripts, training outputs, or Git metadata.
 
-## Build-machine requirements
+## Runtime prerequisites for the packager
 
-### Linux
+The Linux script can use the project's Python virtual environment directly. Set `ANIMAL_AGENT_PYTHON_RUNTIME` to that environment's directory, or let the script auto-detect `wordTokenizer/`, `.venv/`, or `venv/` at the repository root. It copies the environment and checks that the staged interpreter can import spaCy and load `en_core_web_sm`.
 
-- CMake 3.16+, C++17 compiler and SFML 3 development libraries.
-- A Python runtime containing spaCy and `en_core_web_sm`.
-- `ANIMAL_AGENT_PYTHON_RUNTIME`: directory containing `bin/python` or `bin/python3`. If omitted, the script checks `wordTokenizer/`, `.venv/` and `venv/`.
-- `ANIMAL_AGENT_SFML_RUNTIME`: directory containing SFML 3 shared libraries and any non-system dependencies required by them.
-- `ANIMAL_AGENT_FONT_FILE`: path to a redistributable TTF font. The script defaults to the system DejaVu Sans font path if available.
+**Important portability limitation:** a standard `venv` is not a self-contained Python distribution. Its interpreter commonly links to the base Python installation used when the environment was created. Copying it can therefore work on the build machine but fail on a participant's machine that lacks a compatible Python installation. The staged `ldd` checks catch missing shared libraries on the build machine, but cannot prove portability to a clean machine. Before distribution, test the ZIP on a clean Linux installation. If that machine does not have the matching base Python/runtime dependencies, supply a genuinely standalone Python runtime instead of the ordinary venv.
 
-### Windows
+- Linux: `bin/python` or `bin/python3` must exist.
+- Windows: the existing Windows script still expects a standalone runtime with `python.exe`; the Linux venv auto-detection does not apply to Windows.
 
-- CMake 3.16+, C++17 compiler and SFML 3 development libraries.
-- `ANIMAL_AGENT_PYTHON_RUNTIME`: standalone/relocatable Python runtime directory containing `python.exe`, spaCy and `en_core_web_sm`.
-- `ANIMAL_AGENT_SFML_DLL_DIR`: directory containing the SFML 3 runtime DLLs.
-- `ANIMAL_AGENT_FONT_FILE`: path to a redistributable TTF font. This is copied to `Data/Fonts/UIFont.ttf`.
+The Linux script also expects `ANIMAL_AGENT_SFML_RUNTIME`, containing SFML 3 shared libraries and the required non-system shared dependencies. It checks the staged executable with `ldd`. The Windows script expects `ANIMAL_AGENT_SFML_DLL_DIR` containing the SFML 3 runtime DLLs.
 
-Build on the operating system you intend to distribute for.
+The packager itself needs the relevant platform compiler, CMake, and SFML 3 development package. These are build-machine prerequisites, not intended participant prerequisites.
 
-## Build commands
+## Before packaging
 
-```sh
-bash Deployment/package-linux.sh
-```
+1. Deploy `CollectionBackend/` to Vercel with its root directory set to that folder.
+2. Configure Google OAuth, the destination Drive folder, and participant-token mapping in Vercel environment variables. See `CollectionBackend/README.md`.
+3. Set the deployed HTTPS function URL in `Data/Study/upload-config.json`.
+4. Confirm `artifacts/training/baseline.qtable` and `proposed.qtable` are the final trained policies.
+5. Prepare the Python environment for the target OS. On Linux, the script can use the project venv, subject to the clean-machine portability check above. On Windows, supply a standalone runtime.
+6. Prepare the matching SFML runtime libraries.
+7. Run the platform package script on that platform.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File Deployment/package-windows.ps1
-```
-
-Output:
+## Output
 
 - Linux: `dist/linux/AnimalAgent-Linux.zip`
 - Windows: `dist/windows/AnimalAgent-Windows.zip`
 
-## Included runtime files
+The ZIPs contain the executable, launcher, participant README, required image assets, non-secret endpoint configuration, NLP service/model runtime, and the two read-only policy files. Participant upload tokens are assigned and entered separately; they must not be embedded in the common ZIP. They do not contain the repository's analysis scripts or tests.
 
-The package scripts explicitly stage:
+## Important limitations
 
-- `AnimalAgent` executable and platform launcher.
-- Font at `Data/Fonts/UIFont.ttf`.
-- Backyard atlas and dog PNG pose frames.
-- Study JSON configuration, questionnaire schema and HTTPS endpoint configuration.
-- NLP intent service and questionnaire uploader.
-- Bundled Python runtime with spaCy and `en_core_web_sm`.
-- Fixed `baseline.qtable` and `proposed.qtable` policy files.
-- Participant instructions.
+- A package script completing does not replace a clean-machine extraction and launch test.
+- Linux and Windows builds must be produced on their respective target platforms.
+- SFML and Python runtime portability must be verified on a clean machine.
+- Participant numbers and their unique upload tokens must be issued by the researcher. A participant number alone is not authentication. The participant token is retained with a pending local response for retry and stripped from the questionnaire JSON before transmission.
+- The collection function stores questionnaire JSON in Google Drive using the researcher's Google OAuth credentials held in Vercel environment variables. Never place OAuth credentials in the desktop package.
+- Drive lookup followed by create prevents ordinary retry duplicates but is not transactional under simultaneous duplicate requests.
+- The Q-tables are loaded as fixed trained policies and study learning is disabled. An optional Q-table copy is therefore the same policy artifact, not a participant-specific outcome, unless a separate policy-update/measurement requirement is introduced.
 
-They do not copy the source repository, researcher analysis scripts, tests, training logs, visualisations, or Git metadata.
 
-## Participant credentials
+## Collection transport status
 
-The common ZIP must not contain participant credentials. The researcher supplies a unique `credentials.json` for each study participant. Place it beside the executable after extracting the ZIP. Its structure is:
+Questionnaire collection is being moved from Google Forms to the Vercel endpoint documented in `CollectionBackend/README.md`. The participant application queues a response locally, uploads it with the participant's bearer token, and removes the queue file only after a valid durable-storage acknowledgement. Pending responses are retried on the next application launch.
 
-```json
-{
-  "participant_number": 14,
-  "token": "private-token-supplied-by-the-researcher"
-}
+The queue API now requires the participant token:
+
+```cpp
+queueSubmission(participantNumber, sessionIndex, condition, participantToken, responses);
 ```
 
-Do not commit a real credentials file or embed participant tokens in the package. The Google OAuth credentials and participant-token mapping are held by the separately deployed collection backend, never by the desktop client.
+The token is saved in the local pending record to support offline retry, but the Python uploader removes it from the JSON body and sends it only as an HTTPS Bearer token. Participants must receive their number and token separately from the common ZIP.
 
-## Portability checks
-
-A copied Python virtual environment is **not necessarily a standalone Python runtime**. Its interpreter can depend on the base Python installation and shared libraries on the build machine. The Linux script checks spaCy/model loading and unresolved shared libraries on the build machine, but that does not prove the ZIP will run on a clean participant machine. Use a genuinely relocatable Python distribution where possible and test the extracted ZIP on a clean Linux installation.
-
-The Windows script expects a relocatable runtime, not an ordinary machine-specific Python installation. SFML runtime dependencies must also be verified on a clean target machine.
-
-A successful ZIP creation is not release validation. Before distribution, extract the ZIP into a clean user account or VM on the target OS, add a test credentials file, launch both menu options, exercise typed input, complete a synthetic questionnaire, and verify that a test submission reaches the backend. Confirm that a deliberately interrupted/offline submission remains queued and uploads on the next launch.
-
-## Collection backend
-
-The HTTPS collection function is deployed separately from this client. Its Vercel environment contains Google OAuth credentials, Drive destination settings and participant-token mappings. The client contains only the public HTTPS endpoint URL. The uploader sends the participant token as an HTTPS Bearer token and removes it from the questionnaire JSON body. Pending local responses retain the token to support offline retry.
-
-The backend uses idempotency to make ordinary retries safe; simultaneous duplicate requests are not guaranteed to be transactionally deduplicated.
+**Release blocker:** the final participant menu/questionnaire flow has not yet been connected to this API. The current package scripts are infrastructure only; do not distribute a participant build until the in-app questionnaire, token entry, and study-flow integration are complete and tested.

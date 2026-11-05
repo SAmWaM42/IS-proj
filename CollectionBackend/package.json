@@ -1,1 +1,0 @@
-{"name":"animal-agent-collection-backend","private":true,"version":"1.0.0","type":"module","scripts":{"dev":"vercel dev","typecheck":"tsc --noEmit"},"dependencies":{"googleapis":"^144.0.0"},"devDependencies":{"@vercel/node":"^3.2.29","typescript":"^5.7.2"}}
