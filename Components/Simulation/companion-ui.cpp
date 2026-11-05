@@ -944,7 +944,7 @@ bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
     // queueSubmission returns true once the complete payload is durably written,
     // even when the immediate HTTP attempt fails.
     if (!queued) {
-        submissionStatusMessage = id + ": local queue write failed; do not continue.";
+        submissionStatusMessage = id + ": already submitted or local queue write failed; do not continue.";
         appendLog(submissionStatusMessage);
         return false;
     }
