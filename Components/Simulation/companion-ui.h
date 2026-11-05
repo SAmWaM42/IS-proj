@@ -18,7 +18,8 @@ class CompanionUI {
 public:
     // researcherMode = false (default): participant-facing study mode. Statistics,
     // agent state, comparison, action labels and the event log are hidden.
-    explicit CompanionUI(const std::string& policyDirectory = "artifacts/training",
+    explicit CompanionUI(sf::RenderWindow& sharedWindow,
+                         const std::string& policyDirectory = "artifacts/training",
                          const std::string& outputDirectory = "artifacts/simulation",
                          bool researcherMode = false,
                          bool guidedStudyMode = false,
@@ -49,7 +50,7 @@ private:
     char selectedAgentCode = 'A';
     bool selectedAgentIsProposed = false;
 
-    sf::RenderWindow window;
+    sf::RenderWindow& window;
     sf::Font font;
     std::unique_ptr<questionnaire::View> questionnaireView;
     std::string questionnaireTag;
