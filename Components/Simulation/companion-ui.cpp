@@ -896,6 +896,9 @@ void CompanionUI::finishQuestionnaire() {
         return;
     }
     const nlohmann::json result = questionnaireView->result();
+    const std::filesystem::path resultPath =
+        std::filesystem::path(outputDirectory) /
+        ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
     if (questionnaireTag.rfind("rating-", 0) == 0) {
         if (selectedAgentCode == 'A') ratingAResult = result;
         else ratingBResult = result;
