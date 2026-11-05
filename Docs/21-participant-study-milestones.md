@@ -532,3 +532,16 @@ The supplied `questionnaire-UI-changes/files (2)/` implementation has been integ
 - `tests/questionnaire_content_test.cpp` and the `questionnaire_content_test` CMake target check item counts, stable IDs, attention-check metadata, reverse scoring, and conditional follow-up definitions.
 
 Verification status: source integration and CMake registration are committed, but no local compile, CTest run, or interactive SFML test has yet been performed against this revision. The new JSON result files are currently saved locally only. They are not yet transformed into the existing `StudySessionData` submission schema or passed to `SubmissionManager`; backend upload must not be described as integrated. Consent remains the existing separate gate, and the placeholder consent copy in the unused content definition is not approved for recruitment.
+
+### Required local verification after questionnaire integration
+
+Run from the repository root on the latest `deployment/participant-client` checkout:
+
+~~~sh
+git pull origin deployment/participant-client
+cmake -S . -B build -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=ON
+cmake --build build --target questionnaire_content_test IS-2
+ctest --test-dir build -R questionnaire_content_test --output-on-failure
+~~~
+
+Then run the participant app and manually verify: condition A rating opens after the guided/free phase; the 21 Likert items paginate and preserve answers when navigating back; text fields accept typing and backspace/newlines; technical details appear only after selecting Yes; rating A saves under a distinct JSON filename; condition B follows the rating-A completion; the final comparison appears after rating B; the comparison detail appears only for Yes/Not sure; and the final comparison JSON saves separately. Inspect the saved files to confirm participant/session/condition context, answer values, item IDs, attention-check metadata, and no raw interaction/memory/affect traces. The build and test commands have not been run by the assistant in this environment.
