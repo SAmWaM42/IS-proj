@@ -16,17 +16,17 @@ if [ "$goal" = "build" ]; then
     cmake --build build
 
 elif [ "$goal" = "train-test" ]; then
-    ./build/IS-2 --self-test
-    ./build/IS-2 --train --episodes 1000 --steps 40 --seed 42 --out artifacts/training
-    ./build/IS-2 --validate --episodes 200 --steps 40 --seed 43 --out artifacts/training 
-    ./build/IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training
+    ./build/AnimalAgent --self-test
+    ./build/AnimalAgent --train --episodes 1000 --steps 40 --seed 42 --out artifacts/training
+    ./build/AnimalAgent --validate --episodes 200 --steps 40 --seed 43 --out artifacts/training 
+    ./build/AnimalAgent --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training
 elif [ "$goal" = "run" ]; then
-    ./build/IS-2 sim
+    ./build/AnimalAgent --sim-researcher
 
 elif [ "$goal" = "clean" ]; then
     rm -rf build
 elif [ "$goal" = "study" ]; then
-    ./build/IS-2 --study --policy-dir artifacts/training --study-out artifacts/study
+    ./build/AnimalAgent --study --policy-dir artifacts/training --study-out artifacts/study
 
 else
     echo "Usage: $0 {build|test|run|clean}"
