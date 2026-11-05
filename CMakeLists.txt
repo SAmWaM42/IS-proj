@@ -95,7 +95,10 @@ add_executable(questionnaire_submission_test
    tests/questionnaire_submission_test.cpp
    Components/Study/questionnaire-submission.cpp
 )
-target_include_directories(questionnaire_submission_test PRIVATE ${CMAKE_SOURCE_DIR})
+target_include_directories(questionnaire_submission_test PRIVATE
+   ${CMAKE_SOURCE_DIR}
+   ${CMAKE_SOURCE_DIR}/Inc
+)
 target_compile_options(questionnaire_submission_test PRIVATE -Wall -Wextra)
 add_test(NAME questionnaire_submission_test COMMAND questionnaire_submission_test)
 
