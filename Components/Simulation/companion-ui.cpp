@@ -1,4 +1,5 @@
 #include "companion-ui.h"
+#include "ui-layout.h"
 
 #include <algorithm>
 #include <array>
@@ -429,6 +430,7 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
         throw std::runtime_error("Unable to load DejaVuSans.ttf. Install DejaVu fonts or update companion-ui.cpp.");
     }
     questionnaireView = std::make_unique<questionnaire::View>(window, font);
+    ui_layout::applyLetterboxedView(window);
     window.setFramerateLimit(60);
     environmentTextureLoaded = environmentTexture.loadFromFile("Data/Assets/free version/free.png");
     if (environmentTextureLoaded) appendLog("Loaded backyard atlas (free.png)");
@@ -484,9 +486,13 @@ bool CompanionUI::run() {
             if (event->is<sf::Event::Closed>()) {
                 if (!guidedStudyMode || studyPhase != "consent") saveSession();
                 window.close();
+            } else if (const auto* resized = event->getIf<sf::Event::Resized>()) {
+                (void)resized;
+                ui_layout::applyLetterboxedView(window);
             } else if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
                 if (screen == Screen::Questionnaire && questionnaireView) {
                     questionnaireView->handleKey(key->code);
+                    saveQuestionnaireDraft();
                 } else if (key->code == sf::Keyboard::Key::Escape) {
                     if (!guidedStudyMode) {
                         saveSession();
@@ -522,6 +528,7 @@ bool CompanionUI::run() {
             } else if (const auto* text = event->getIf<sf::Event::TextEntered>()) {
                 if (screen == Screen::Questionnaire && questionnaireView) {
                     questionnaireView->handleText(static_cast<char32_t>(text->unicode));
+                    saveQuestionnaireDraft();
                 } else if (screen == Screen::Simulation && textInputFocused &&
                     text->unicode >= 32 && text->unicode < 127 && textInput.size() < 100) {
                     textInput.push_back(static_cast<char>(text->unicode));
@@ -529,8 +536,9 @@ bool CompanionUI::run() {
             } else if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
                 if (click->button == sf::Mouse::Button::Left) {
                     if (screen == Screen::Questionnaire && questionnaireView)
-                        questionnaireView->handleClick({static_cast<float>(click->position.x),
-                                                        static_cast<float>(click->position.y)});
+                        questionnaireView->handleClick(window.mapPixelToCoords(click->position));
+                    if (screen == Screen::Questionnaire && questionnaireView)
+                        saveQuestionnaireDraft();
                     else
                         handleClick(window.mapPixelToCoords(click->position));
                 }
@@ -832,26 +840,61 @@ void CompanionUI::startQuestionnaire(const questionnaire::Definition& definition
     questionnaireTag = tag;
     questionnaireView->begin(definition, context, shuffleSeed);
     screen = Screen::Questionnaire;
+    saveQuestionnaireDraft();
     appendLog("Opened in-app questionnaire: " + tag);
+}
+
+void CompanionUI::saveQuestionnaireDraft() {
+    if (!questionnaireView || !questionnaireView->active()) return;
+    const std::filesystem::path resultPath =
+        std::filesystem::path(outputDirectory) /
+        ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
+    const std::filesystem::path temporaryPath = resultPath.string() + ".tmp";
+    std::error_code error;
+    std::filesystem::create_directories(resultPath.parent_path(), error);
+    if (error) {
+        std::cerr << "Unable to create questionnaire output directory "
+                  << resultPath.parent_path() << ": " << error.message() << '\\n';
+        return;
+    }
+
+    {
+        std::ofstream output(temporaryPath, std::ios::binary | std::ios::trunc);
+        if (!output) {
+            std::cerr << "Unable to open questionnaire draft " << temporaryPath << '\\n';
+            return;
+        }
+        output << questionnaireView->result().dump(2) << '\\n';
+        output.flush();
+        if (!output) {
+            std::cerr << "Unable to write questionnaire draft " << temporaryPath << '\\n';
+            return;
+        }
+    }
+
+    std::filesystem::rename(temporaryPath, resultPath, error);
+    if (error) {
+        // Some platforms do not replace an existing destination on rename.
+        std::error_code removeError;
+        std::filesystem::remove(resultPath, removeError);
+        error.clear();
+        std::filesystem::rename(temporaryPath, resultPath, error);
+    }
+    if (error) {
+        std::cerr << "Unable to finalise questionnaire draft " << resultPath
+                  << ": " << error.message() << '\\n';
+        std::error_code cleanupError;
+        std::filesystem::remove(temporaryPath, cleanupError);
+    }
 }
 
 void CompanionUI::finishQuestionnaire() {
     if (!questionnaireView || !questionnaireView->finished()) return;
+    saveQuestionnaireDraft();
     const nlohmann::json result = questionnaireView->result();
     const std::filesystem::path resultPath =
         std::filesystem::path(outputDirectory) /
         ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
-    std::ofstream output(resultPath, std::ios::binary | std::ios::trunc);
-    if (!output) {
-        appendLog("Could not save questionnaire response. Please contact the researcher.");
-        return;
-    }
-    output << result.dump(2) << '\n';
-    output.close();
-    if (!output) {
-        appendLog("Questionnaire response could not be written completely.");
-        return;
-    }
 
     if (questionnaireTag.rfind("rating-", 0) == 0) {
         if (selectedAgentCode == 'A') ratingAResult = result;
@@ -2546,6 +2589,7 @@ void CompanionUI::drawComparisonScreen() {
 }
 
 void CompanionUI::draw() {
+    ui_layout::applyLetterboxedView(window);
     window.clear(kBackground);
     if (screen == Screen::Questionnaire && questionnaireView) {
         questionnaireView->draw();
