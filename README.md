@@ -200,3 +200,8 @@ A session payload contains:
 - responses.comparison_questionnaire, which is null in session 1 and contains the final A/B comparison answers in session 2.
 
 This contract does not invent the research questions or rating scales. Synthetic IDs in tests are fixtures only. The final approved question wording, scales, required status, and version must be supplied before the questionnaire is populated. The functional model is independent of the styling template the project owner will provide later. The new study_session_data_test target has been added but still needs to be built and run locally. The current web API does not yet strictly validate this schema; that is M2 work.
+
+
+## Research data retrieval
+
+Questionnaire submissions can be downloaded from the configured Google Drive folder using the researcher-side local utility. See [Local Google Drive Study Data Retrieval](Docs/22-local-study-data-retrieval.md) and run `python3 scripts/download_study_submissions.py --dry-run` after configuring the researcher's Google OAuth environment variables. Downloaded participant data is stored outside the repository by default.
