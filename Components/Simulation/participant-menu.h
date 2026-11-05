@@ -10,6 +10,7 @@ public:
 
     ParticipantMenu();
     Choice run();
+    sf::RenderWindow& getWindow() noexcept { return window; }
 
 private:
     sf::RenderWindow window;
