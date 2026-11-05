@@ -1,10 +1,20 @@
 #include "questionnaire.h"
+#include "Components/Simulation/ui-layout.h"
 
 #include <cassert>
 #include <set>
 #include <string>
 
 int main() {
+    const sf::FloatRect wideViewport = ui_layout::makeLetterboxedView({1920u, 1080u}).getViewport();
+    assert(wideViewport.size.x < 1.0f);
+    assert(wideViewport.size.y == 1.0f);
+    assert(wideViewport.position.x > 0.0f);
+    const sf::FloatRect portraitViewport = ui_layout::makeLetterboxedView({900u, 1280u}).getViewport();
+    assert(portraitViewport.size.x == 1.0f);
+    assert(portraitViewport.size.y < 1.0f);
+    assert(portraitViewport.position.y > 0.0f);
+
     const auto ratingA = questionnaire::makeCompanionRating('A', 101);
     const auto ratingB = questionnaire::makeCompanionRating('B', 102);
     const auto comparison = questionnaire::makeComparison();
