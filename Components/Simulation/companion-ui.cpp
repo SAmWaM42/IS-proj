@@ -484,6 +484,7 @@ bool CompanionUI::run() {
             questionnaireView->update(elapsedSeconds);
         while (const auto event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>()) {
+                if (screen == Screen::Questionnaire) saveQuestionnaireDraft();
                 if (!guidedStudyMode || studyPhase != "consent") saveSession();
                 window.close();
             } else if (const auto* resized = event->getIf<sf::Event::Resized>()) {
@@ -535,12 +536,13 @@ bool CompanionUI::run() {
                 }
             } else if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
                 if (click->button == sf::Mouse::Button::Left) {
-                    if (screen == Screen::Questionnaire && questionnaireView)
-                        questionnaireView->handleClick(window.mapPixelToCoords(click->position));
-                    if (screen == Screen::Questionnaire && questionnaireView)
+                    const sf::Vector2f point = window.mapPixelToCoords(click->position);
+                    if (screen == Screen::Questionnaire && questionnaireView) {
+                        questionnaireView->handleClick(point);
                         saveQuestionnaireDraft();
-                    else
-                        handleClick(window.mapPixelToCoords(click->position));
+                    } else {
+                        handleClick(point);
+                    }
                 }
             } else if (const auto* wheel = event->getIf<sf::Event::MouseWheelScrolled>()) {
                 if (screen == Screen::Questionnaire && questionnaireView)
