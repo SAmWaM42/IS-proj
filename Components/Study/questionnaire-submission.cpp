@@ -64,6 +64,21 @@ nlohmann::json toQuestionnaireResponse(const nlohmann::json& result) {
     return {{"answers", std::move(answers)}};
 }
 
+void requireContext(const nlohmann::json& result, int session,
+                    const std::string& condition, const std::string& tag) {
+    if (!result.contains("context") || !result.at("context").is_object())
+        throw std::invalid_argument("Questionnaire context is missing.");
+    const auto& context = result.at("context");
+    if (!context.contains("session_index") || !context.at("session_index").is_number_integer() ||
+        context.at("session_index").get<int>() != session ||
+        !context.contains("condition_code") || !context.at("condition_code").is_string() ||
+        context.at("condition_code").get<std::string>() != condition ||
+        !context.contains("tag") || !context.at("tag").is_string() ||
+        context.at("tag").get<std::string>() != tag) {
+        throw std::invalid_argument("Questionnaire context does not match the submission session.");
+    }
+}
+
 std::string questionnaireVersion(const nlohmann::json& result) {
     if (!result.contains("context") || !result.at("context").is_object() ||
         !result.at("context").contains("questionnaire_version") ||
@@ -79,6 +94,7 @@ std::string questionnaireVersion(const nlohmann::json& result) {
 } // namespace
 
 nlohmann::json makeSubmissionData(const nlohmann::json& conditionResult) {
+    requireContext(conditionResult, 1, "A", "rating-A");
     return {
         {"questionnaire_version", questionnaireVersion(conditionResult)},
         {"responses", {
@@ -90,6 +106,8 @@ nlohmann::json makeSubmissionData(const nlohmann::json& conditionResult) {
 
 nlohmann::json makeSubmissionData(const nlohmann::json& conditionResult,
                                   const nlohmann::json& comparisonResult) {
+    requireContext(conditionResult, 2, "B", "rating-B");
+    requireContext(comparisonResult, 2, "B", "comparison");
     const std::string version = questionnaireVersion(conditionResult);
     if (questionnaireVersion(comparisonResult) != version)
         throw std::invalid_argument("Condition and comparison questionnaire versions do not match.");
