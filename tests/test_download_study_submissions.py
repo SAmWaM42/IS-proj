@@ -64,6 +64,11 @@ class SubmissionValidationTests(unittest.TestCase):
             MODULE.validate_submission(data, "P20-S1.json"),
         )
 
+    def test_rejects_non_string_answer_type(self):
+        data = submission(20, 1)
+        data["responses"]["condition_questionnaire"]["answers"][0]["answer_type"] = []
+        self.assertTrue(MODULE.validate_submission(data, "P20-S1.json"))
+
     def test_filters_participant_and_session(self):
         file = {"name": "P20-S2.json"}
         self.assertTrue(MODULE.matching_submission(file, 20, 2))
