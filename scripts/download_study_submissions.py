@@ -158,7 +158,7 @@ def questionnaire_errors(value: Any, label: str) -> list[str]:
         answer_value = answer["value"]
         if not isinstance(question_id, str) or not QUESTION_ID_RE.fullmatch(question_id):
             errors.append(f"{prefix}.question_id is invalid")
-        if answer_type not in allowed_types:
+        if not isinstance(answer_type, str) or answer_type not in allowed_types:
             errors.append(f"{prefix}.answer_type is invalid")
             continue
         valid = True
