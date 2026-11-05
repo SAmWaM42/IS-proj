@@ -45,6 +45,9 @@ int main() {
     }
     assert(likertCount == 8);
     assert(ratingIds.size() == 10);
+    std::size_t ratingBCount = 0;
+    for (const auto& page : ratingB.pages) ratingBCount += page.questions.size();
+    assert(ratingBCount == 10);
     assert(attentionCheckFound);
     assert(reverseScoredFound);
 
