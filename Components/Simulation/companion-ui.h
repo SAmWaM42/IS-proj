@@ -12,6 +12,7 @@
 
 #include "Components/State-Action/state-action.h"
 #include "Components/Study/participant-config.h"
+#include "Components/Simulation/submission-manager.h"
 #include "Components/Questionnaire/questionnaire.h"
 
 class CompanionUI {
@@ -53,6 +54,8 @@ private:
     sf::RenderWindow& window;
     sf::Font font;
     std::unique_ptr<questionnaire::View> questionnaireView;
+    std::unique_ptr<SubmissionManager> submissionManager;
+    nlohmann::json sessionTwoConditionResult = nullptr;
     std::string questionnaireTag;
     bool questionnaireSaveErrorReported = false;
     sf::Texture environmentTexture;
@@ -186,6 +189,7 @@ private:
     void startQuestionnaire(const questionnaire::Definition& definition, const std::string& tag,
                             unsigned int shuffleSeed);
     void finishQuestionnaire();
+    bool queueCompletedSubmission(int sessionIndex, char condition, const nlohmann::json& submissionData);
     bool saveQuestionnaireDraft();
     void applySceneEvent(const std::string& sceneEvent);
     void applyGeometryProximity(EnvironmentObservation& observation, const std::string& basis) const;
