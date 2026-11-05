@@ -100,8 +100,8 @@ int main(int argc, char **argv)
     const std::string studyOutputDirectory = (userDataRoot / "study-linkage").string();
     const std::string runtimeStatePath = (userDataRoot / "companion-state").string();
     try {
+        ParticipantMenu menu;
         for (;;) {
-            ParticipantMenu menu;
             const auto choice = menu.run();
             if (choice == ParticipantMenu::Choice::Exit) break;
             if (choice == ParticipantMenu::Choice::BelievabilityStudy) {
@@ -110,17 +110,18 @@ int main(int argc, char **argv)
                     // root of the extracted application directory.
                     const auto credentialsPath = appRoot / "credentials.json";
                     const auto participantConfig = study::ParticipantConfig::load(credentialsPath);
-                    CompanionUI study(policyDirectory, studyOutputDirectory, false, true,
+                    CompanionUI study(menu.getWindow(), policyDirectory, studyOutputDirectory, false, true,
                                       runtimeStatePath, participantConfig);
-                    study.run();
+                    if (!study.run()) break;
                 } catch (const std::exception& error) {
                     std::cerr << "Research Session cannot start: " << error.what() << '\n';
                     // Return to the menu; Free Roam remains available without credentials.
                     continue;
                 }
-                break;
+                continue;
             }
-            CompanionUI simulation(policyDirectory, (userDataRoot / "general-interaction").string(),
+            CompanionUI simulation(menu.getWindow(), policyDirectory,
+                                   (userDataRoot / "general-interaction").string(),
                                    false, false, runtimeStatePath);
             if (!simulation.run()) break;
         }
@@ -166,7 +167,9 @@ int main(int argc, char **argv)
             try
             {
                 const bool researcherMode = arg == "--sim-researcher";
-                CompanionUI simulation(policyDirectory, "artifacts/simulation", researcherMode);
+                sf::RenderWindow appWindow(sf::VideoMode(sf::Vector2u(1280u, 900u)),
+                                            "Animal Agent | Companion Simulation");
+                CompanionUI simulation(appWindow, policyDirectory, "artifacts/simulation", researcherMode);
                 simulation.run();
             }
             catch (const std::exception &error)
@@ -266,7 +269,9 @@ int main(int argc, char **argv)
     {
         try
         {
-            CompanionUI study(policyDirectory, studyOutputDirectory, false, true, runtimeStatePath);
+            sf::RenderWindow appWindow(sf::VideoMode(sf::Vector2u(1280u, 900u)),
+                                        "Animal Agent | Companion Simulation");
+            CompanionUI study(appWindow, policyDirectory, studyOutputDirectory, false, true, runtimeStatePath);
             study.run();
         }
         catch (const std::exception &error)
@@ -286,9 +291,9 @@ int main(int argc, char **argv)
         try
         {
             bool showMenu = true;
+            ParticipantMenu menu;
             while (showMenu)
             {
-                ParticipantMenu menu;
                 const auto choice = menu.run();
                 if (choice == ParticipantMenu::Choice::Exit)
                 {
@@ -297,14 +302,14 @@ int main(int argc, char **argv)
 
                 if (choice == ParticipantMenu::Choice::BelievabilityStudy)
                 {
-                    CompanionUI study(policyDirectory, studyOutputDirectory, false, true);
-                    study.run();
-                    // The guided study owns its completion and withdrawal flow.
-                    // Returning from it ends this application run.
-                    break;
+                    CompanionUI study(menu.getWindow(), policyDirectory, studyOutputDirectory, false, true);
+                    if (!study.run()) break;
+                    continue;
                 }
 
-                CompanionUI simulation(policyDirectory, (userDataRoot / "general-interaction").string(), false, false, runtimeStatePath);
+                CompanionUI simulation(menu.getWindow(), policyDirectory,
+                                        (userDataRoot / "general-interaction").string(),
+                                        false, false, runtimeStatePath);
                 showMenu = simulation.run();
             }
         }
