@@ -399,13 +399,14 @@ const std::array<ControlButton, 10> kControls{{
 }};
 }
 
-CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
+CompanionUI::CompanionUI(sf::RenderWindow& sharedWindow,
+                         const std::string& policyDirectoryValue,
                          const std::string& outputDirectoryValue,
                          bool researcherModeValue,
                          bool guidedStudyModeValue,
                          const std::string& runtimeStatePathValue,
                          const study::ParticipantConfig& participantConfigValue)
-    : window(sf::VideoMode(sf::Vector2u(1280u, 900u)), "Animal Agent | Companion Simulation"),
+    : window(sharedWindow),
       policyDirectory(policyDirectoryValue),
       outputDirectory(outputDirectoryValue),
       runtimeStatePath(runtimeStatePathValue),
@@ -499,13 +500,13 @@ bool CompanionUI::run() {
                     questionnaireView->handleKey(key->code);
                     saveQuestionnaireDraft();
                 } else if (key->code == sf::Keyboard::Key::Escape) {
-                    if (!guidedStudyMode) {
+                    if (!guidedStudyMode || studyFinished) {
                         saveSession();
                         returnToMenu = true;
-                    } else if (studyPhase != "consent") {
-                        saveSession();
+                    } else {
+                        if (studyPhase != "consent") saveSession();
+                        window.close();
                     }
-                    window.close();
                 } else if (guidedStudyMode && studyPhase == "consent" &&
                            (key->code == sf::Keyboard::Key::Y || key->code == sf::Keyboard::Key::Enter)) {
                     studyPhase = "warm_up";
@@ -553,6 +554,7 @@ bool CompanionUI::run() {
                     questionnaireView->handleScroll(wheel->delta);
             }
         }
+        if (returnToMenu || returnToMenuRequested) break;
         if (screen == Screen::Questionnaire && questionnaireView && questionnaireView->finished())
             finishQuestionnaire();
         draw();
@@ -2095,11 +2097,10 @@ void CompanionUI::processTextInteraction(const std::string& text) {
 
 void CompanionUI::handleClick(sf::Vector2f point) {
     const float x = point.x, y = point.y;
-    if (!researcherMode && !guidedStudyMode && y >= 14 && y <= 58 &&
-        x >= 1030 && x < 1210) {
+    if (!researcherMode && (!guidedStudyMode || studyFinished) &&
+        y >= 14 && y <= 58 && x >= 1030 && x < 1210) {
         saveSession();
         returnToMenuRequested = true;
-        window.close();
         return;
     }
     if (screen == Screen::AgentSelection) {
@@ -2280,7 +2281,7 @@ void CompanionUI::appendLog(const std::string& value) {
 
 void CompanionUI::drawAgentSelectionScreen() {
     if (!researcherMode && !guidedStudyMode)
-        drawButton("Main Menu", 1030, 12, 180, 42);
+        drawButton("Return to Menu", 1030, 12, 180, 42);
     drawText("CHOOSE COMPANION", 60, 120, 30, kInk);
     drawText(researcherMode
                  ? "Select A or B. The interface does not disclose the model behind either label."
@@ -2323,10 +2324,12 @@ void CompanionUI::drawNavigation() {
                    357, 12, 160, 42, conditionQuestionnaireCompleted);
         drawText("Participant study | Session " + std::to_string(studySessionIndex) + "/2",
                  700, 22, 15, kMuted);
+        if (studyFinished)
+            drawButton("Return to Menu", 1030, 12, 180, 42);
     } else {
         drawButton("Change Model", 185, 12, 160, 42);
         drawButton("Questionnaire", 357, 12, 160, 42);
-        drawButton("Main Menu", 1030, 12, 180, 42);
+        drawButton("Return to Menu", 1030, 12, 180, 42);
     }
 }
 
