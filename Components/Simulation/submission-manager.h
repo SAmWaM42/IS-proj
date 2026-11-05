@@ -32,6 +32,7 @@ private:
     std::filesystem::path applicationDirectory_;
     std::filesystem::path pythonExecutable_;
     std::filesystem::path pendingDirectory_;
+    std::filesystem::path submittedDirectory_;
 
     bool uploadOne(const std::filesystem::path& responseFile) const;
     static bool writeAtomically(const std::filesystem::path& destination,
