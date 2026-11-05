@@ -3,6 +3,7 @@
 #include <cassert>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 
 namespace {
 nlohmann::json completedForm(const std::string& tag, nlohmann::json answers) {
