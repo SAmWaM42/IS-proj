@@ -837,6 +837,7 @@ void CompanionUI::startQuestionnaire(const questionnaire::Definition& definition
         {"session_index", studySessionIndex},
         {"condition_code", std::string(1, selectedAgentCode)},
         {"build_id", IS2_GIT_REVISION},
+        {"questionnaire_version", "companion-believability-short-v2"},
         {"tag", tag}
     };
     questionnaireTag = tag;
