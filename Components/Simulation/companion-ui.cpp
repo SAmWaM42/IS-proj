@@ -528,7 +528,8 @@ bool CompanionUI::run() {
             } else if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
                 if (click->button == sf::Mouse::Button::Left) {
                     if (screen == Screen::Questionnaire && questionnaireView)
-                        questionnaireView->handleClick(window.mapPixelToCoords(click->position));
+                        questionnaireView->handleClick({static_cast<float>(click->position.x),
+                                                        static_cast<float>(click->position.y)});
                     else
                         handleClick(window.mapPixelToCoords(click->position));
                 }
@@ -805,6 +806,17 @@ void CompanionUI::completeStudyStep(const std::string& interaction) {
     writeStudyManifest();
 }
 
+void CompanionUI::openStudyForm() {
+    if (!guidedStudyMode || studyPhase != "rating" || studyFormOpenedCurrentCondition) {
+        appendLog("The questionnaire is available after the guided and free-interaction phases.");
+        return;
+    }
+    const unsigned int seed = static_cast<unsigned int>(
+        participantConfig.participantNumber * 100 + (selectedAgentCode == 'A' ? 1 : 2));
+    startQuestionnaire(questionnaire::makeCompanionRating(selectedAgentCode, seed),
+                        std::string("rating-") + selectedAgentCode);
+}
+
 void CompanionUI::startQuestionnaire(const questionnaire::Definition& definition,
                                      const std::string& tag) {
     if (!questionnaireView) return;
@@ -835,14 +847,14 @@ void CompanionUI::finishQuestionnaire() {
         appendLog("Could not save questionnaire response. Please contact the researcher.");
         return;
     }
-    output << result.dump(2) << '\\n';
+    output << result.dump(2) << '\n';
     output.close();
     if (!output) {
         appendLog("Questionnaire response could not be written completely.");
         return;
     }
 
-    if (questionnaireTag == "rating") {
+    if (questionnaireTag.rfind("rating-", 0) == 0) {
         if (selectedAgentCode == 'A') ratingAResult = result;
         else ratingBResult = result;
         studyFormOpenedCurrentCondition = true;
@@ -2119,12 +2131,8 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                             logStudyPhaseEvent("phase_started", "guided");
                             writeStudyManifest();
                         } else {
-                            studyFinished = true;
                             logStudyPhaseEvent("phase_ended", "rating");
-                            studyPhase = "finished";
-                            logStudyPhaseEvent("phase_started", "finished");
-                            writeStudyManifest();
-                            saveSession();
+                            startQuestionnaire(questionnaire::makeComparison(), "comparison");
                         }
                     }
                 } else {
@@ -2538,7 +2546,9 @@ void CompanionUI::drawComparisonScreen() {
 
 void CompanionUI::draw() {
     window.clear(kBackground);
-    if (screen == Screen::AgentSelection) {
+    if (screen == Screen::Questionnaire && questionnaireView) {
+        questionnaireView->draw();
+    } else if (screen == Screen::AgentSelection) {
         drawAgentSelectionScreen();
     } else {
         drawNavigation();
