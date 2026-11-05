@@ -427,6 +427,7 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
         !font.openFromFile("C:/Windows/Fonts/arial.ttf")) {
         throw std::runtime_error("Unable to load DejaVuSans.ttf. Install DejaVu fonts or update companion-ui.cpp.");
     }
+    questionnaireView = std::make_unique<questionnaire::View>(window, font);
     window.setFramerateLimit(60);
     environmentTextureLoaded = environmentTexture.loadFromFile("Data/Assets/free version/free.png");
     if (environmentTextureLoaded) appendLog("Loaded backyard atlas (free.png)");
@@ -474,13 +475,18 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
 bool CompanionUI::run() {
     bool returnToMenu = false;
     while (window.isOpen()) {
-        updateAnimation(frameClock.restart().asSeconds());
+        const float elapsedSeconds = frameClock.restart().asSeconds();
+        updateAnimation(elapsedSeconds);
+        if (screen == Screen::Questionnaire && questionnaireView)
+            questionnaireView->update(elapsedSeconds);
         while (const auto event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>()) {
                 if (!guidedStudyMode || studyPhase != "consent") saveSession();
                 window.close();
             } else if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
-                if (key->code == sf::Keyboard::Key::Escape) {
+                if (screen == Screen::Questionnaire && questionnaireView) {
+                    questionnaireView->handleKey(key->code);
+                } else if (key->code == sf::Keyboard::Key::Escape) {
                     if (!guidedStudyMode) {
                         saveSession();
                         returnToMenu = true;
@@ -513,16 +519,26 @@ bool CompanionUI::run() {
                     }
                 }
             } else if (const auto* text = event->getIf<sf::Event::TextEntered>()) {
-                if (screen == Screen::Simulation && textInputFocused &&
+                if (screen == Screen::Questionnaire && questionnaireView) {
+                    questionnaireView->handleText(static_cast<char32_t>(text->unicode));
+                } else if (screen == Screen::Simulation && textInputFocused &&
                     text->unicode >= 32 && text->unicode < 127 && textInput.size() < 100) {
                     textInput.push_back(static_cast<char>(text->unicode));
                 }
             } else if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
                 if (click->button == sf::Mouse::Button::Left) {
-                    handleClick(window.mapPixelToCoords(click->position));
+                    if (screen == Screen::Questionnaire && questionnaireView)
+                        questionnaireView->handleClick(window.mapPixelToCoords(click->position));
+                    else
+                        handleClick(window.mapPixelToCoords(click->position));
                 }
+            } else if (const auto* wheel = event->getIf<sf::Event::MouseWheelScrolled>()) {
+                if (screen == Screen::Questionnaire && questionnaireView)
+                    questionnaireView->handleScroll(wheel->delta);
             }
         }
+        if (screen == Screen::Questionnaire && questionnaireView && questionnaireView->finished())
+            finishQuestionnaire();
         draw();
     }
     return returnToMenu || returnToMenuRequested;
@@ -789,80 +805,62 @@ void CompanionUI::completeStudyStep(const std::string& interaction) {
     writeStudyManifest();
 }
 
-void CompanionUI::openStudyForm() {
-    if (guidedStudyMode && (studyPhase != "rating" || studyFormOpenedCurrentCondition)) {
-        appendLog("The form opens only after the guided and free-interaction phases.");
-        return;
-    }
-    std::string configuredUrl;
-    std::string sessionEntry;
-    std::string conditionEntry;
-    std::string runEntry;
-    try {
-        std::ifstream configFile(std::filesystem::path("Data/Study") / "form-config.json");
-        if (configFile) {
-            const auto config = json::parse(configFile);
-            configuredUrl = config.value("form_url", std::string{});
-            sessionEntry = config.value("entry_session", std::string{});
-            conditionEntry = config.value("entry_condition", std::string{});
-            runEntry = config.value("entry_run", std::string{});
-        }
-    } catch (const std::exception& error) {
-        appendLog(std::string("Study form configuration could not be read: ") + error.what());
-        return;
-    }
-    // Environment variables deliberately override the packaged template for researcher testing.
-    if (const char* value = std::getenv("ANIMAL_AGENT_STUDY_FORM_URL")) configuredUrl = value;
-    if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_SESSION")) sessionEntry = value;
-    if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_CONDITION")) conditionEntry = value;
-    if (const char* value = std::getenv("ANIMAL_AGENT_FORM_ENTRY_RUN")) runEntry = value;
-    if (configuredUrl.empty() || configuredUrl.find("REPLACE_WITH_") != std::string::npos ||
-        sessionEntry.empty() || sessionEntry.find("REPLACE_WITH_") != std::string::npos ||
-        conditionEntry.empty() || conditionEntry.find("REPLACE_WITH_") != std::string::npos ||
-        runEntry.empty() || runEntry.find("REPLACE_WITH_") != std::string::npos) {
-        appendLog("Study form is not configured. The researcher must set Data/Study/form-config.json before distribution.");
-        return;
-    }
-    const std::string baseUrl(configuredUrl);
-    const std::string separator = baseUrl.find('?') == std::string::npos ? "?" : "&";
-    const std::string url = baseUrl + separator +
-        "entry." + sessionEntry + "=" + std::to_string(studySessionIndex) +
-        "&entry." + conditionEntry + "=" + std::string(1, selectedAgentCode) +
-        "&entry." + runEntry + "=" + runId;
-    {
-        nlohmann::json row = {
-            {"schema_version", 1}, {"event", "study_form_opened"},
-            {"protocol_id", "companion-believability-v0.1"}, {"run_id", runId},
-            {"participant_code", studyParticipantCode}, {"session_index", studySessionIndex},
-            {"condition_code", std::string(1, selectedAgentCode)},
-            {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},
-            {"timestamp", utcTimestamp()}, {"phase", studyPhase}
-        };
-        std::ofstream log;
-        if (researcherMode) log.open(std::filesystem::path(outputDirectory) / (runId + "-steps.jsonl"), std::ios::app);
-        if (log) log << row.dump() << '\n';
-    }
-#ifdef _WIN32
-    const auto result = reinterpret_cast<std::intptr_t>(
-        ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
-    if (result <= 32) {
-        appendLog("Could not start browser for the study form.");
-        return;
-    }
-#else
-    const pid_t browser = fork();
-    if (browser == 0) {
-        execlp("xdg-open", "xdg-open", url.c_str(), static_cast<char*>(nullptr));
-        _exit(127);
-    }
-    if (browser < 0) {
-        appendLog("Could not start browser for the study form.");
-        return;
-    }
-#endif
-    if (guidedStudyMode) studyFormOpenedCurrentCondition = true;
-    appendLog("Opened Google Form for Companion " + std::string(1, selectedAgentCode));
+void CompanionUI::startQuestionnaire(const questionnaire::Definition& definition,
+                                     const std::string& tag) {
+    if (!questionnaireView) return;
+    nlohmann::json context = {
+        {"run_id", runId},
+        {"participant_code", studyParticipantCode},
+        {"session_index", studySessionIndex},
+        {"condition_code", std::string(1, selectedAgentCode)},
+        {"build_id", IS2_GIT_REVISION},
+        {"tag", tag}
+    };
+    questionnaireTag = tag;
+    const unsigned int seed = static_cast<unsigned int>(
+        participantConfig.participantNumber * 100 + studySessionIndex);
+    questionnaireView->begin(definition, context, seed);
+    screen = Screen::Questionnaire;
+    appendLog("Opened in-app questionnaire: " + tag);
 }
+
+void CompanionUI::finishQuestionnaire() {
+    if (!questionnaireView || !questionnaireView->finished()) return;
+    const nlohmann::json result = questionnaireView->result();
+    const std::filesystem::path resultPath =
+        std::filesystem::path(outputDirectory) /
+        ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
+    std::ofstream output(resultPath, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        appendLog("Could not save questionnaire response. Please contact the researcher.");
+        return;
+    }
+    output << result.dump(2) << '\\n';
+    output.close();
+    if (!output) {
+        appendLog("Questionnaire response could not be written completely.");
+        return;
+    }
+
+    if (questionnaireTag == "rating") {
+        if (selectedAgentCode == 'A') ratingAResult = result;
+        else ratingBResult = result;
+        studyFormOpenedCurrentCondition = true;
+        studyPhase = "rating";
+        logStudyPhaseEvent("questionnaire_completed", "rating");
+        writeStudyManifest();
+    } else if (questionnaireTag == "comparison") {
+        comparisonResult = result;
+        studyFinished = true;
+        studyPhase = "finished";
+        logStudyPhaseEvent("questionnaire_completed", "comparison");
+        logStudyPhaseEvent("phase_started", "finished");
+        writeStudyManifest();
+    }
+    appendLog("Questionnaire saved locally: " + resultPath.filename().string());
+    screen = Screen::Simulation;
+}
+
 
 void CompanionUI::applySceneEvent(const std::string& sceneEvent) {
     const SceneLayout L = sceneLayout();
