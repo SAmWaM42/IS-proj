@@ -1,5 +1,5 @@
 // Questionnaire content. Edit the wording here; the View in questionnaire.cpp draws whatever it is given.
-// Item ids match the scoring key in the Google Form template (C1..C21, 3.x, 4.x).
+// Item IDs are stable response keys for the active shortened pilot questionnaire.
 
 #include "questionnaire.h"
 
@@ -51,40 +51,8 @@ Question freeText(const std::string& id, const std::string& text, bool paragraph
     return q;
 }
 
-Question info(const std::string& text) {
-    Question q;
-    q.id = "info";
-    q.type = QuestionType::Info;
-    q.text = text;
-    q.required = false;
-    return q;
-}
 
 }  // namespace
-
-Definition makeConsentAndBackground() {
-    Definition d;
-    d.id = "consent_background";
-    d.title = "Before you begin";
-
-    Page consent;
-    consent.title = "About this study";
-    consent.description = "Please read this carefully. You can stop at any time.";
-    consent.questions.push_back(info(
-        "This study looks at how lifelike two virtual animal companions seem. You will interact with each companion "
-        "for about ten minutes, answer questions about it afterwards, and compare the two at the end. Taking part is "
-        "voluntary. We do not collect your name or email address. Your answers are stored under a participant code, "
-        "sent over an encrypted connection to a private research folder, and used only for this project at [institution]. "
-        "Results are reported as group summaries.\n"
-        "Contact: [researcher name and email]. Ethics reference: [reference]."));
-    consent.questions.push_back(choice("consent", "I am 18 or older, I have read the information above, and I agree to take part.",
-                                       {"Yes, I agree", "No, I do not agree"}));
-    d.pages.push_back(consent);
-
-    // Demographic and familiarity questions are intentionally omitted in line
-    // with the current study protocol decision. Add them only if the protocol changes.
-    return d;
-}
 
 Definition makeCompanionRating(char companionCode, unsigned int shuffleSeed) {
     const std::string name = std::string("Companion ") + companionCode;
