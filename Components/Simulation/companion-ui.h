@@ -188,6 +188,7 @@ private:
     void startQuestionnaire(const questionnaire::Definition& definition, const std::string& tag,
                             unsigned int shuffleSeed);
     void finishQuestionnaire();
+    void saveQuestionnaireDraft();
     void applySceneEvent(const std::string& sceneEvent);
     void applyGeometryProximity(EnvironmentObservation& observation, const std::string& basis) const;
     void startBehaviour(const std::string& action, const std::string& sceneEvent);
