@@ -230,6 +230,7 @@ void View::layoutPage() {
         y += kHeaderH;
     }
     for (int index : order[static_cast<std::size_t>(pageIndex)]) {
+        if (!isVisible(pageIndex, index)) continue;
         const Question& q = page.questions[static_cast<std::size_t>(index)];
         Slot slot;
         slot.question = index;
@@ -270,7 +271,30 @@ void View::goToPage(int index) {
     layoutPage();
 }
 
+bool View::isVisible(int pageNumber, int question) const {
+    const Question& q = definition.pages[static_cast<std::size_t>(pageNumber)]
+                            .questions[static_cast<std::size_t>(question)];
+    if (q.visibleWhenQuestionId.empty()) return true;
+
+    for (std::size_t p = 0; p < definition.pages.size(); ++p) {
+        const Page& parentPage = definition.pages[p];
+        for (std::size_t i = 0; i < parentPage.questions.size(); ++i) {
+            if (parentPage.questions[i].id != q.visibleWhenQuestionId) continue;
+            const Answer& parentAnswer = answers[p][i];
+            const Question& parentQuestion = parentPage.questions[i];
+            if (parentQuestion.type != QuestionType::Choice || parentAnswer.index < 0 ||
+                parentAnswer.index >= static_cast<int>(parentQuestion.options.size())) return false;
+            const std::string& selected =
+                parentQuestion.options[static_cast<std::size_t>(parentAnswer.index)];
+            return std::find(q.visibleWhenValues.begin(), q.visibleWhenValues.end(), selected) !=
+                   q.visibleWhenValues.end();
+        }
+    }
+    return false;
+}
+
 bool View::isMissing(int pageNumber, int question) const {
+    if (!isVisible(pageNumber, question)) return false;
     const Question& q = definition.pages[static_cast<std::size_t>(pageNumber)].questions[static_cast<std::size_t>(question)];
     if (!q.required || q.type == QuestionType::Info) return false;
     const Answer& a = answers[static_cast<std::size_t>(pageNumber)][static_cast<std::size_t>(question)];
@@ -281,7 +305,7 @@ bool View::isMissing(int pageNumber, int question) const {
 bool View::pageComplete() const {
     const Page& page = definition.pages[static_cast<std::size_t>(pageIndex)];
     for (std::size_t i = 0; i < page.questions.size(); ++i)
-        if (isMissing(pageIndex, static_cast<int>(i))) return false;
+        if (isVisible(pageIndex, static_cast<int>(i)) && isMissing(pageIndex, static_cast<int>(i))) return false;
     return true;
 }
 
@@ -629,7 +653,7 @@ nlohmann::json View::result() const {
         const Page& page = definition.pages[p];
         for (std::size_t i = 0; i < page.questions.size(); ++i) {
             const Question& q = page.questions[i];
-            if (q.type == QuestionType::Info) continue;
+            if (q.type == QuestionType::Info || !isVisible(static_cast<int>(p), static_cast<int>(i))) continue;
             const Answer& a = answers[p][i];
             nlohmann::json row;
             row["id"] = q.id;
