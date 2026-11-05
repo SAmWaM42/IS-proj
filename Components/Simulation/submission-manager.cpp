@@ -57,8 +57,10 @@ SubmissionManager::SubmissionManager(std::filesystem::path userDataDirectory,
     : userDataDirectory_(std::move(userDataDirectory)),
       applicationDirectory_(std::move(applicationDirectory)),
       pythonExecutable_(std::move(pythonExecutable)),
-      pendingDirectory_(userDataDirectory_ / "pending-submissions") {
+      pendingDirectory_(userDataDirectory_ / "pending-submissions"),
+      submittedDirectory_(userDataDirectory_ / "submitted-submissions") {
     std::filesystem::create_directories(pendingDirectory_);
+    std::filesystem::create_directories(submittedDirectory_);
 }
 
 std::filesystem::path SubmissionManager::pendingDirectory() const {
@@ -114,12 +116,19 @@ bool SubmissionManager::queueSubmission(int participantNumber, int sessionIndex,
     record["_upload_token"] = participantToken;
 
     const auto destination = pendingDirectory_ / (id + ".json");
-    if (std::filesystem::exists(destination)) return false;
+    const auto receipt = submittedDirectory_ / (id + ".sent");
+    // A participant/session ID is single-use. Do not let a fresh run silently
+    // collide with an earlier acknowledged submission.
+    if (std::filesystem::exists(receipt) || std::filesystem::exists(destination)) return false;
     if (!writeAtomically(destination, record.dump(2) + "\n")) return false;
 
     if (uploadOne(destination)) {
-        std::error_code error;
-        std::filesystem::remove(destination, error);
+        // Persist a token-free receipt before removing the retryable payload.
+        // If receipt creation fails, keep the pending file for an idempotent retry.
+        if (writeAtomically(receipt, id + "\\n")) {
+            std::error_code error;
+            std::filesystem::remove(destination, error);
+        }
     }
     return true;
 }
@@ -177,10 +186,16 @@ SubmissionUploadSummary SubmissionManager::uploadPendingSubmissions() {
     for (const auto& file : files) {
         ++summary.attempted;
         if (uploadOne(file)) {
-            std::error_code error;
-            std::filesystem::remove(file, error);
-            if (!error) ++summary.uploaded;
-            else ++summary.pending;
+            const std::string id = file.stem().string();
+            const auto receipt = submittedDirectory_ / (id + ".sent");
+            if (writeAtomically(receipt, id + "\\n")) {
+                std::error_code error;
+                std::filesystem::remove(file, error);
+                if (!error) ++summary.uploaded;
+                else ++summary.pending;
+            } else {
+                ++summary.pending;
+            }
         } else ++summary.pending;
     }
     return summary;
