@@ -674,7 +674,7 @@ void CompanionUI::initialiseGuidedStudy() {
     studyFreeElapsed = 0.0f;
     studyGuidedComplete = false;
     studyFreeFinished = false;
-    studyFormOpenedCurrentCondition = false;
+    conditionQuestionnaireCompleted = false;
     studyFinished = false;
     selectedAgentCode = 'A';
     selectedAgentIsProposed = agentAIsProposed;
@@ -821,8 +821,8 @@ void CompanionUI::completeStudyStep(const std::string& interaction) {
     writeStudyManifest();
 }
 
-void CompanionUI::openStudyForm() {
-    if (!guidedStudyMode || studyPhase != "rating" || studyFormOpenedCurrentCondition) {
+void CompanionUI::openConditionQuestionnaire() {
+    if (!guidedStudyMode || studyPhase != "rating" || conditionQuestionnaireCompleted) {
         appendLog("The questionnaire is available after the guided and free-interaction phases.");
         return;
     }
@@ -912,14 +912,11 @@ void CompanionUI::finishQuestionnaire() {
         std::filesystem::path(outputDirectory) /
         ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
     if (questionnaireTag.rfind("rating-", 0) == 0) {
-        if (selectedAgentCode == 'A') ratingAResult = result;
-        else ratingBResult = result;
-        studyFormOpenedCurrentCondition = true;
+        conditionQuestionnaireCompleted = true;
         studyPhase = "rating";
         logStudyPhaseEvent("questionnaire_completed", "rating");
         writeStudyManifest();
     } else if (questionnaireTag == "comparison") {
-        comparisonResult = result;
         studyFinished = true;
         studyPhase = "finished";
         logStudyPhaseEvent("questionnaire_completed", "comparison");
@@ -2161,7 +2158,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                         logStudyPhaseEvent("phase_ended", "free");
                         logStudyPhaseEvent("phase_started", "rating");
                         writeStudyManifest();
-                    } else if (studyPhase == "rating" && studyFormOpenedCurrentCondition) {
+                    } else if (studyPhase == "rating" && conditionQuestionnaireCompleted) {
                         if (studySessionIndex == 1) {
                             studySessionIndex = 2;
                             studyStartedAt = utcTimestamp();
@@ -2175,7 +2172,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                             studyFreeElapsed = 0.0f;
                             studyGuidedComplete = false;
                             studyFreeFinished = false;
-                            studyFormOpenedCurrentCondition = false;
+                            conditionQuestionnaireCompleted = false;
                             eventLog.clear();
                             interactionCount = 0;
                             lastActionInteractionId = 0;
@@ -2199,7 +2196,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                 }
             } else if (x >= 357 && x < 517) {
                 if (!guidedStudyMode || (studyPhase == "rating" && studyFreeFinished))
-                    openStudyForm();
+                    openConditionQuestionnaire();
             }
         }
         return;
@@ -2318,17 +2315,17 @@ void CompanionUI::drawNavigation() {
     } else if (guidedStudyMode) {
         std::string continueLabel = "Change Model (locked)";
         if (studyPhase == "free") continueLabel = "Finish Free Phase";
-        else if (studyPhase == "rating" && studyFormOpenedCurrentCondition)
+        else if (studyPhase == "rating" && conditionQuestionnaireCompleted)
             continueLabel = studySessionIndex == 1 ? "Continue to Companion B" : "Continue to Comparison";
         drawButton(continueLabel, 185, 12, 160, 42,
-                   studyPhase == "free" || (studyPhase == "rating" && studyFormOpenedCurrentCondition));
-        drawButton(studyFormOpenedCurrentCondition ? "Rating Saved" : "Answer Form",
-                   357, 12, 160, 42, studyFormOpenedCurrentCondition);
+                   studyPhase == "free" || (studyPhase == "rating" && conditionQuestionnaireCompleted));
+        drawButton(conditionQuestionnaireCompleted ? "Rating Saved" : "Questionnaire",
+                   357, 12, 160, 42, conditionQuestionnaireCompleted);
         drawText("Participant study | Session " + std::to_string(studySessionIndex) + "/2",
                  700, 22, 15, kMuted);
     } else {
         drawButton("Change Model", 185, 12, 160, 42);
-        drawButton("Answer Form", 357, 12, 160, 42);
+        drawButton("Questionnaire", 357, 12, 160, 42);
         drawButton("Main Menu", 1030, 12, 180, 42);
     }
 }
@@ -2487,7 +2484,7 @@ void CompanionUI::drawSimulationScreen() {
             drawText("Please do not enter identifying details; free text is not saved verbatim.",
                      L.x + 275.0f, L.y + 44.0f, 14, sf::Color::White);
         } else if (studyPhase == "rating") {
-            drawText(studyFormOpenedCurrentCondition
+            drawText(conditionQuestionnaireCompleted
                          ? "Questionnaire saved. Continue when ready."
                          : "Guided interaction complete. Open Answer Form before continuing.",
                      L.x + 275.0f, L.y + 18.0f, 16, sf::Color::White);
