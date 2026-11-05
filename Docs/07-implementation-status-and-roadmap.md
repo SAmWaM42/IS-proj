@@ -87,3 +87,9 @@ See [README.md](../README.md) for build and launch instructions, and [project-co
 ### M1.2 progress
 
 The generic response model is now populated by `companion-believability-v1` in Components/Study/questionnaire-definition.h/.cpp. It defines 26 per-condition items and 8 final comparison items from `Docs/Google Form Template Companion Believability Study.md`, with stable IDs, prompts, types, required flags, options, 1–5 bounds, text limits, and scale endpoint labels. Section 2 demographic/context questions are omitted; consent is a separate gate and session metadata comes from the app. Engagement remains secondary/exploratory. The CMake application and test targets include the definition, and the focused test checks its structure. This is still an unverified draft transcription: no local build/CTest run has been reported, no SFML questionnaire UI exists yet, and supervisor/ethics approval and piloting remain necessary. The web API contract has not yet been updated; that belongs to M2.
+
+### Embedded questionnaire UI progress — 5 November 2026
+
+The project owner's supplied questionnaire UI has now been integrated into `Components/Questionnaire/` and connected to the guided study flow. It replaces the browser-form launch for the two condition ratings and final A/B comparison. Each completed questionnaire is saved as a separate JSON file in the participant study output directory. Demographic/familiarity items remain omitted. Conditional technical-issue and comparison-difference follow-ups are supported.
+
+This is source-integrated but not yet verified: the project owner must build the application and run `questionnaire_content_test`, then manually test text entry, pagination, conditional follow-ups, saving, and the complete A/B/comparison sequence. The new JSON format is not yet adapted to the existing submission schema and is not uploaded. The menu's separate-window ownership and full app-level StudyController are also not solved by this change.
