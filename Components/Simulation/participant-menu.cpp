@@ -89,11 +89,9 @@ ParticipantMenu::Choice ParticipantMenu::run() {
                 const sf::Vector2f point = window.mapPixelToCoords(click->position);
 
                 if (modeCardRect(0).contains(point)) {
-                    window.close();
                     return Choice::GeneralInteraction;
                 }
                 if (modeCardRect(1).contains(point)) {
-                    window.close();
                     return Choice::BelievabilityStudy;
                 }
                 if (kQuitRect.contains(point)) {
