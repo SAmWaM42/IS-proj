@@ -185,7 +185,8 @@ private:
     bool studyInputMatches(const std::string& interaction, bool isText) const;
     std::string currentStudyPrompt() const;
     void openStudyForm();
-    void startQuestionnaire(const questionnaire::Definition& definition, const std::string& tag);
+    void startQuestionnaire(const questionnaire::Definition& definition, const std::string& tag,
+                            unsigned int shuffleSeed);
     void finishQuestionnaire();
     void applySceneEvent(const std::string& sceneEvent);
     void applyGeometryProximity(EnvironmentObservation& observation, const std::string& basis) const;
