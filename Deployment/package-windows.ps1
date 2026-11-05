@@ -22,7 +22,7 @@ foreach ($policy in @("baseline.qtable", "proposed.qtable")) {
     if (-not (Test-Path (Join-Path $Root "artifacts/training/$policy"))) { throw "Missing trained policy $policy" }
 }
 
-cmake -S $Root -B $BuildDir -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_PARTICIPANT_BUILD=ON -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=OFF
+cmake -S $Root -B $BuildDir -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_BUILD_TESTS=OFF
 if ($LASTEXITCODE -ne 0) { throw "CMake configure failed." }
 cmake --build $BuildDir --config Release --parallel
 if ($LASTEXITCODE -ne 0) { throw "Build failed." }
