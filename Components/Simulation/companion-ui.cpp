@@ -449,6 +449,10 @@ CompanionUI::CompanionUI(const std::string& policyDirectoryValue,
     loadFrames(barkFrames, {"bark1.png", "bark2.png"});
     if (idleFrames.empty()) appendLog("Dog frames missing (Data/Assets/white_dog_by_Brysia); using a placeholder companion.");
     std::filesystem::create_directories(outputDirectory);
+    if (guidedStudyMode) {
+        std::cout << "Research questionnaire files are saved in: "
+                  << std::filesystem::absolute(outputDirectory).string() << '\n';
+    }
     if (!runtimeStatePath.empty()) {
         const auto stateParent = std::filesystem::path(runtimeStatePath).parent_path();
         if (!stateParent.empty()) std::filesystem::create_directories(stateParent);
