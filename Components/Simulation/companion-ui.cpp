@@ -693,8 +693,8 @@ void CompanionUI::initialiseGuidedStudy() {
     studyFreeFinished = false;
     conditionQuestionnaireCompleted = false;
     studyFinished = false;
-    selectedAgentCode = 'A';
-    selectedAgentIsProposed = agentAIsProposed;
+    selectedAgentCode = participantConfig.firstConditionCode();
+    selectedAgentIsProposed = selectedAgentCode == 'A' ? agentAIsProposed : !agentAIsProposed;
     const auto ticks = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
     std::random_device runIdRandom;
@@ -982,30 +982,30 @@ void CompanionUI::finishQuestionnaire() {
         std::filesystem::path(outputDirectory) /
         ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
 
-    if (questionnaireTag == "rating-A") {
-        nlohmann::json submissionData;
-        try {
-            submissionData = study::makeSubmissionData(result);
-        } catch (const std::exception& error) {
-            appendLog(std::string("Unable to prepare session 1 submission: ") + error.what());
+    if (questionnaireTag == "rating-A" || questionnaireTag == "rating-B") {
+        if (studySessionIndex == 1) {
+            nlohmann::json submissionData;
+            try {
+                submissionData = study::makeSubmissionData(result);
+            } catch (const std::exception& error) {
+                appendLog(std::string("Unable to prepare session 1 submission: ") + error.what());
+                questionnaireSubmissionErrorReported = true;
+                return;
+            }
+            if (!queueCompletedSubmission(1, selectedAgentCode, submissionData)) return;
+        } else if (studySessionIndex == 2) {
+            sessionTwoConditionResult = result;
+        } else {
+            appendLog("Unexpected study session index; questionnaire was not submitted.");
             questionnaireSubmissionErrorReported = true;
             return;
         }
-        if (!queueCompletedSubmission(1, 'A', submissionData)) return;
-        conditionQuestionnaireCompleted = true;
-        studyPhase = "rating";
-        logStudyPhaseEvent("questionnaire_completed", "rating");
-        writeStudyManifest();
-    } else if (questionnaireTag == "rating-B") {
-        // Session 2 is deliberately held until the final comparison form is
-        // complete, so the adopted API contract stores both in Pxx-S2.
-        sessionTwoConditionResult = result;
         conditionQuestionnaireCompleted = true;
         studyPhase = "rating";
         logStudyPhaseEvent("questionnaire_completed", "rating");
         writeStudyManifest();
     } else if (questionnaireTag == "comparison") {
-        if (sessionTwoConditionResult.is_null()) {
+        if (studySessionIndex != 2 || sessionTwoConditionResult.is_null()) {
             appendLog("Session 2 answers are unavailable; comparison cannot be submitted.");
             return;
         }
@@ -1017,7 +1017,7 @@ void CompanionUI::finishQuestionnaire() {
             questionnaireSubmissionErrorReported = true;
             return;
         }
-        if (!queueCompletedSubmission(2, 'B', submissionData)) return;
+        if (!queueCompletedSubmission(2, selectedAgentCode, submissionData)) return;
         studyFinished = true;
         studyPhase = "finished";
         logStudyPhaseEvent("questionnaire_completed", "comparison");
@@ -2264,8 +2264,8 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                         if (studySessionIndex == 1) {
                             studySessionIndex = 2;
                             studyStartedAt = utcTimestamp();
-                            selectedAgentCode = 'B';
-                            selectedAgentIsProposed = !agentAIsProposed;
+                            selectedAgentCode = selectedAgentCode == 'A' ? 'B' : 'A';
+                            selectedAgentIsProposed = selectedAgentCode == 'A' ? agentAIsProposed : !agentAIsProposed;
                             // Keep one run ID for the full participant attempt. session_index
                             // distinguishes the two condition encounters and questionnaire forms.
                             studyStepIndex = 0;
