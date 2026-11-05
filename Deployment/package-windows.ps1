@@ -22,7 +22,7 @@ foreach ($policy in @("baseline.qtable", "proposed.qtable")) {
     if (-not (Test-Path (Join-Path $Root "artifacts/training/$policy"))) { throw "Missing trained policy $policy" }
 }
 
-cmake -S $Root -B $BuildDir -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=OFF
+cmake -S $Root -B $BuildDir -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_PARTICIPANT_BUILD=ON -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=OFF
 if ($LASTEXITCODE -ne 0) { throw "CMake configure failed." }
 cmake --build $BuildDir --config Release --parallel
 if ($LASTEXITCODE -ne 0) { throw "Build failed." }
@@ -34,8 +34,12 @@ if (-not (Test-Path $Executable)) { $Executable = Join-Path $BuildDir "Release/A
 if (-not (Test-Path $Executable)) { throw "Could not locate the built AnimalAgent.exe." }
 Copy-Item $Executable $Stage
 Copy-Item $env:ANIMAL_AGENT_SFML_DLL_DIR/*.dll $Stage
-New-Item -ItemType Directory -Force -Path (Join-Path $Stage "Data/Assets/free version"), (Join-Path $Stage "Data/Assets/white_dog_by_Brysia"), (Join-Path $Stage "Data/Study"), (Join-Path $Stage "Components/NLP"), (Join-Path $Stage "Policies"), (Join-Path $Stage "runtime/python") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $Stage "Data/Assets/free version"), (Join-Path $Stage "Data/Assets/white_dog_by_Brysia"), (Join-Path $Stage "Data/Fonts"), (Join-Path $Stage "Data/Study"), (Join-Path $Stage "Components/NLP"), (Join-Path $Stage "Policies"), (Join-Path $Stage "runtime/python") | Out-Null
 Copy-Item (Join-Path $Root "Data/Assets/free version/free.png") (Join-Path $Stage "Data/Assets/free version/free.png")
+if (-not $env:ANIMAL_AGENT_FONT_FILE -or -not (Test-Path $env:ANIMAL_AGENT_FONT_FILE)) {
+    throw "Set ANIMAL_AGENT_FONT_FILE to a redistributable TTF font (for example, a DejaVu Sans font file)."
+}
+Copy-Item $env:ANIMAL_AGENT_FONT_FILE (Join-Path $Stage "Data/Fonts/UIFont.ttf")
 Copy-Item (Join-Path $Root "Data/Assets/white_dog_by_Brysia/*.png") (Join-Path $Stage "Data/Assets/white_dog_by_Brysia/")
 Copy-Item (Join-Path $Root "Data/Study/*.json") (Join-Path $Stage "Data/Study/")
 Copy-Item (Join-Path $Root "Components/NLP/nlp_intent_service.py") (Join-Path $Stage "Components/NLP/")
@@ -61,6 +65,10 @@ Animal Agent participant application
 5. Do not move or delete files while the application is running.
 
 The application stores General Interaction memory locally in your user data directory.
+For Believability Study, obtain your participant credentials separately from the researcher.
+Place the supplied credentials.json beside AnimalAgent.exe before starting the study.
+It must contain a participant_number integer and the private token supplied to you.
+Do not share this file. It is not included in the common ZIP.
 Study questionnaire responses are submitted by the application. Failed uploads are retained locally and retried on the next launch.
 '@ | Set-Content (Join-Path $Stage "README.txt") -Encoding UTF8
 
