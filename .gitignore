@@ -9,6 +9,7 @@ compile_commands.json
 CTestTestfile.cmake
 _deps/
 build/
+credentials.json
 
 # ====================================================================
 # IDE & System Files (Optional but Recommended)
