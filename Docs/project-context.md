@@ -1061,12 +1061,12 @@ Questionnaire snapshots are saved immediately on opening and after answer/naviga
 
 ### Questionnaire submission integration hand-off — 5 November 2026
 
-The active embedded questionnaire result is adapted by `Components/Study/questionnaire-submission.h/.cpp` to the existing API envelope. The adapter accepts only completed forms, maps `likert`, `scale`, `choice`, and `text` answers to `likert`, `integer`, `single_choice`, and `text`, and lowercases question IDs to fit the drafted client schema. It excludes timing, display-order, scoring, and other presentation metadata from the upload.
+The active embedded questionnaire result is adapted by `Components/Study/questionnaire-submission.h/.cpp` to the existing API envelope. The adapter accepts only completed forms, maps `likert`, `scale`, `choice`, and `text` answers to `likert`, `integer`, `single_choice`, and `text`, and lowercases question IDs to fit the drafted client schema. It also checks that the questionnaire tag, condition code, and session index match the target submission. It excludes timing, display-order, scoring, and other presentation metadata from the upload.
 
 `CompanionUI` now owns a SubmissionManager during the credential-backed Research Session:
 - A's questionnaire is queued as Pxx-S1 with a null comparison questionnaire.
 - B's questionnaire is retained until the final comparison is completed; both are then queued as Pxx-S2.
-- The queue is written locally before the upload attempt. The existing Python uploader removes the local `_upload_token` field from the JSON body and sends the participant token as a Bearer header with the matching Idempotency-Key.
+- The queue is written locally before the upload attempt. On Linux the pending file is restricted to mode 0600. The existing Python uploader removes the local `_upload_token` field from the JSON body and sends the participant token as a Bearer header with the matching Idempotency-Key.
 - Startup retry remains in `main.c++`; the participant navigation area now shows whether the latest submission was acknowledged or remains locally pending.
 - A prior pending file for the same deterministic submission ID blocks a new response from silently replacing or reusing that ID.
 - Developer `--study` sessions without assigned credentials remain local-only.
