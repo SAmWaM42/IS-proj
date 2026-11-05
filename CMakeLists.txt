@@ -31,6 +31,8 @@ add_executable(IS-2
    Components/Study/participant-config.cpp
    Components/Study/study-session-data.cpp
    Components/Study/questionnaire-definition.cpp
+   Components/Questionnaire/questionnaire.cpp
+   Components/Questionnaire/questionnaire_content.cpp
 )
 
 set_target_properties(IS-2 PROPERTIES OUTPUT_NAME AnimalAgent)
@@ -48,6 +50,7 @@ target_include_directories(IS-2 PRIVATE
    ${CMAKE_SOURCE_DIR}/Components/Memory
    ${CMAKE_SOURCE_DIR}/Components/State-Action
    ${CMAKE_SOURCE_DIR}/Components/Simulation
+   ${CMAKE_SOURCE_DIR}/Components/Questionnaire
 )
 
 target_link_libraries(IS-2 PRIVATE
