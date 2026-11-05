@@ -413,7 +413,11 @@ CompanionUI::CompanionUI(sf::RenderWindow& sharedWindow,
       runtimeStatePath(runtimeStatePathValue),
       baseline(EnvironmentConfig{}),
       proposed(EnvironmentConfig{}) {
+#ifndef IS2_PARTICIPANT_BUILD
     researcherMode = researcherModeValue;
+#else
+    (void)researcherModeValue;
+#endif
     guidedStudyMode = guidedStudyModeValue;
     participantConfig = participantConfigValue;
     baseline.setLearningEnabled(false);
@@ -2632,6 +2636,7 @@ void CompanionUI::drawSimulationScreen() {
 }
 
 
+#ifndef IS2_PARTICIPANT_BUILD
 void CompanionUI::drawAgentStateScreen() {
     drawText("AGENT STATE", 30, 75, 26, kInk);
     drawText("Current context, affect and retrieved memory", 30, 106, 15, kMuted);
@@ -2703,6 +2708,8 @@ void CompanionUI::drawComparisonScreen() {
     drawText("Use the Simulation tab to run another shared interaction.", 50, 690, 14, kMuted);
 }
 
+#endif // IS2_PARTICIPANT_BUILD
+
 void CompanionUI::draw() {
     ui_layout::applyLetterboxedView(window);
     window.clear(kBackground);
@@ -2715,8 +2722,10 @@ void CompanionUI::draw() {
     } else {
         drawNavigation();
         if (screen == Screen::Simulation) drawSimulationScreen();
+#ifndef IS2_PARTICIPANT_BUILD
         else if (screen == Screen::AgentState) drawAgentStateScreen();
         else drawComparisonScreen();
+#endif
     }
     window.display();
 }
