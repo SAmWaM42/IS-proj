@@ -25,6 +25,15 @@ inline sf::View makeLetterboxedView(sf::Vector2u windowSize) {
     return view;
 }
 
+inline sf::FloatRect designRectViewport(const sf::RenderWindow& window, sf::FloatRect designRect) {
+    const sf::FloatRect base = makeLetterboxedView(window.getSize()).getViewport();
+    return sf::FloatRect(
+        {base.position.x + (designRect.position.x / kDesignSize.x) * base.size.x,
+         base.position.y + (designRect.position.y / kDesignSize.y) * base.size.y},
+        {(designRect.size.x / kDesignSize.x) * base.size.x,
+         (designRect.size.y / kDesignSize.y) * base.size.y});
+}
+
 inline void applyLetterboxedView(sf::RenderWindow& window) {
     window.setView(makeLetterboxedView(window.getSize()));
 }
