@@ -32,7 +32,7 @@ for policy in baseline.qtable proposed.qtable; do
   [[ -s "$ROOT/artifacts/training/$policy" ]] || { echo "Missing trained policy: $policy" >&2; exit 1; }
 done
 
-cmake -S "$ROOT" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=OFF
+cmake -S "$ROOT" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_PARTICIPANT_BUILD=ON -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=OFF
 cmake --build "$BUILD_DIR" --config Release --parallel
 
 rm -rf "$STAGE"
@@ -90,6 +90,10 @@ Animal Agent participant application
 5. Do not move or delete files while the application is running.
 
 The application stores General Interaction memory locally in your user data directory.
+For Believability Study, obtain your participant credentials separately from the researcher.
+Place the supplied credentials.json beside AnimalAgent before starting the study. It must contain:
+  {"participant_number": 14, "token": "the-private-token-supplied-to-you"}
+Do not share this file. It is not included in the common ZIP.
 Study questionnaire responses are submitted by the application. Failed uploads are retained locally and retried on the next launch.
 README
 
