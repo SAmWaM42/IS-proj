@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <SFML/Graphics.hpp>
+#include <json.hpp>
 
 #include "Components/State-Action/state-action.h"
 #include "Components/Study/participant-config.h"
