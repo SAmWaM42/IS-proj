@@ -237,10 +237,6 @@ void View::layoutPage() {
         slot.question = index;
         slot.y = y;
         switch (q.type) {
-            case QuestionType::Info:
-                slot.lines = wrap(q.text, 16, kContentW - 60.0f);
-                slot.height = static_cast<float>(slot.lines.size()) * 22.0f + 30.0f;
-                break;
             case QuestionType::Likert:
                 slot.lines = wrap(q.text, 17, kStatementW);
                 slot.height = std::max(64.0f, static_cast<float>(slot.lines.size()) * 22.0f + 24.0f);
@@ -297,7 +293,7 @@ bool View::isVisible(int pageNumber, int question) const {
 bool View::isMissing(int pageNumber, int question) const {
     if (!isVisible(pageNumber, question)) return false;
     const Question& q = definition.pages[static_cast<std::size_t>(pageNumber)].questions[static_cast<std::size_t>(question)];
-    if (!q.required || q.type == QuestionType::Info) return false;
+    if (!q.required) return false;
     const Answer& a = answers[static_cast<std::size_t>(pageNumber)][static_cast<std::size_t>(question)];
     if (q.type == QuestionType::Text) return blank(a.text);
     return a.index < 0;
@@ -480,12 +476,6 @@ void View::drawSlot(const Slot& slot, int position, float y) {
     };
 
     switch (q.type) {
-        case QuestionType::Info: {
-            roundedBox(window, kContentX, y, kContentW, slot.height, 14, sf::Color(255, 244, 222), kBorder, 1.5f);
-            for (std::size_t i = 0; i < slot.lines.size(); ++i)
-                drawText(slot.lines[i], kContentX + 20.0f, y + 14.0f + static_cast<float>(i) * 22.0f, 16, kInk);
-            break;
-        }
         case QuestionType::Likert: {
             const float rowH = slot.height - 4.0f;
             roundedBox(window, kContentX, y, kContentW, rowH, 12, position % 2 == 0 ? kCream : kPanel,
@@ -668,7 +658,7 @@ nlohmann::json View::result() const {
         const Page& page = definition.pages[p];
         for (std::size_t i = 0; i < page.questions.size(); ++i) {
             const Question& q = page.questions[i];
-            if (q.type == QuestionType::Info || !isVisible(static_cast<int>(p), static_cast<int>(i))) continue;
+            if (!isVisible(static_cast<int>(p), static_cast<int>(i))) continue;
             const Answer& a = answers[p][i];
             nlohmann::json row;
             row["id"] = q.id;
