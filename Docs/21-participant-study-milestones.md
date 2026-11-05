@@ -367,7 +367,7 @@ The initial CTest run failed because the test incorrectly expected participant 1
 - [x] Preserve pending JSON on upload failure using the existing SubmissionManager queue (source path connected; failure simulation pending).
 - [x] Retry pending submissions on startup; log server-acknowledged versus locally pending status (source implemented; runtime verification pending).
 - [x] Keep token out of the HTTP JSON body; send it only as bearer authentication (existing uploader removes `_upload_token` before POST).
-- [ ] Restrict local pending-file permissions where supported and avoid token logging.
+- [x] Restrict Linux pending-file permissions to owner read/write (0600) before publishing the queue file; uploader removes the token before POST and does not log it. Windows ACL/package verification remains.
 - [ ] Add strict backend validation for questionnaire keys, types, ranges, required fields, questionnaire version, and maximum payload size.
 - [ ] Test invalid token, wrong A/B mapping, malformed payload, server unavailable, lost acknowledgement, and ordinary duplicate retry.
 
