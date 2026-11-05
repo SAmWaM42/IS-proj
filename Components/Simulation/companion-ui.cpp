@@ -916,7 +916,8 @@ bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
         participantConfig.participantNumber > 9999 || participantConfig.token.empty()) {
         // Developer-only --study mode has no participant credentials. Preserve
         // its local questionnaire workflow without pretending it was uploaded.
-        appendLog("No participant credentials: developer questionnaire remains local-only.");
+        submissionStatusMessage = "Developer session: questionnaire saved locally; no upload.";
+        appendLog(submissionStatusMessage);
         return true;
     }
     if (!submissionManager) {
@@ -926,15 +927,24 @@ bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
 
     const std::string id = studyParticipantCode + "-S" + std::to_string(sessionIndex);
     const auto pendingFile = submissionManager->pendingDirectory() / (id + ".json");
+    // Never associate a new attempt with an old pending payload under the
+    // same deterministic submission ID. Recovery must resolve the older file
+    // before a participant can create a replacement session.
+    if (std::filesystem::exists(pendingFile)) {
+        submissionStatusMessage = id + ": previous upload still pending; current response not queued.";
+        appendLog(submissionStatusMessage);
+        return false;
+    }
+
     const bool queued = submissionManager->queueSubmission(
         participantConfig.participantNumber, sessionIndex, condition,
         participantConfig.token, submissionData);
 
     // queueSubmission returns true once the complete payload is durably written,
-    // even when the immediate HTTP attempt fails. Existing pending files are
-    // also retried rather than overwritten.
-    if (!queued && !std::filesystem::exists(pendingFile)) {
-        appendLog("Unable to persist " + id + ". Check application storage; do not continue.");
+    // even when the immediate HTTP attempt fails.
+    if (!queued) {
+        submissionStatusMessage = id + ": local queue write failed; do not continue.";
+        appendLog(submissionStatusMessage);
         return false;
     }
 
@@ -943,9 +953,11 @@ bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
     }
 
     if (std::filesystem::exists(pendingFile)) {
-        appendLog(id + " saved locally; upload pending. It will retry next launch.");
+        submissionStatusMessage = id + ": saved locally; upload pending.";
+        appendLog(submissionStatusMessage + " It will retry next launch.");
     } else {
-        appendLog(id + " acknowledged by the submission server.");
+        submissionStatusMessage = id + ": acknowledged by server.";
+        appendLog(submissionStatusMessage);
     }
     return true;
 }
@@ -2407,6 +2419,8 @@ void CompanionUI::drawNavigation() {
                    357, 12, 160, 42, conditionQuestionnaireCompleted);
         drawText("Participant study | Session " + std::to_string(studySessionIndex) + "/2",
                  700, 22, 15, kMuted);
+        if (!submissionStatusMessage.empty())
+            drawText(submissionStatusMessage, 700, 45, 12, kMuted);
         if (studyFinished || (screen == Screen::Simulation && studyPhase == "guided"))
             drawButton("Return to Menu", 1030, 12, 180, 42);
     } else {
