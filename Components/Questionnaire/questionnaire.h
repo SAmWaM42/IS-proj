@@ -23,7 +23,6 @@
 namespace questionnaire {
 
 enum class QuestionType {
-    Info,     // read-only paragraph (for example consent text)
     Likert,   // statement answered on a 5-point agreement scale, shown as a grid row
     Choice,   // pick one of several options (stored value is the option text)
     Scale,    // linear 1 to 5 scale with optional end labels
@@ -142,7 +141,6 @@ private:
 };
 
 // ---- Content (questionnaire_content.cpp) -------------------------------------
-Definition makeConsentAndBackground();
 Definition makeCompanionRating(char companionCode, unsigned int shuffleSeed);
 Definition makeComparison();
 
