@@ -17,14 +17,17 @@ void validParticipantConfiguration() {
     assert(odd.token == "token-one");
     assert(odd.participantCode() == "P01");
     assert(!odd.conditionAIsProposed());
+    assert(odd.firstConditionCode() == 'A');
 
     const auto even = parse(R"({"participant_number":2,"token":"token-two"})");
     assert(even.participantCode() == "P02");
     assert(even.conditionAIsProposed());
+    assert(even.firstConditionCode() == 'B');
 
     const auto larger = parse(R"({"participant_number":100,"token":"token-100"})");
     assert(larger.participantCode() == "P100");
     assert(larger.conditionAIsProposed());
+    assert(larger.firstConditionCode() == 'B');
 }
 
 void invalidCredentialsAreRejected() {
