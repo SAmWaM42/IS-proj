@@ -1043,3 +1043,9 @@ The envelope contains participant/session/condition metadata, questionnaire vers
 This is a generic data contract only. It does not define or imply the approved study questions, item wording, Likert endpoints, or scales. Synthetic test IDs are not research items. The project owner will provide the final question content and a separate styling template; the data model must not constrain that visual styling.
 
 The new C++ target and CTest have not yet been run by the project owner. The web endpoint in IS-proj-web/test still does not validate these answer fields; backend alignment is deferred to M2.
+
+### Embedded questionnaire UI integration — 5 November 2026
+
+The supplied paginated questionnaire implementation is now in `Components/Questionnaire/` and is connected to the existing `CompanionUI` guided-study screens. It uses the existing application window, presents the 21 shuffled Likert statements plus overall rating/comments/technical check for each condition, and presents the eight final comparison items after condition B. Optional technical-detail and comparison-difference prompts are conditionally displayed. Demographic/familiarity items remain omitted by decision.
+
+The participant application saves each completed result locally as a separate JSON file, with run, participant, session, condition, build, and questionnaire-tag context. It does not yet submit these files through `SubmissionManager`, because the supplied result schema differs from the existing `StudySessionData` API payload. The new source and content test target are registered in CMake, but local compilation and interactive testing remain outstanding. Do not treat the workflow as verified or recruitment-ready.
