@@ -545,3 +545,26 @@ ctest --test-dir build -R questionnaire_content_test --output-on-failure
 ~~~
 
 Then run the participant app and manually verify: condition A rating opens after the guided/free phase; the 21 Likert items paginate and preserve answers when navigating back; text fields accept typing and backspace/newlines; technical details appear only after selecting Yes; rating A saves under a distinct JSON filename; condition B follows the rating-A completion; the final comparison appears after rating B; the comparison detail appears only for Yes/Not sure; and the final comparison JSON saves separately. Inspect the saved files to confirm participant/session/condition context, answer values, item IDs, attention-check metadata, and no raw interaction/memory/affect traces. The build and test commands have not been run by the assistant in this environment.
+
+### Questionnaire usability and responsive-layout revision — 5 November 2026
+
+Following the project owner's runtime feedback, the embedded questionnaire has been shortened and the shared application layout made aspect-preserving when resized.
+
+**Questionnaire content**
+- Each condition rating (A and B) now contains 10 questions: 8 Likert statements (including the attention check), 1 overall believability scale, and 1 optional combined feedback/technical-issue text prompt.
+- The final comparison contains 7 questions, including consistency, adaptability, believability, confidence, the neutral blinding check, and optional follow-up/comments.
+- Rating items are grouped into two pages of four Likert statements plus a third two-item overall/feedback page. Comparison uses two pages of four and three items.
+- This is a shortened implementation instrument, not a validated scale. The omitted source-template items should be retained in version history/analysis notes; approval is still required before recruitment.
+
+**Responsive layout**
+- `Components/Simulation/ui-layout.h` supplies a shared 1280x900 logical design view with uniform scaling and centered letterboxing.
+- The participant menu and all CompanionUI screens apply this view. The questionnaire's clipped content panel derives its viewport from the same logical design space, and mouse coordinates are mapped through the active view.
+- This preserves the intended proportions instead of independently stretching or shrinking the UI along each axis. Very different window aspect ratios may show letterbox margins by design.
+
+**Durable draft persistence**
+- The questionnaire now writes an `in_progress` JSON snapshot immediately when opened and after answer/text/navigation input, using a temporary file followed by rename.
+- Submitting updates that same per-form file to `completion_status: completed`; closing the application retains the latest draft.
+- The JSON includes page progress, timestamps, duration, participant/session/condition/run metadata, and response values.
+- Participant build passes `userDataRoot/study-linkage` as the output directory. On Linux the default is `$XDG_DATA_HOME/animal-agent/study-linkage` when XDG_DATA_HOME is set, otherwise `~/.local/share/animal-agent/study-linkage`. It is not saved inside the Git checkout. Draft recovery/loading into a later app launch is not implemented; the JSON remains available for researcher recovery.
+
+**Verification status:** source and focused tests have been updated, but this revision has not been compiled or interactively tested by the assistant. The project owner should verify resize behaviour at the default, wide, narrow, and portrait sizes; confirm click hitboxes; terminate during a partially answered form and inspect the JSON; then submit each form and confirm its completion status. SubmissionManager/backend upload remains unconnected.
