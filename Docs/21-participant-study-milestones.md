@@ -522,3 +522,13 @@ The Google Forms configuration is legacy and is not part of the new embedded wor
 A generic questionnaire response contract has been added to the participant-client branch. It is deliberately independent of the future visual template. The data model supports typed answers and separates each condition's questionnaire from the final comparison questionnaire. The comparison is stored in Pxx-S2 under a distinct object to preserve the backend's existing two-session ID pattern. The project owner has not yet supplied the approved question content, so no real prompts or rating scales are included.
 
 The new source and test target have been added to CMake, but the project owner has not yet built or run them. Do not mark M1.2 verified until the new target and tests pass on the current branch revision. The web API still accepts arbitrary response fields; strict server-side validation and deployment alignment are M2 tasks.
+
+### Embedded questionnaire integration update — 5 November 2026
+
+The supplied `questionnaire-UI-changes/files (2)/` implementation has been integrated under `Components/Questionnaire/`:
+- `questionnaire.h/.cpp` provide the reusable paginated SFML view, including Likert rows, choices, 1–5 scales, free text, scrolling, required-answer checks, timing, shuffled item order, reverse-scoring metadata, and structured JSON output.
+- `questionnaire_content.cpp` defines the per-condition rating and final comparison forms. The demographic/familiarity page remains omitted, consistent with the current protocol decision. Technical-issue details and the comparison-difference prompt are conditionally displayed.
+- `CompanionUI` now opens the in-app rating form after each condition, saves separate `rating-A` and `rating-B` JSON files, opens the final comparison after condition B, and saves that result separately. It renders within the existing CompanionUI window; the questionnaire itself does not create another window.
+- `tests/questionnaire_content_test.cpp` and the `questionnaire_content_test` CMake target check item counts, stable IDs, attention-check metadata, reverse scoring, and conditional follow-up definitions.
+
+Verification status: source integration and CMake registration are committed, but no local compile, CTest run, or interactive SFML test has yet been performed against this revision. The new JSON result files are currently saved locally only. They are not yet transformed into the existing `StudySessionData` submission schema or passed to `SubmissionManager`; backend upload must not be described as integrated. Consent remains the existing separate gate, and the placeholder consent copy in the unused content definition is not approved for recruitment.
