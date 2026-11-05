@@ -71,7 +71,6 @@ public:
 
     bool active() const { return running; }       // shown and waiting for the participant
     bool finished() const { return done; }        // Submit was pressed with all required answers given
-    bool returnToMenuRequested() const { return menuRequested; }
     void close() { running = false; }
 
     void update(float elapsedSeconds);
@@ -106,7 +105,6 @@ private:
     unsigned int seed = 1;
     bool running = false;
     bool done = false;
-    bool menuRequested = false;
     int pageIndex = 0;
     int focusedQuestion = -1;          // Text question with keyboard focus (index into the page)
     bool showMissing = false;
