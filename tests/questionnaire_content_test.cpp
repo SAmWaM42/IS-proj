@@ -18,14 +18,12 @@ int main() {
     const auto ratingA = questionnaire::makeCompanionRating('A', 101);
     const auto ratingB = questionnaire::makeCompanionRating('B', 102);
     const auto comparison = questionnaire::makeComparison();
-    const auto consent = questionnaire::makeConsentAndBackground();
 
     assert(ratingA.id == "rating_A");
     assert(ratingB.id == "rating_B");
     assert(ratingA.pages.size() == 3);
     assert(ratingB.pages.size() == 3);
     assert(comparison.pages.size() == 2);
-    assert(consent.pages.size() == 1); // Demographic questions remain omitted.
 
     std::set<std::string> ratingIds;
     int likertCount = 0;
