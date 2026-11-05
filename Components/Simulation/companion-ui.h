@@ -59,6 +59,7 @@ private:
     nlohmann::json sessionTwoConditionResult = nullptr;
     std::string questionnaireTag;
     bool questionnaireSaveErrorReported = false;
+    bool questionnaireSubmissionErrorReported = false;
     sf::Texture environmentTexture;
     std::vector<std::unique_ptr<sf::Texture>> idleFrames;
     std::vector<std::unique_ptr<sf::Texture>> walkFrames;
