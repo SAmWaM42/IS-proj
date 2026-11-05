@@ -681,7 +681,8 @@ void CompanionUI::initialiseGuidedStudy() {
     // Assigned identity is read from credentials.json in the extracted
     // application root. No machine-local participant counter is used.
     studyParticipantCode = participantConfig.participantCode();
-    // Odd IDs see A=baseline; even IDs see A=proposed.
+    // A/B model mapping and encounter order are both stable for this participant.
+    // Odd IDs: A then B (A=baseline); even IDs: B then A (A=proposed).
     agentAIsProposed = participantConfig.conditionAIsProposed();
     studySessionIndex = 1;
     studyStepIndex = 0;
@@ -692,6 +693,7 @@ void CompanionUI::initialiseGuidedStudy() {
     studyGuidedComplete = false;
     studyFreeFinished = false;
     conditionQuestionnaireCompleted = false;
+    sessionTwoConditionResult = nullptr;
     studyFinished = false;
     selectedAgentCode = participantConfig.firstConditionCode();
     selectedAgentIsProposed = selectedAgentCode == 'A' ? agentAIsProposed : !agentAIsProposed;
