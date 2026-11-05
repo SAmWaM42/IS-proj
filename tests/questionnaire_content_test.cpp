@@ -38,6 +38,12 @@ int main() {
     assert(attentionCheckFound);
     assert(reverseScoredFound);
 
+    const auto& technicalPage = ratingA.pages.back();
+    assert(technicalPage.questions.size() == 2);
+    assert(technicalPage.questions[1].visibleWhenQuestionId == "technical_issue");
+    assert(technicalPage.questions[1].visibleWhenValues.size() == 1);
+    assert(technicalPage.questions[1].visibleWhenValues.front() == "Yes");
+
     std::set<std::string> comparisonIds;
     for (const auto& page : comparison.pages) {
         for (const auto& question : page.questions) {
@@ -46,5 +52,8 @@ int main() {
         }
     }
     assert(comparisonIds.size() == 8);
+    const auto& comparisonFollowUp = comparison.pages.back().questions[1];
+    assert(comparisonFollowUp.visibleWhenQuestionId == "cmp_built_differently");
+    assert(comparisonFollowUp.visibleWhenValues.size() == 2);
     return 0;
 }
