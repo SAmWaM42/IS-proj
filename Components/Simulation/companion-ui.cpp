@@ -545,6 +545,10 @@ bool CompanionUI::run() {
                     if (screen == Screen::Questionnaire && questionnaireView) {
                         questionnaireView->handleClick(point);
                         saveQuestionnaireDraft();
+                        if (questionnaireView->returnToMenuRequested()) {
+                            saveSession();
+                            returnToMenu = true;
+                        }
                     } else {
                         handleClick(point);
                     }
