@@ -10,7 +10,9 @@ CTestTestfile.cmake
 _deps/
 build/
 credentials.json
-
+.env
+dist
+build-participant*
 # ====================================================================
 # IDE & System Files (Optional but Recommended)
 # ====================================================================
