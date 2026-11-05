@@ -94,7 +94,12 @@ std::string questionnaireVersion(const nlohmann::json& result) {
 } // namespace
 
 nlohmann::json makeSubmissionData(const nlohmann::json& conditionResult) {
-    requireContext(conditionResult, 1, "A", "rating-A");
+    if (!conditionResult.contains("context") || !conditionResult.at("context").is_object() ||
+        !conditionResult.at("context").contains("condition_code") ||
+        !conditionResult.at("context").at("condition_code").is_string())
+        throw std::invalid_argument("Condition code is missing from questionnaire context.");
+    const std::string condition = conditionResult.at("context").at("condition_code").get<std::string>();
+    requireContext(conditionResult, 1, condition, "rating-" + condition);
     return {
         {"questionnaire_version", questionnaireVersion(conditionResult)},
         {"responses", {
@@ -106,8 +111,13 @@ nlohmann::json makeSubmissionData(const nlohmann::json& conditionResult) {
 
 nlohmann::json makeSubmissionData(const nlohmann::json& conditionResult,
                                   const nlohmann::json& comparisonResult) {
-    requireContext(conditionResult, 2, "B", "rating-B");
-    requireContext(comparisonResult, 2, "B", "comparison");
+    if (!conditionResult.contains("context") || !conditionResult.at("context").is_object() ||
+        !conditionResult.at("context").contains("condition_code") ||
+        !conditionResult.at("context").at("condition_code").is_string())
+        throw std::invalid_argument("Condition code is missing from questionnaire context.");
+    const std::string condition = conditionResult.at("context").at("condition_code").get<std::string>();
+    requireContext(conditionResult, 2, condition, "rating-" + condition);
+    requireContext(comparisonResult, 2, condition, "comparison");
     const std::string version = questionnaireVersion(conditionResult);
     if (questionnaireVersion(comparisonResult) != version)
         throw std::invalid_argument("Condition and comparison questionnaire versions do not match.");
