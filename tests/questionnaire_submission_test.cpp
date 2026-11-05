@@ -11,8 +11,8 @@ nlohmann::json completedForm(const std::string& tag, nlohmann::json answers) {
         {"completion_status", "completed"},
         {"context", {
             {"questionnaire_version", "companion-believability-short-v2"},
-            {"session_index", tag == "comparison" ? 2 : 1},
-            {"condition_code", tag == "comparison" ? "B" : "A"},
+            {"session_index", (tag == "comparison" || tag == "rating-B") ? 2 : 1},
+            {"condition_code", (tag == "comparison" || tag == "rating-B") ? "B" : "A"},
             {"tag", tag}
         }},
         {"responses", std::move(answers)}
@@ -42,7 +42,7 @@ int main() {
     const auto comparison = completedForm("comparison", nlohmann::json::array({
         {{"id", "cmp_believable"}, {"type", "choice"}, {"value", "Companion A"}}
     }));
-    const auto sessionTwo = study::makeSubmissionData(condition, comparison);
+    const auto conditionB = completedForm("rating-B", nlohmann::json::array({\n        {{"id", "C2"}, {"type", "likert"}, {"value", 3}}\n    }));\n    const auto sessionTwo = study::makeSubmissionData(conditionB, comparison);
     assert(sessionTwo.at("responses").at("comparison_questionnaire").at("answers").size() == 1);
 
     bool rejected = false;
