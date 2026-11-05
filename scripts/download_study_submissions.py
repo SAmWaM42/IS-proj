@@ -246,9 +246,9 @@ def download_file(access_token: str, file_id: str) -> bytes:
     return raw
 
 
-def output_path_for(directory: Path, name: str, file_id: str) -> Path:
+def output_path_for(directory: Path, name: str, file_id: str, overwrite: bool) -> Path:
     destination = directory / name
-    if not destination.exists():
+    if overwrite or not destination.exists():
         return destination
     # Preserve an existing local copy. Keep a second Drive object separately
     # rather than silently overwriting or discarding it.
@@ -313,7 +313,7 @@ def run(args: argparse.Namespace) -> int:
         except (UnicodeDecodeError, json.JSONDecodeError):
             validation_errors = ["file is not valid UTF-8 JSON"]
 
-        destination = output_path_for(output_dir, name, file_id)
+        destination = output_path_for(output_dir, name, file_id, args.overwrite)
         if destination.exists() and not args.overwrite:
             report["files"].append({
                 "name": name, "local_name": destination.name,
