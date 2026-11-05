@@ -584,7 +584,7 @@ Following the project owner's runtime feedback, the embedded questionnaire has b
 - Queueing occurs before upload. Linux pending records are mode 0600. The manager writes a token-free local receipt after acknowledgement, preventing a later run from silently reusing the same Pxx-S1/Pxx-S2 identifier. The Python uploader removes the token from the JSON body; bearer authentication and the matching Idempotency-Key are sent as headers.
 - Existing startup retry is retained. The participant UI displays whether a submission was acknowledged by the server or remains locally queued for retry.
 - Developer-only `--study` runs without assigned credentials remain local-only and do not claim to upload.
-- `tests/questionnaire_submission_test.cpp` and the `questionnaire_submission_test` CMake/CTest target cover answer-type mapping, session-one comparison null, session-two comparison inclusion, and rejection of incomplete/unsupported results.
+- `tests/questionnaire_submission_test.cpp` and the `questionnaire_submission_test` CMake/CTest target cover answer-type mapping, session-one comparison null, session-two comparison inclusion, rejection of incomplete/unsupported results, and mismatched questionnaire context.
 
 **Verification and blockers:**
 - [ ] Configure/build `IS-2` and `questionnaire_submission_test` on the current revision.
