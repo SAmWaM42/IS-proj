@@ -31,7 +31,11 @@ public:
 
 private:
     enum class Screen { AgentSelection, Simulation, AgentState, Comparison, Questionnaire };
+#ifdef IS2_PARTICIPANT_BUILD
+    static constexpr bool researcherMode = false;
+#else
     bool researcherMode = false;
+#endif
     bool guidedStudyMode = false;
     bool studyFinished = false;
     bool returnToMenuRequested = false;
@@ -221,8 +225,10 @@ private:
     void drawNavigation();
     void drawAgentSelectionScreen();
     void drawSimulationScreen();
+#ifndef IS2_PARTICIPANT_BUILD
     void drawAgentStateScreen();
     void drawComparisonScreen();
+#endif
     void drawText(const std::string& value, float x, float y, unsigned int size = 18,
                   sf::Color color = sf::Color(35, 42, 52));
     void drawButton(const std::string& label, float x, float y, float width, float height,
