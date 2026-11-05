@@ -76,4 +76,8 @@ bool ParticipantConfig::conditionAIsProposed() const noexcept {
     return participantNumber % 2 == 0;
 }
 
+char ParticipantConfig::firstConditionCode() const noexcept {
+    return participantNumber % 2 == 0 ? 'B' : 'A';
+}
+
 } // namespace study
