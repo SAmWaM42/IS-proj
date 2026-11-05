@@ -1,4 +1,5 @@
 #include "questionnaire.h"
+#include "Components/Simulation/ui-layout.h"
 
 #include <algorithm>
 #include <cctype>
@@ -566,6 +567,10 @@ void View::draw() {
     const Page& page = definition.pages[static_cast<std::size_t>(pageIndex)];
     const int pageCount = static_cast<int>(definition.pages.size());
 
+    // All questionnaire geometry is authored in the shared 1280x900 design
+    // space. Preserve the app's aspect-ratio viewport when drawing the panel.
+    const sf::View baseView = window.getView();
+
     // Title, page title and progress
     drawText(definition.title, kContentX - kPanelPad, 26.0f, 28, kInk);
     drawText(page.title, kContentX - kPanelPad, 68.0f, 18, kMuted);
@@ -580,10 +585,8 @@ void View::draw() {
     roundedBox(window, barX, 128.0f, barW, 668.0f, 22.0f, kPanel, kBorder, 2.0f);
 
     // Content, clipped to the panel; the view maps world coordinates 1:1 to pixels.
-    const sf::Vector2u size = window.getSize();
     sf::View clip(kContentRect);
-    clip.setViewport(sf::FloatRect({kContentRect.position.x / static_cast<float>(size.x), kContentRect.position.y / static_cast<float>(size.y)},
-                                   {kContentRect.size.x / static_cast<float>(size.x), kContentRect.size.y / static_cast<float>(size.y)}));
+    clip.setViewport(ui_layout::designRectViewport(window, kContentRect));
     window.setView(clip);
     float y = kContentTop + 6.0f - scroll;
     for (std::size_t i = 0; i < descriptionLines.size(); ++i)
@@ -608,7 +611,7 @@ void View::draw() {
         if (sy + slot.height >= kContentTop - 10.0f && sy <= kContentBottom + 10.0f) drawSlot(slot, position, sy);
         ++position;
     }
-    window.setView(window.getDefaultView());
+    window.setView(baseView);
 
     // Scroll indicator
     const float maxScroll = std::max(0.0f, contentBottom - kContentBottom);
@@ -652,7 +655,11 @@ nlohmann::json View::result() const {
     out["context"] = context;
     out["started_at"] = startedAt;
     out["completed_at"] = completedAt;
-    out["duration_seconds"] = completedMs / 1000.0;
+    out["completion_status"] = done ? "completed" : "in_progress";
+    out["current_page"] = pageIndex + 1;
+    out["page_count"] = definition.pages.size();
+    out["last_saved_at"] = utcNow();
+    out["duration_seconds"] = (done ? completedMs : elapsedMs()) / 1000.0;
     out["shuffle_seed"] = seed;
     nlohmann::json responses = nlohmann::json::array();
     bool attentionPassed = true;
