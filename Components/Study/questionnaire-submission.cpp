@@ -1,6 +1,9 @@
 #include "questionnaire-submission.h"
 
 #include <stdexcept>
+#include <algorithm>
+#include <cctype>
+#include <utility>
 #include <string>
 
 namespace study {
@@ -21,7 +24,9 @@ nlohmann::json toQuestionnaireResponse(const nlohmann::json& result) {
             throw std::invalid_argument("Questionnaire result contains an incomplete answer.");
         }
 
-        const std::string questionId = row.at("id").get<std::string>();
+        std::string questionId = row.at("id").get<std::string>();
+        std::transform(questionId.begin(), questionId.end(), questionId.begin(),
+            [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
         const std::string sourceType = row.at("type").get<std::string>();
         const auto& value = row.at("value");
         std::string answerType;
