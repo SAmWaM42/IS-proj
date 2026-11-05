@@ -912,6 +912,13 @@ bool CompanionUI::saveQuestionnaireDraft() {
 
 bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
                                                   const nlohmann::json& submissionData) {
+    if (participantConfig.participantNumber < 1 ||
+        participantConfig.participantNumber > 9999 || participantConfig.token.empty()) {
+        // Developer-only --study mode has no participant credentials. Preserve
+        // its local questionnaire workflow without pretending it was uploaded.
+        appendLog("No participant credentials: developer questionnaire remains local-only.");
+        return true;
+    }
     if (!submissionManager) {
         appendLog("Submission manager is unavailable; questionnaire remains saved locally.");
         return false;
