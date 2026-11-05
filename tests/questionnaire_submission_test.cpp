@@ -6,13 +6,13 @@
 #include <utility>
 
 namespace {
-nlohmann::json completedForm(const std::string& tag, nlohmann::json answers) {
+nlohmann::json completedForm(const std::string& tag, int session, const std::string& condition, nlohmann::json answers) {
     return {
         {"completion_status", "completed"},
         {"context", {
             {"questionnaire_version", "companion-believability-short-v2"},
-            {"session_index", (tag == "comparison" || tag == "rating-B") ? 2 : 1},
-            {"condition_code", (tag == "comparison" || tag == "rating-B") ? "B" : "A"},
+            {"session_index", session},
+            {"condition_code", condition},
             {"tag", tag}
         }},
         {"responses", std::move(answers)}
@@ -21,7 +21,7 @@ nlohmann::json completedForm(const std::string& tag, nlohmann::json answers) {
 }
 
 int main() {
-    const auto condition = completedForm("rating-A", nlohmann::json::array({
+    const auto condition = completedForm("rating-A", 1, "A", nlohmann::json::array({
         {{"id", "C1"}, {"type", "likert"}, {"value", 4}},
         {{"id", "summary_believability"}, {"type", "scale"}, {"value", 5}},
         {{"id", "cmp_choice"}, {"type", "choice"}, {"value", "Companion B"}},
@@ -39,14 +39,29 @@ int main() {
     assert(answers[2].at("answer_type") == "single_choice");
     assert(answers[3].at("answer_type") == "text");
 
-    const auto comparison = completedForm("comparison", nlohmann::json::array({
+    const auto comparison = completedForm("comparison", 2, "B", nlohmann::json::array({
         {{"id", "cmp_believable"}, {"type", "choice"}, {"value", "Companion A"}}
     }));
-    const auto conditionB = completedForm("rating-B", nlohmann::json::array({
+    const auto conditionB = completedForm("rating-B", 2, "B", nlohmann::json::array({
         {{"id", "C2"}, {"type", "likert"}, {"value", 3}}
     }));
     const auto sessionTwo = study::makeSubmissionData(conditionB, comparison);
     assert(sessionTwo.at("responses").at("comparison_questionnaire").at("answers").size() == 1);
+
+    const auto evenSessionOne = completedForm("rating-B", 1, "B", nlohmann::json::array({
+        {{"id", "C1"}, {"type", "likert"}, {"value", 4}}
+    }));
+    const auto evenSubmissionOne = study::makeSubmissionData(evenSessionOne);
+    assert(evenSubmissionOne.at("responses").at("comparison_questionnaire").is_null());
+
+    const auto evenSessionTwo = completedForm("rating-A", 2, "A", nlohmann::json::array({
+        {{"id", "C2"}, {"type", "likert"}, {"value", 3}}
+    }));
+    const auto evenComparison = completedForm("comparison", 2, "A", nlohmann::json::array({
+        {{"id", "cmp_believable"}, {"type", "choice"}, {"value", "Companion B"}}
+    }));
+    const auto evenSubmissionTwo = study::makeSubmissionData(evenSessionTwo, evenComparison);
+    assert(evenSubmissionTwo.at("responses").at("comparison_questionnaire").at("answers").size() == 1);
 
     bool rejected = false;
     try {
