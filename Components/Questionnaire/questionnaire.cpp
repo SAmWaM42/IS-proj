@@ -32,7 +32,6 @@ constexpr float kStatementW = 560.0f;    // width of the statement column in a L
 constexpr float kRadioX0 = 724.0f;       // centre of the first Likert radio
 constexpr float kColW = 96.0f;           // spacing between Likert radios
 constexpr float kHeaderH = 50.0f;
-const sf::FloatRect kMenuRect({1000.0f, 20.0f}, {204.0f, 44.0f});
 const sf::FloatRect kBackRect({76.0f, 822.0f}, {150.0f, 48.0f});
 const sf::FloatRect kNextRect({1034.0f, 822.0f}, {170.0f, 48.0f});
 const sf::FloatRect kContentRect({kContentX - 12.0f, kContentTop}, {kContentW + 24.0f, kContentBottom - kContentTop});
@@ -211,7 +210,6 @@ void View::begin(const Definition& newDefinition, const nlohmann::json& newConte
     scroll = 0.0f;
     clock = 0.0f;
     done = false;
-    menuRequested = false;
     running = !definition.pages.empty();
     startTime = std::chrono::steady_clock::now();
     startedAt = utcNow();
@@ -361,11 +359,6 @@ void View::update(float elapsedSeconds) {
 
 bool View::handleClick(sf::Vector2f point) {
     if (!running) return false;
-    if (kMenuRect.contains(point)) {
-        menuRequested = true;
-        focusedQuestion = -1;
-        return true;
-    }
     if (kBackRect.contains(point)) { back(); return true; }
     if (kNextRect.contains(point)) { next(); return true; }
     if (!kContentRect.contains(point)) {
@@ -570,15 +563,6 @@ void View::draw() {
 
     // Title, page title and progress
     drawText(definition.title, kContentX - kPanelPad, 26.0f, 28, kInk);
-    const sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-    const bool menuHover = kMenuRect.contains(mouse);
-    roundedBox(window, kMenuRect.position.x, kMenuRect.position.y + 3.0f,
-               kMenuRect.size.x, kMenuRect.size.y, 13.0f, kShadowSoft);
-    roundedBox(window, kMenuRect.position.x, kMenuRect.position.y,
-               kMenuRect.size.x, kMenuRect.size.y, 13.0f,
-               menuHover ? kAccentDark : kPanel, kBorder, 1.5f);
-    drawCentred("Return to Menu", kMenuRect.position.x + kMenuRect.size.x * 0.5f,
-                kMenuRect.position.y + 12.0f, 16, menuHover ? sf::Color::White : kInk);
     drawText(page.title, kContentX - kPanelPad, 68.0f, 18, kMuted);
     const std::string progress = "Page " + std::to_string(pageIndex + 1) + " of " + std::to_string(pageCount);
     drawText(progress, kContentX + kContentW + kPanelPad - textWidth(progress, 14), 72.0f, 14, kMuted);
