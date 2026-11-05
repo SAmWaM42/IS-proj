@@ -859,6 +859,7 @@ void CompanionUI::startQuestionnaire(const questionnaire::Definition& definition
     };
     questionnaireTag = tag;
     questionnaireSaveErrorReported = false;
+    questionnaireSubmissionErrorReported = false;
     questionnaireView->begin(definition, context, shuffleSeed);
     screen = Screen::Questionnaire;
     saveQuestionnaireDraft();
@@ -923,6 +924,7 @@ bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
     if (!submissionManager) {
         submissionStatusMessage = "Submission manager unavailable; response remains saved locally.";
         appendLog(submissionStatusMessage);
+        questionnaireSubmissionErrorReported = true;
         return false;
     }
 
@@ -934,6 +936,7 @@ bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
     if (std::filesystem::exists(pendingFile)) {
         submissionStatusMessage = id + ": previous upload still pending; current response not queued.";
         appendLog(submissionStatusMessage);
+        questionnaireSubmissionErrorReported = true;
         return false;
     }
 
@@ -946,6 +949,7 @@ bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
     if (!queued) {
         submissionStatusMessage = id + ": already submitted or local queue write failed; do not continue.";
         appendLog(submissionStatusMessage);
+        questionnaireSubmissionErrorReported = true;
         return false;
     }
 
@@ -960,7 +964,7 @@ bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
 }
 
 void CompanionUI::finishQuestionnaire() {
-    if (!questionnaireView || !questionnaireView->finished()) return;
+    if (!questionnaireView || !questionnaireView->finished() || questionnaireSubmissionErrorReported) return;
     if (!saveQuestionnaireDraft()) {
         if (!questionnaireSaveErrorReported) {
             appendLog("Questionnaire response could not be saved. Please check the application data directory.");
@@ -980,6 +984,7 @@ void CompanionUI::finishQuestionnaire() {
             submissionData = study::makeSubmissionData(result);
         } catch (const std::exception& error) {
             appendLog(std::string("Unable to prepare session 1 submission: ") + error.what());
+            questionnaireSubmissionErrorReported = true;
             return;
         }
         if (!queueCompletedSubmission(1, 'A', submissionData)) return;
@@ -1005,6 +1010,7 @@ void CompanionUI::finishQuestionnaire() {
             submissionData = study::makeSubmissionData(sessionTwoConditionResult, result);
         } catch (const std::exception& error) {
             appendLog(std::string("Unable to prepare session 2 submission: ") + error.what());
+            questionnaireSubmissionErrorReported = true;
             return;
         }
         if (!queueCompletedSubmission(2, 'B', submissionData)) return;
