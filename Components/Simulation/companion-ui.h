@@ -11,6 +11,7 @@
 
 #include "Components/State-Action/state-action.h"
 #include "Components/Study/participant-config.h"
+#include "Components/Questionnaire/questionnaire.h"
 
 class CompanionUI {
 public:
@@ -26,7 +27,7 @@ public:
     bool run();
 
 private:
-    enum class Screen { AgentSelection, Simulation, AgentState, Comparison };
+    enum class Screen { AgentSelection, Simulation, AgentState, Comparison, Questionnaire };
     bool researcherMode = false;
     bool guidedStudyMode = false;
     bool studyFinished = false;
@@ -49,6 +50,11 @@ private:
 
     sf::RenderWindow window;
     sf::Font font;
+    std::unique_ptr<questionnaire::View> questionnaireView;
+    std::string questionnaireTag;
+    nlohmann::json ratingAResult;
+    nlohmann::json ratingBResult;
+    nlohmann::json comparisonResult;
     sf::Texture environmentTexture;
     std::vector<std::unique_ptr<sf::Texture>> idleFrames;
     std::vector<std::unique_ptr<sf::Texture>> walkFrames;
@@ -178,6 +184,8 @@ private:
     bool studyInputMatches(const std::string& interaction, bool isText) const;
     std::string currentStudyPrompt() const;
     void openStudyForm();
+    void startQuestionnaire(const questionnaire::Definition& definition, const std::string& tag);
+    void finishQuestionnaire();
     void applySceneEvent(const std::string& sceneEvent);
     void applyGeometryProximity(EnvironmentObservation& observation, const std::string& basis) const;
     void startBehaviour(const std::string& action, const std::string& sceneEvent);
