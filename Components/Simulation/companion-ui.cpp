@@ -844,8 +844,8 @@ void CompanionUI::startQuestionnaire(const questionnaire::Definition& definition
     appendLog("Opened in-app questionnaire: " + tag);
 }
 
-void CompanionUI::saveQuestionnaireDraft() {
-    if (!questionnaireView || (!questionnaireView->active() && !questionnaireView->finished())) return;
+bool CompanionUI::saveQuestionnaireDraft() {
+    if (!questionnaireView || (!questionnaireView->active() && !questionnaireView->finished())) return false;
     const std::filesystem::path resultPath =
         std::filesystem::path(outputDirectory) /
         ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
@@ -854,21 +854,21 @@ void CompanionUI::saveQuestionnaireDraft() {
     std::filesystem::create_directories(resultPath.parent_path(), error);
     if (error) {
         std::cerr << "Unable to create questionnaire output directory "
-                  << resultPath.parent_path() << ": " << error.message() << '\\n';
-        return;
+                  << resultPath.parent_path() << ": " << error.message() << '\n';
+        return false;
     }
 
     {
         std::ofstream output(temporaryPath, std::ios::binary | std::ios::trunc);
         if (!output) {
-            std::cerr << "Unable to open questionnaire draft " << temporaryPath << '\\n';
-            return;
+            std::cerr << "Unable to open questionnaire draft " << temporaryPath << '\n';
+            return false;
         }
-        output << questionnaireView->result().dump(2) << '\\n';
+        output << questionnaireView->result().dump(2) << '\n';
         output.flush();
         if (!output) {
-            std::cerr << "Unable to write questionnaire draft " << temporaryPath << '\\n';
-            return;
+            std::cerr << "Unable to write questionnaire draft " << temporaryPath << '\n';
+            return false;
         }
     }
 
@@ -882,24 +882,20 @@ void CompanionUI::saveQuestionnaireDraft() {
     }
     if (error) {
         std::cerr << "Unable to finalise questionnaire draft " << resultPath
-                  << ": " << error.message() << '\\n';
+                  << ": " << error.message() << '\n';
         std::error_code cleanupError;
         std::filesystem::remove(temporaryPath, cleanupError);
     }
+    return !error;
 }
 
 void CompanionUI::finishQuestionnaire() {
     if (!questionnaireView || !questionnaireView->finished()) return;
-    saveQuestionnaireDraft();
-    const nlohmann::json result = questionnaireView->result();
-    const std::filesystem::path resultPath =
-        std::filesystem::path(outputDirectory) /
-        ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
-    if (!std::filesystem::exists(resultPath)) {
-        appendLog("Questionnaire response could not be saved. Check the application data directory.");
+    if (!saveQuestionnaireDraft()) {
+        appendLog("Questionnaire response could not be saved. Please check the application data directory.");
         return;
     }
-
+    const nlohmann::json result = questionnaireView->result();
     if (questionnaireTag.rfind("rating-", 0) == 0) {
         if (selectedAgentCode == 'A') ratingAResult = result;
         else ratingBResult = result;
