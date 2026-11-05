@@ -28,7 +28,9 @@ No real participant data should be collected using the current build.
 | Local submission queue | Connected in source — unverified | Completed questionnaire results are adapted and queued; session 1 follows rating A, session 2 follows rating B plus comparison; startup retry exists. |
 | Authenticated web API | Implemented in separate repo branch | IS-proj-web/test passes nine API smoke tests and synthetic Drive persistence checks; participant-client access to the protected Preview is not established. |
 | Server-side questionnaire validation | Incomplete | API validates envelope metadata, authentication and idempotency, but not active questionnaire IDs/types/required fields/version. |
-| Packaging and live integration | Unverified | Bundled Python, assets, endpoint, Vercel, OAuth and Drive need tests. |\n| Local Google Drive questionnaire retrieval | Implemented — unverified on `Dev` | Researcher-side Python downloader and focused unit tests exist; local tests and live Drive dry-run/download remain outstanding. |\n| Training and behavioural-data retrieval | Separate / not included in this feature | Training records, interaction logs, memory/affect traces and Q-table data are not downloaded by the questionnaire retrieval utility. |
+| Packaging and live integration | Unverified | Bundled Python, assets, endpoint, Vercel, OAuth and Drive need tests. |
+| Local Google Drive questionnaire retrieval | Implemented — unverified on `Dev` | Researcher-side Python downloader and focused unit tests exist; local tests and live Drive dry-run/download remain outstanding. |
+| Training and behavioural-data retrieval | Separate / not included in this feature | Training records, interaction logs, memory/affect traces and Q-table data are not downloaded by the questionnaire retrieval utility. |
 | Research protocol/ethics | Not ready | Questionnaire/protocol approval and ethics gate remain. |
 
 ## 3. Milestone order
