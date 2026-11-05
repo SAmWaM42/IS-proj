@@ -45,6 +45,8 @@ struct Question {
     std::string construct;
     bool attentionCheck = false;       // Likert: a row that tells the participant which answer to pick
     int attentionAnswer = 0;           // expected value (1..5) for an attention check
+    std::string visibleWhenQuestionId; // optional conditional parent question
+    std::vector<std::string> visibleWhenValues;
 };
 
 struct Page {
@@ -126,6 +128,7 @@ private:
     void goToPage(int index);
     bool pageComplete() const;
     bool isMissing(int pageNumber, int question) const;
+    bool isVisible(int pageNumber, int question) const;
     void setAnswer(int question, int index);
     double elapsedMs() const;
     std::vector<std::string> wrap(const std::string& value, unsigned int size, float maxWidth) const;
