@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #endif
 
 namespace {
@@ -74,6 +75,14 @@ bool SubmissionManager::writeAtomically(const std::filesystem::path& destination
         output.flush();
         if (!output.good()) return false;
     }
+#ifndef _WIN32
+    // Pending records contain the participant's bearer token. Restrict the
+    // temporary file to the current OS user before it is atomically published.
+    if (chmod(temporary.c_str(), S_IRUSR | S_IWUSR) != 0) {
+        std::filesystem::remove(temporary);
+        return false;
+    }
+#endif
     std::error_code error;
 #ifdef _WIN32
     std::filesystem::remove(destination, error);
