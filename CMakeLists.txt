@@ -29,6 +29,7 @@ add_executable(IS-2
    Components/Simulation/submission-manager.cpp
    Components/Simulation/backyard-environment.cpp
    Components/Study/participant-config.cpp
+   Components/Study/questionnaire-submission.cpp
    Components/Questionnaire/questionnaire.cpp
    Components/Questionnaire/questionnaire_content.cpp
 )
@@ -89,6 +90,14 @@ add_executable(participant_config_test
 target_include_directories(participant_config_test PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/Inc)
 target_compile_options(participant_config_test PRIVATE -Wall -Wextra)
 add_test(NAME participant_config_test COMMAND participant_config_test)
+
+add_executable(questionnaire_submission_test
+   tests/questionnaire_submission_test.cpp
+   Components/Study/questionnaire-submission.cpp
+)
+target_include_directories(questionnaire_submission_test PRIVATE ${CMAKE_SOURCE_DIR})
+target_compile_options(questionnaire_submission_test PRIVATE -Wall -Wextra)
+add_test(NAME questionnaire_submission_test COMMAND questionnaire_submission_test)
 
 add_executable(questionnaire_content_test
    tests/questionnaire_content_test.cpp
