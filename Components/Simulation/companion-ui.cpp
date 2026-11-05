@@ -1,5 +1,6 @@
 #include "companion-ui.h"
 #include "ui-layout.h"
+#include "Components/Study/questionnaire-submission.h"
 
 #include <algorithm>
 #include <array>
@@ -451,6 +452,16 @@ CompanionUI::CompanionUI(sf::RenderWindow& sharedWindow,
     if (idleFrames.empty()) appendLog("Dog frames missing (Data/Assets/white_dog_by_Brysia); using a placeholder companion.");
     std::filesystem::create_directories(outputDirectory);
     if (guidedStudyMode) {
+        const auto appRoot = std::filesystem::current_path();
+#ifdef _WIN32
+        const auto uploadPython = appRoot / "runtime" / "python" / "python.exe";
+#else
+        const auto uploadPython = appRoot / "runtime" / "python" / "bin" / "python3";
+#endif
+        // SubmissionManager owns durable local queueing. A missing runtime,
+        // placeholder endpoint, or network failure leaves the JSON queued.
+        submissionManager = std::make_unique<SubmissionManager>(
+            std::filesystem::path(outputDirectory).parent_path(), appRoot, uploadPython);
         std::cout << "Research questionnaire files are saved in: "
                   << std::filesystem::absolute(outputDirectory).string() << '\n';
     }
@@ -899,6 +910,39 @@ bool CompanionUI::saveQuestionnaireDraft() {
     return !error;
 }
 
+bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
+                                                  const nlohmann::json& submissionData) {
+    if (!submissionManager) {
+        appendLog("Submission manager is unavailable; questionnaire remains saved locally.");
+        return false;
+    }
+
+    const std::string id = studyParticipantCode + "-S" + std::to_string(sessionIndex);
+    const auto pendingFile = submissionManager->pendingDirectory() / (id + ".json");
+    const bool queued = submissionManager->queueSubmission(
+        participantConfig.participantNumber, sessionIndex, condition,
+        participantConfig.token, submissionData);
+
+    // queueSubmission returns true once the complete payload is durably written,
+    // even when the immediate HTTP attempt fails. Existing pending files are
+    // also retried rather than overwritten.
+    if (!queued && !std::filesystem::exists(pendingFile)) {
+        appendLog("Unable to persist " + id + ". Check application storage; do not continue.");
+        return false;
+    }
+
+    if (std::filesystem::exists(pendingFile)) {
+        submissionManager->uploadPendingSubmissions();
+    }
+
+    if (std::filesystem::exists(pendingFile)) {
+        appendLog(id + " saved locally; upload pending. It will retry next launch.");
+    } else {
+        appendLog(id + " acknowledged by the submission server.");
+    }
+    return true;
+}
+
 void CompanionUI::finishQuestionnaire() {
     if (!questionnaireView || !questionnaireView->finished()) return;
     if (!saveQuestionnaireDraft()) {
@@ -913,18 +957,48 @@ void CompanionUI::finishQuestionnaire() {
     const std::filesystem::path resultPath =
         std::filesystem::path(outputDirectory) /
         ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
-    if (questionnaireTag.rfind("rating-", 0) == 0) {
+
+    if (questionnaireTag == "rating-A") {
+        nlohmann::json submissionData;
+        try {
+            submissionData = study::makeSubmissionData(result);
+        } catch (const std::exception& error) {
+            appendLog(std::string("Unable to prepare session 1 submission: ") + error.what());
+            return;
+        }
+        if (!queueCompletedSubmission(1, 'A', submissionData)) return;
+        conditionQuestionnaireCompleted = true;
+        studyPhase = "rating";
+        logStudyPhaseEvent("questionnaire_completed", "rating");
+        writeStudyManifest();
+    } else if (questionnaireTag == "rating-B") {
+        // Session 2 is deliberately held until the final comparison form is
+        // complete, so the adopted API contract stores both in Pxx-S2.
+        sessionTwoConditionResult = result;
         conditionQuestionnaireCompleted = true;
         studyPhase = "rating";
         logStudyPhaseEvent("questionnaire_completed", "rating");
         writeStudyManifest();
     } else if (questionnaireTag == "comparison") {
+        if (sessionTwoConditionResult.is_null()) {
+            appendLog("Session 2 answers are unavailable; comparison cannot be submitted.");
+            return;
+        }
+        nlohmann::json submissionData;
+        try {
+            submissionData = study::makeSubmissionData(sessionTwoConditionResult, result);
+        } catch (const std::exception& error) {
+            appendLog(std::string("Unable to prepare session 2 submission: ") + error.what());
+            return;
+        }
+        if (!queueCompletedSubmission(2, 'B', submissionData)) return;
         studyFinished = true;
         studyPhase = "finished";
         logStudyPhaseEvent("questionnaire_completed", "comparison");
         logStudyPhaseEvent("phase_started", "finished");
         writeStudyManifest();
     }
+
     appendLog("Questionnaire saved locally: " + resultPath.filename().string());
     screen = Screen::Simulation;
 }
@@ -2175,6 +2249,7 @@ void CompanionUI::handleClick(sf::Vector2f point) {
                             studyGuidedComplete = false;
                             studyFreeFinished = false;
                             conditionQuestionnaireCompleted = false;
+                            sessionTwoConditionResult = nullptr;
                             eventLog.clear();
                             interactionCount = 0;
                             lastActionInteractionId = 0;
