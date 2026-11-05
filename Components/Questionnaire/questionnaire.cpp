@@ -317,6 +317,14 @@ void View::setAnswer(int question, int index) {
         if (a.answeredMs < 0.0) a.answeredMs = elapsedMs();
     }
     status.clear();
+    const Page& page = definition.pages[static_cast<std::size_t>(pageIndex)];
+    const std::string& answeredId = page.questions[static_cast<std::size_t>(question)].id;
+    const bool affectsVisibility = std::any_of(
+        page.questions.begin(), page.questions.end(),
+        [&](const Question& candidate) {
+            return candidate.visibleWhenQuestionId == answeredId;
+        });
+    if (affectsVisibility) layoutPage();
 }
 
 void View::next() {
