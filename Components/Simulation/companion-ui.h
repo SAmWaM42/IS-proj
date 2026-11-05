@@ -53,6 +53,7 @@ private:
     sf::Font font;
     std::unique_ptr<questionnaire::View> questionnaireView;
     std::string questionnaireTag;
+    bool questionnaireSaveErrorReported = false;
     nlohmann::json ratingAResult;
     nlohmann::json ratingBResult;
     nlohmann::json comparisonResult;
