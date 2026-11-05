@@ -313,13 +313,15 @@ The initial CTest run failed because the test incorrectly expected participant 1
 
 #### M1.3 — Embedded questionnaire UI
 
-- [ ] Replace external browser form launch with an SFML questionnaire screen.
-- [ ] Support one question or a small page of questions at a time, with progress indication.
-- [ ] Support the approved response controls (e.g. Likert selection) and clear selected-state feedback.
-- [ ] Validate required responses before allowing completion.
-- [ ] Add condition A, condition B, and final comparison stages.
-- [ ] Ensure the same per-condition questionnaire is used after both conditions.
-- [ ] Ensure questionnaire completion returns structured data to the study controller rather than writing files from UI code.
+**Status: source-integrated — unverified; StudyController separation remains incomplete.**
+
+- [x] Replace external browser form launch with an SFML questionnaire screen (active UI is in Components/Questionnaire/).
+- [x] Support paginated question groups with progress indication.
+- [x] Implement Likert, choice, 1–5 scale, and optional text controls with selected-state feedback (active shortened instrument; not yet approved).
+- [x] Validate required responses before allowing completion.
+- [x] Add condition A, condition B, and final comparison stages in the guided study flow.
+- [x] Use the same per-condition questionnaire definition after both conditions.
+- [ ] Move study orchestration/data ownership behind a StudyController; currently CompanionUI receives the structured result and handles draft/queue integration.
 
 **Acceptance criteria**
 - The entire study can be completed without opening a browser.
@@ -329,11 +331,13 @@ The initial CTest run failed because the test incorrectly expected participant 1
 
 #### M1.4 — Study data ownership, local persistence, and recovery
 
-- [ ] Introduce StudySessionData as the owner of participant metadata and responses.
-- [ ] Persist a response draft atomically after each completed questionnaire/stage.
-- [ ] Keep the draft under the OS user-data directory, not the repository working tree.
+**Status: partially implemented — unverified; automatic restoration and a single StudySessionData owner remain outstanding.**
+
+- [ ] Introduce StudySessionData as the owner of the active questionnaire UI's participant metadata and responses (the generic typed model exists, but active forms currently produce their own JSON result).
+- [x] Persist an in-progress/completed questionnaire draft atomically after answer and navigation changes (source integrated; build/runtime check pending).
+- [x] Keep questionnaire drafts under the OS user-data `study-linkage` directory, not the repository working tree.
 - [ ] Define safe resume behaviour after an application crash/restart.
-- [ ] Keep questionnaire answers separate from simulation memory, affect state, Q-tables, and diagnostics.
+- [x] Keep uploaded questionnaire answers separate from simulation memory, affect state, Q-tables, and interaction diagnostics.
 - [ ] Define deletion/retention behaviour for incomplete or withdrawn sessions in line with the approved protocol.
 
 **Acceptance criteria**
@@ -345,7 +349,7 @@ The initial CTest run failed because the test incorrectly expected participant 1
 #### M1.5 — Offline milestone verification
 
 - [x] Add focused tests for credentials parsing and odd/even assignment (build and CTest passed on the project owner's local checkout).
-- [ ] Add tests for questionnaire validation and serialisation.
+- [x] Add focused source tests for questionnaire content and submission adapter mapping/context/serialisation (build and CTest execution on the current revision remain pending).
 - [ ] Add tests for partial save/reload and completed-session state.
 - [x] Build the participant executable (project owner reports successful build of target IS-2).
 - [ ] Manually complete a full offline session using test credentials and inspect the saved JSON.
