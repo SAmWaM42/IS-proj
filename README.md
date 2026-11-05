@@ -143,7 +143,7 @@ cmake --build build --target IS-2
 ./build/AnimalAgent
 ~~~
 
-The CMake target is named IS-2, but its output executable is AnimalAgent. These refer to the same single participant application; Free Roam and Research Session are runtime menu choices. Additional targets such as participant_config_test are developer/test executables, not alternative participant applications. The current CMake target defines IS2_PARTICIPANT_BUILD=1; the participant executable is launched without command-line modes and opens the menu. Do not use older README instructions such as ./build/IS-2 --sim for this participant build.
+The CMake target is named IS-2, but its output executable is AnimalAgent. These refer to the same single participant application; Free Roam and Research Session are runtime menu choices. Additional targets such as participant_config_test are developer/test executables, not alternative participant applications. The current CMake target defines IS2_PARTICIPANT_BUILD=1; the participant executable is launched without command-line modes and opens the menu. Do not use older README instructions such as ./build/AnimalAgent --sim for this participant build.
 
 Optional research tests are configured with:
 
