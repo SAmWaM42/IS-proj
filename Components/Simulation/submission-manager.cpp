@@ -125,7 +125,7 @@ bool SubmissionManager::queueSubmission(int participantNumber, int sessionIndex,
     if (uploadOne(destination)) {
         // Persist a token-free receipt before removing the retryable payload.
         // If receipt creation fails, keep the pending file for an idempotent retry.
-        if (writeAtomically(receipt, id + "\\n")) {
+        if (writeAtomically(receipt, id + "\n")) {
             std::error_code error;
             std::filesystem::remove(destination, error);
         }
@@ -188,7 +188,7 @@ SubmissionUploadSummary SubmissionManager::uploadPendingSubmissions() {
         if (uploadOne(file)) {
             const std::string id = file.stem().string();
             const auto receipt = submittedDirectory_ / (id + ".sent");
-            if (writeAtomically(receipt, id + "\\n")) {
+            if (writeAtomically(receipt, id + "\n")) {
                 std::error_code error;
                 std::filesystem::remove(file, error);
                 if (!error) ++summary.uploaded;
