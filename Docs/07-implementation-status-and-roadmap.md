@@ -93,3 +93,11 @@ The generic response model is now populated by `companion-believability-v1` in C
 The project owner's supplied questionnaire UI has now been integrated into `Components/Questionnaire/` and connected to the guided study flow. It replaces the browser-form launch for the two condition ratings and final A/B comparison. Each completed questionnaire is saved as a separate JSON file in the participant study output directory. Demographic/familiarity items remain omitted. Conditional technical-issue and comparison-difference follow-ups are supported.
 
 This is source-integrated but not yet verified: the project owner must build the application and run `questionnaire_content_test`, then manually test text entry, pagination, conditional follow-ups, saving, and the complete A/B/comparison sequence. The new JSON format is not yet adapted to the existing submission schema and is not uploaded. The menu's separate-window ownership and full app-level StudyController are also not solved by this change.
+
+### Questionnaire UX and persistence revision — 5 November 2026
+
+The questionnaire has been reduced to 10 questions per condition (A/B) and 7 comparison questions. Rating forms use two pages of four Likert items plus one overall/feedback page; comparison uses two pages. A shared aspect-preserving 1280x900 logical viewport now scales the participant menu, simulation UI, and questionnaire consistently on window resize, with centered letterboxing for mismatched aspect ratios.
+
+Questionnaire JSON is now intended to be written on open and after every answer/navigation change, not only after final submission. A temporary-file/rename strategy protects the last saved snapshot; JSON records distinguish `in_progress` from `completed`. The participant output directory is the app's user-data `study-linkage` folder (Linux default: `~/.local/share/animal-agent/study-linkage`, unless `XDG_DATA_HOME` is set). Automatic draft restoration into the UI and backend upload are not implemented.
+
+Current status: source changes and focused test updates are committed, but compile/runtime verification remains outstanding. Do not mark responsive layout or draft durability as verified until tested on the project owner's machine.
