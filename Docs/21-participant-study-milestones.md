@@ -3,7 +3,7 @@
 **Project:** Animal Agent — simulated companion research prototype  
 **Research title:** Investigating the Effect of Memory and Affective State on the Perceived Believability of a Simulated Companion Agent  
 **Tracking branch:** SAmWaM42/IS-proj — deployment/participant-client  
-**Last status review:** 4 November 2026  
+**Last status review:** 5 November 2026  
 **Document role:** Live implementation tracker. Update this file as work is completed; do not mark an item complete without evidence from the current revision.
 
 ---
@@ -194,14 +194,14 @@ The following reflects static source inspection of deployment/participant-client
 | Guided Research Session | Implemented in source | Consent, warm-up, 12 guided prompts, bounded free-interaction phase, per-condition rating phase. |
 | Counterbalancing | Partially implemented | Odd/even assignment now derives from credentials; build/runtime and restart recovery tests pending. |
 | Participant credentials | Verified for valid credentials | Parser/allocation tests pass; owner confirms valid credentials.json loads in the application. Invalid/missing-file handling and packaged-release path still need verification. |
-| Embedded questionnaires | Missing | openStudyForm() launches an external browser form. |
-| Final comparison questionnaire | Missing | No embedded final comparison questionnaire in current flow. |
-| Participant response persistence | Incomplete | Participant mode uses researcherMode=false; study event/manifest writes are gated on researcher mode. |
-| Submission queue | Implemented, unconnected | SubmissionManager can queue and upload JSON; no questionnaire-completion call currently connects it to the study flow. |
+| Embedded questionnaires | Implemented — unverified | Active SFML forms for condition A/B and final comparison; local draft persistence exists; build and interactive checks pending. |
+| Final comparison questionnaire | Implemented — unverified | Active comparison form opens after condition B; its answers are bundled into Pxx-S2 by the new adapter. |
+| Participant response persistence | Partially implemented | Per-questionnaire JSON drafts are atomically saved under user data; restart restoration and full-session recovery remain. |
+| Submission queue | Connected in source — unverified | Completed forms are adapted and passed to SubmissionManager: Pxx-S1 after A; Pxx-S2 after B plus comparison. Build and live-client tests pending. |
 | Startup retry | Implemented in source | Participant startup calls uploadPendingSubmissions(). |
-| Upload configuration | Incomplete | Data/Study/upload-config.json contains a placeholder endpoint. |
+| Upload configuration | Incomplete | Data/Study/upload-config.json still contains a placeholder endpoint; protected Preview is not a participant-accessible endpoint. |
 | Backend authentication | Implemented in web test branch | HMAC-SHA256 digest map and bearer token validation exist; production deployment is unverified. |
-| Backend questionnaire validation | Incomplete | API validates metadata/assignment but accepts arbitrary extra response properties. |
+| Backend questionnaire validation | Incomplete | API validates metadata/assignment but accepts arbitrary answer properties; strict version/question/type/range validation remains. |
 | Google Drive storage | Implemented in source, unverified live | OAuth/Drive code exists; no live credentials/deployment test performed. |
 | Packaging | Unverified | Participant uploader expects bundled Python runtime; assets/configuration/credentials need packaging checks. |
 | Ethics and study readiness | Not complete | Approval, final questionnaire, and pilot remain prerequisites. |
@@ -361,12 +361,12 @@ The initial CTest run failed because the test incorrectly expected participant 1
 - [ ] Configure and verify Vercel environment variables: Google OAuth values, Drive folder ID, HMAC SEED, and PARTICIPANT_TOKENS digest map.
 - [ ] Generate participant tokens privately; distribute only each participant's own token.
 - [ ] Configure the real endpoint in Data/Study/upload-config.json.
-- [ ] Connect questionnaire completion to SubmissionManager::queueSubmission().
-- [ ] Send session 1 after condition A questionnaire completion.
-- [ ] Send session 2 after condition B and final comparison completion (if D-01 is confirmed).
-- [ ] Preserve the pending JSON when network, authentication, or server errors occur.
-- [ ] Retry pending submissions on startup and expose a clear status to the participant/researcher.
-- [ ] Keep token out of the HTTP JSON body; send it only as bearer authentication.
+- [x] Connect questionnaire completion to SubmissionManager::queueSubmission() (source implemented; build/runtime verification pending).
+- [x] Queue session 1 after condition A questionnaire completion (source implemented; upload endpoint remains unconfigured).
+- [x] Queue session 2 after condition B and final comparison completion (source implemented; upload endpoint remains unconfigured).
+- [x] Preserve pending JSON on upload failure using the existing SubmissionManager queue (source path connected; failure simulation pending).
+- [x] Retry pending submissions on startup; log server-acknowledged versus locally pending status (source implemented; runtime verification pending).
+- [x] Keep token out of the HTTP JSON body; send it only as bearer authentication (existing uploader removes `_upload_token` before POST).
 - [ ] Restrict local pending-file permissions where supported and avoid token logging.
 - [ ] Add strict backend validation for questionnaire keys, types, ranges, required fields, questionnaire version, and maximum payload size.
 - [ ] Test invalid token, wrong A/B mapping, malformed payload, server unavailable, lost acknowledgement, and ordinary duplicate retry.
@@ -570,3 +570,33 @@ Following the project owner's runtime feedback, the embedded questionnaire has b
 **Verification status:** source and focused tests have been updated, but this revision has not been compiled or interactively tested by the assistant. The project owner should verify resize behaviour at the default, wide, narrow, and portrait sizes; confirm click hitboxes; terminate during a partially answered form and inspect the JSON; then submit each form and confirm its completion status. SubmissionManager/backend upload remains unconnected.
 
 **Versioning clarification:** the earlier `Components/Study/questionnaire-definition.*` / `companion-believability-v1` 26-item transcription remains in the generic study data-model/test area. It is not the active embedded UI definition. The active participant-facing content is `Components/Questionnaire/questionnaire_content.cpp`, tagged in saved response context as `companion-believability-short-v2`. The shortened content is a deliberate pilot/usability revision and must be reviewed as a changed instrument before recruitment.
+
+
+### Questionnaire-to-backend submission integration — 5 November 2026
+
+**Status: implemented in source — unverified.** This is a source integration milestone, not a claim that a participant-device HTTP submission has succeeded.
+
+**Changes on `deployment/participant-client`:**
+- `Components/Study/questionnaire-submission.h/.cpp` converts the active SFML questionnaire result into the version-1 API envelope. It accepts only `completion_status: completed`, maps Likert / scale / choice / text values to the API answer types, strips presentation-only metadata, and normalises item IDs to lowercase for the drafted JSON Schema.
+- `Components/Simulation/companion-ui.h/.cpp` owns a SubmissionManager in Research Session and invokes it at questionnaire completion.
+- Condition A is queued as Pxx-S1 with a null comparison object immediately after rating A.
+- Condition B is retained in memory until the comparison questionnaire is complete; the B answers and comparison answers are then queued together as Pxx-S2, matching D-01.
+- Queueing occurs before upload. The existing manager stores the participant token only in its local pending record and the Python uploader removes that field before sending the JSON body; bearer authentication and the matching Idempotency-Key are sent as headers.
+- Existing startup retry is retained. The UI log reports whether a submission was acknowledged by the server or remains locally queued for retry.
+- Developer-only `--study` runs without assigned credentials remain local-only and do not claim to upload.
+- `tests/questionnaire_submission_test.cpp` and the `questionnaire_submission_test` CMake/CTest target cover answer-type mapping, session-one comparison null, session-two comparison inclusion, and rejection of incomplete/unsupported results.
+
+**Verification and blockers:**
+- [ ] Configure/build `IS-2` and `questionnaire_submission_test` on the current revision.
+- [ ] Run `ctest --test-dir build -R questionnaire_submission_test --output-on-failure`.
+- [ ] Manually complete both questionnaires and comparison using synthetic credentials; inspect Pxx-S1/Pxx-S2 queue JSON.
+- [ ] Verify offline queue retention and successful startup retry.
+- [ ] Verify an actual participant-client HTTP POST reaches the backend and is stored in Drive.
+- [ ] Replace the placeholder endpoint only after an approved participant-accessible deployment is available.
+- [ ] Add strict backend validation for the active `companion-believability-short-v2` question IDs, answer types, required items, allowed values, and payload limits.
+
+**Important Preview limitation:** the nine API smoke tests were run through a local Node script that supplied Vercel's trusted OIDC deployment-protection header. The participant uploader sends only the participant Bearer token and Idempotency-Key; it does not possess or send the local Vercel OIDC token. Therefore, the currently protected Preview URL is not a suitable participant endpoint. Keep Deployment Protection enabled; use an appropriately accessible deployment for participant-client testing rather than embedding a bypass token in the application.
+
+**API contract alignment note:** the API smoke test proved metadata/authentication/Drive behaviour with a synthetic `responses` object, not strict validation of the active questionnaire. The server currently accepts arbitrary response fields. The client adapter emits `questionnaire_version` and `responses.condition_questionnaire.answers` / `comparison_questionnaire.answers`; server-side validation must be aligned before live data collection.
+
+**Verification log:** the project owner reports that the separate backend's nine smoke cases passed and that valid synthetic files were present in Drive without duplicates. This verifies the backend smoke-test path only; it does not verify this C++ participant integration or bypass the Preview protection limitation.
