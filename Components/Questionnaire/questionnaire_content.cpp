@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <random>
+#include <utility>
 
 namespace questionnaire {
 namespace {
