@@ -921,7 +921,8 @@ bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
         return true;
     }
     if (!submissionManager) {
-        appendLog("Submission manager is unavailable; questionnaire remains saved locally.");
+        submissionStatusMessage = "Submission manager unavailable; response remains saved locally.";
+        appendLog(submissionStatusMessage);
         return false;
     }
 
@@ -946,10 +947,6 @@ bool CompanionUI::queueCompletedSubmission(int sessionIndex, char condition,
         submissionStatusMessage = id + ": local queue write failed; do not continue.";
         appendLog(submissionStatusMessage);
         return false;
-    }
-
-    if (std::filesystem::exists(pendingFile)) {
-        submissionManager->uploadPendingSubmissions();
     }
 
     if (std::filesystem::exists(pendingFile)) {
@@ -2705,6 +2702,8 @@ void CompanionUI::draw() {
     window.clear(kBackground);
     if (screen == Screen::Questionnaire && questionnaireView) {
         questionnaireView->draw();
+        if (!submissionStatusMessage.empty())
+            drawText(submissionStatusMessage, 100, 875, 13, kAccent);
     } else if (screen == Screen::AgentSelection) {
         drawAgentSelectionScreen();
     } else {
