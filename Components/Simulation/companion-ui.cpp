@@ -845,7 +845,7 @@ void CompanionUI::startQuestionnaire(const questionnaire::Definition& definition
 }
 
 void CompanionUI::saveQuestionnaireDraft() {
-    if (!questionnaireView || !questionnaireView->active()) return;
+    if (!questionnaireView || (!questionnaireView->active() && !questionnaireView->finished())) return;
     const std::filesystem::path resultPath =
         std::filesystem::path(outputDirectory) /
         ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
@@ -895,6 +895,10 @@ void CompanionUI::finishQuestionnaire() {
     const std::filesystem::path resultPath =
         std::filesystem::path(outputDirectory) /
         ("questionnaire-" + runId + "-" + questionnaireTag + ".json");
+    if (!std::filesystem::exists(resultPath)) {
+        appendLog("Questionnaire response could not be saved. Check the application data directory.");
+        return;
+    }
 
     if (questionnaireTag.rfind("rating-", 0) == 0) {
         if (selectedAgentCode == 'A') ratingAResult = result;
