@@ -1067,7 +1067,7 @@ The active embedded questionnaire result is adapted by `Components/Study/questio
 - A's questionnaire is queued as Pxx-S1 with a null comparison questionnaire.
 - B's questionnaire is retained until the final comparison is completed; both are then queued as Pxx-S2.
 - The queue is written locally before the upload attempt. On Linux the pending file is restricted to mode 0600. The existing Python uploader removes the local `_upload_token` field from the JSON body and sends the participant token as a Bearer header with the matching Idempotency-Key.
-- Startup retry remains in `main.c++`; the participant navigation area now shows whether the latest submission was acknowledged or remains locally pending.
+- Startup retry remains in `main.c++`; the participant navigation area now shows whether the latest submission was acknowledged or remains locally pending. A token-free local receipt prevents the same deterministic submission ID from being reused by a later run.
 - A prior pending file for the same deterministic submission ID blocks a new response from silently replacing or reusing that ID.
 - Developer `--study` sessions without assigned credentials remain local-only.
 
