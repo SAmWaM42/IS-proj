@@ -1,6 +1,6 @@
 # Implementation Status and Roadmap
 
-**Current branch under review:** deployment/participant-client  
+**Current branch under review:** `Dev` (researcher-side data retrieval work is being reviewed)  
 **Last documentation review:** 5 November 2026  
 **Authoritative milestone tracker:** [21-participant-study-milestones.md](21-participant-study-milestones.md)
 
@@ -28,7 +28,7 @@ No real participant data should be collected using the current build.
 | Local submission queue | Connected in source — unverified | Completed questionnaire results are adapted and queued; session 1 follows rating A, session 2 follows rating B plus comparison; startup retry exists. |
 | Authenticated web API | Implemented in separate repo branch | IS-proj-web/test passes nine API smoke tests and synthetic Drive persistence checks; participant-client access to the protected Preview is not established. |
 | Server-side questionnaire validation | Incomplete | API validates envelope metadata, authentication and idempotency, but not active questionnaire IDs/types/required fields/version. |
-| Packaging and live integration | Unverified | Bundled Python, assets, endpoint, Vercel, OAuth and Drive need tests. |
+| Packaging and live integration | Unverified | Bundled Python, assets, endpoint, Vercel, OAuth and Drive need tests. |\n| Local Google Drive questionnaire retrieval | Implemented — unverified on `Dev` | Researcher-side Python downloader and focused unit tests exist; local tests and live Drive dry-run/download remain outstanding. |\n| Training and behavioural-data retrieval | Separate / not included in this feature | Training records, interaction logs, memory/affect traces and Q-table data are not downloaded by the questionnaire retrieval utility. |
 | Research protocol/ethics | Not ready | Questionnaire/protocol approval and ethics gate remain. |
 
 ## 3. Milestone order
@@ -117,3 +117,35 @@ The active questionnaire result is now adapted by `Components/Study/questionnair
 A focused `questionnaire_submission_test` target was added. **No build, CTest, SFML interaction, or participant-client HTTP test has yet been run on this revision.** The endpoint remains the placeholder in `Data/Study/upload-config.json`. The Vercel Preview used for smoke tests is protected by Deployment Protection; the participant uploader deliberately does not send the local Vercel OIDC bypass token. Do not point participant builds at that protected Preview. A participant-accessible, approved deployment endpoint is required before network submission can be verified.
 
 The backend currently accepts arbitrary questionnaire response properties after validating the submission metadata. It must be updated to enforce the active shortened questionnaire version, question IDs, answer types, required fields, ranges/options, and payload limits before real collection. This work is not implied by the successful nine-case API smoke test.
+
+
+### Research data separation and local retrieval — 5 November 2026
+
+The research evaluation contains two distinct evidence streams. They must remain separate in collection, retrieval, processing, and reporting.
+
+1. **Training and behavioural analysis:** concerns the agent's learning and computational behaviour, including training experiences, Q-table/learning progression, rewards, action selection, memory formation and retrieval, affective-state changes, behavioural consistency, and adaptability. These are engineering or behavioural measures used to examine how the agent operates.
+2. **Perceived-believability evaluation:** concerns participants' subjective assessments of the companion, collected through the condition-specific and comparison questionnaires. Believability is a human-evaluation outcome; it is not a training metric or a proxy for learning performance.
+
+A change in training performance must not be reported as a change in perceived believability, and a change in believability ratings must not be interpreted as evidence of improved learning. The two streams may be compared or interpreted alongside one another during the research analysis, but their measures, datasets, and conclusions must remain identifiable and distinct.
+
+#### Local Google Drive questionnaire retrieval
+
+A researcher-side retrieval utility has been added on `Dev`:
+
+- `scripts/download_study_submissions.py` authenticates directly to Google OAuth using researcher credentials.
+- It lists and downloads questionnaire submission JSON files from the configured Drive folder.
+- It supports dry-run, participant/session filters, local output selection, and explicit overwrite.
+- It validates the submission envelope, participant/session assignment, questionnaire version, answer structure, and session-specific comparison-questionnaire rule.
+- It writes a retrieval report and stores downloaded data outside the repository by default.
+- It does not use participant upload tokens or the participant-facing submission endpoint.
+- It performs read-only operations against Google Drive; it does not modify or delete Drive files.
+
+**Status: Implemented — unverified.** The downloader and focused unit-test file exist on `Dev`, but the unit tests have not yet been run on the current revision and no live Google Drive dry-run or download has been verified. Do not treat the feature as operational until those checks pass.
+
+#### Explicit scope boundary
+
+The current retrieval utility downloads **participant questionnaire submissions only**. It does not retrieve training datasets, interaction logs, Q-tables, memory records, affect traces, or diagnostic output. Those belong to a separate training/behavioural data pipeline and require their own retrieval specification if needed.
+
+The downloader preserves the submitted JSON and does not calculate, redefine, combine, or transform the believability metric. Any adapter that makes questionnaire JSON consumable by an analysis script is a separate analysis-layer task. It must preserve the questionnaire's response values and keep perceived-believability results separate from training and behavioural measures.
+
+The detailed retrieval specification is [22-local-study-data-retrieval.md](22-local-study-data-retrieval.md). Its acceptance criteria remain open until local tests and a live read-only Drive verification have been completed.
