@@ -77,11 +77,11 @@ class SubmissionValidationTests(unittest.TestCase):
             original = root / "P20-S1.json"
             original.write_text("existing", encoding="utf-8")
             self.assertEqual(
-                MODULE.output_path_for(root, "P20-S1.json", "driveid123", False).name,
-                "P20-S1.duplicate-driveid.json",
+                MODULE.output_path_for(root, "P20-S1.json"),
+                original,
             )
             self.assertEqual(
-                MODULE.output_path_for(root, "P20-S1.json", "driveid123", True),
+                MODULE.output_path_for(root, "P20-S1.json"),
                 original,
             )
 
