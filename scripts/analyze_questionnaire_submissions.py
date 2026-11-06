@@ -273,6 +273,28 @@ def write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None
         writer.writerows(rows)
 
 
+def svg_count_chart(path: Path, title: str, counts: dict[str, int]) -> None:
+    width, height = 760, 440
+    left, right, top, bottom = 90, 30, 70, 80
+    plot_w, plot_h = width - left - right, height - top - bottom
+    maximum = max(counts.values(), default=1)
+    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+             '<rect width="100%" height="100%" fill="white"/>',
+             f'<text x="{width/2}" y="34" text-anchor="middle" font-family="sans-serif" font-size="18">{xml_escape.escape(title)}</text>']
+    entries = list(sorted(counts.items()))
+    slot = plot_w / max(1, len(entries))
+    bar_w = min(150, slot * 0.55)
+    for i, (label, count) in enumerate(entries):
+        bar_h = (count / maximum) * plot_h if maximum else 0
+        x = left + slot * i + (slot - bar_w) / 2
+        y = top + plot_h - bar_h
+        parts.append(f'<rect x="{x}" y="{y}" width="{bar_w}" height="{bar_h}" fill="#557c9b"/>')
+        parts.append(f'<text x="{x+bar_w/2}" y="{y-9}" text-anchor="middle" font-family="sans-serif" font-size="13">{count}</text>')
+        parts.append(f'<text x="{x+bar_w/2}" y="{height-45}" text-anchor="middle" font-family="sans-serif" font-size="12">{xml_escape.escape(label)}</text>')
+    parts.append('</svg>')
+    path.write_text("\\n".join(parts), encoding="utf-8")
+
+
 def svg_bar_chart(path: Path, title: str, labels: list[str], values: list[float | None],
                   y_min: float = 1.0, y_max: float = 5.0) -> None:
     width, height = 760, 440
@@ -331,6 +353,7 @@ def run(args: argparse.Namespace) -> int:
     # Condition-level question summaries; each participant contributes one rating per treatment.
     observations: dict[tuple[str, str], list[float]] = defaultdict(list)
     comparison_counts: dict[str, Counter[str]] = defaultdict(Counter)
+    comparison_numeric: dict[str, list[float]] = defaultdict(list)
     attention_passed_count = sum(record["attention_check_passed"] is True for record in records)
     for record in records:
         # Keep comparison-choice counts, but apply the instrument's explicit
@@ -347,6 +370,8 @@ def run(args: argparse.Namespace) -> int:
             for qid, answer in answer_map(comparison).items():
                 if answer["answer_type"] == "single_choice":
                     comparison_counts[qid][str(answer["value"])] += 1
+                elif answer["answer_type"] in NUMERIC_TYPES and type(answer["value"]) in (int, float):
+                    comparison_numeric[qid].append(float(answer["value"]))
 
     summary_rows = []
     question_ids = sorted({qid for _, qid in observations})
@@ -388,6 +413,10 @@ def run(args: argparse.Namespace) -> int:
     comparison_rows = [{"question_id": qid, "response": choice, "count": count}
                        for qid, counts in sorted(comparison_counts.items())
                        for choice, count in sorted(counts.items())]
+    comparison_numeric_rows = [
+        {"question_id": qid, **summarize(values)}
+        for qid, values in sorted(comparison_numeric.items())
+    ]
 
     output_dir.mkdir(parents=True, exist_ok=True)
     write_csv(output_dir / "questionnaire_condition_summary.csv", summary_rows,
@@ -398,6 +427,8 @@ def run(args: argparse.Namespace) -> int:
               ["question_id", "n", "mean", "median", "sd", "min", "max"])
     write_csv(output_dir / "comparison_response_counts.csv", comparison_rows,
               ["question_id", "response", "count"])
+    write_csv(output_dir / "comparison_numeric_summary.csv", comparison_numeric_rows,
+              ["question_id", "n", "mean", "median", "sd", "min", "max"])
 
     charts = []
     for qid in question_ids:
@@ -412,6 +443,11 @@ def run(args: argparse.Namespace) -> int:
         label = QUESTION_LABELS.get(qid, qid)
         svg_bar_chart(output_dir / filename, f"{label}: mean response by agent condition",
                       ["Baseline", "Proposed"], [base, proposed])
+        charts.append(filename)
+    for qid, counts in sorted(comparison_counts.items()):
+        safe_name = re.sub(r"[^a-zA-Z0-9_-]+", "_", qid)
+        filename = f"comparison_{safe_name}.svg"
+        svg_count_chart(output_dir / filename, QUESTION_LABELS.get(qid, qid), dict(counts))
         charts.append(filename)
 
     subscale_rows = []
