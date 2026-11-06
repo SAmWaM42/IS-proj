@@ -39,6 +39,34 @@ DEFAULT_OUTPUT = Path.home() / "AnimalAgentStudyData" / "analysis"
 FILE_RE = re.compile(r"^P(?P<participant>[0-9]{2,4})-S(?P<session>[12])\.json$")
 NUMERIC_TYPES = {"likert", "integer", "number"}
 
+# Active shortened pilot instrument, transcribed from
+# Components/Questionnaire/questionnaire_content.cpp. Submission IDs are
+# lowercased by questionnaire-submission.cpp before they are uploaded.
+DEFAULT_REVERSE_SCORED = ["c3", "c13"]
+DEFAULT_SUBSCALES = {
+    "behavioural_consistency": ["c1", "c3"],
+    "emotional_expression": ["c11", "c13"],
+}
+QUESTION_LABELS = {
+    "c1": "Personality felt stable",
+    "c3": "Behaviour seemed random or contradictory (reverse-scored)",
+    "c4": "Behaviour changed sensibly with treatment",
+    "c5": "Companion seemed to remember earlier treatment",
+    "c11": "Mood was visible in behaviour",
+    "c13": "Reactions seemed flat or emotionless (reverse-scored)",
+    "c18": "Companion seemed like a believable animal",
+    "c21": "Attention check",
+    "summary_believability": "Overall believability (summary scale)",
+    "session_feedback": "Optional session feedback (not analysed)",
+    "cmp_consistent": "A/B comparison: consistency",
+    "cmp_adapted": "A/B comparison: adaptability",
+    "cmp_believable": "A/B comparison: believability",
+    "cmp_confidence": "Confidence in believability comparison",
+    "cmp_built_differently": "Blinding check",
+    "cmp_difference_detail": "Blinding-check explanation (not analysed)",
+    "cmp_other_comments": "Additional comments (not analysed)",
+}
+
 
 class AnalysisError(RuntimeError):
     pass
@@ -52,7 +80,10 @@ def expected_condition(participant: int, session: int) -> str:
 
 
 def load_scoring_config(path: Path | None) -> dict[str, Any]:
-    config = {"reverse_scored_question_ids": [], "subscales": {}}
+    config = {
+        "reverse_scored_question_ids": list(DEFAULT_REVERSE_SCORED),
+        "subscales": dict(DEFAULT_SUBSCALES),
+    }
     if path is None:
         return config
     try:
@@ -70,8 +101,8 @@ def load_scoring_config(path: Path | None) -> dict[str, Any]:
     for name, ids in scales.items():
         if not isinstance(name, str) or not isinstance(ids, list) or not ids or not all(isinstance(x, str) for x in ids):
             raise AnalysisError("Each subscale must have a name and a non-empty array of question IDs.")
-    config["reverse_scored_question_ids"] = reverse
-    config["subscales"] = scales
+    config["reverse_scored_question_ids"] = supplied.get("reverse_scored_question_ids", reverse)
+    config["subscales"] = supplied.get("subscales", scales)
     return config
 
 
@@ -184,13 +215,27 @@ def read_input_files(input_dir: Path) -> tuple[list[dict[str, Any]], list[dict[s
         if (participant, session) in duplicates:
             issues.append({"file": path.name, "status": "excluded", "issues": ["duplicate participant/session file; resolve manually"]})
             continue
-        loaded.append({"file": path.name, "data": data, "participant": participant, "session": session})
-        issues.append({"file": path.name, "status": "included", "issues": []})
+        questionnaire = data["responses"]["condition_questionnaire"]
+        attention = attention_check_passed(questionnaire)
+        loaded.append({
+            "file": path.name, "data": data, "participant": participant,
+            "session": session, "attention_check_passed": attention,
+        })
+        status = "included" if attention is True else "included_attention_check_failed_or_missing"
+        issues.append({"file": path.name, "status": status, "issues": [] if attention is True else ["attention check failed or missing; condition ratings excluded from primary rating summaries"]})
     return loaded, issues
 
 
 def answer_map(questionnaire: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {row["question_id"]: row for row in questionnaire["answers"]}
+
+
+def attention_check_passed(questionnaire: dict[str, Any]) -> bool | None:
+    """Return None when the active instrument's attention item is absent."""
+    answer = answer_map(questionnaire).get("c21")
+    if answer is None or answer.get("answer_type") != "likert":
+        return None
+    return answer.get("value") == 4
 
 
 def numeric_answers(questionnaire: dict[str, Any], scoring: dict[str, Any]) -> dict[str, float]:
@@ -286,14 +331,17 @@ def run(args: argparse.Namespace) -> int:
     # Condition-level question summaries; each participant contributes one rating per treatment.
     observations: dict[tuple[str, str], list[float]] = defaultdict(list)
     comparison_counts: dict[str, Counter[str]] = defaultdict(Counter)
+    attention_passed_count = sum(record["attention_check_passed"] is True for record in records)
     for record in records:
-        treatment = "baseline" if record["data"]["condition"] == expected_condition(record["participant"], record["session"]) and (
-            (record["participant"] % 2 == 1 and record["data"]["condition"] == "A") or
-            (record["participant"] % 2 == 0 and record["data"]["condition"] == "B")
-        ) else "proposed"
-        values = numeric_answers(record["data"]["responses"]["condition_questionnaire"], scoring)
-        for qid, value in values.items():
-            observations[(treatment, qid)].append(value)
+        # Keep comparison-choice counts, but apply the instrument's explicit
+        # attention-check rule to condition-rating summaries.
+        baseline_code = "A" if record["participant"] % 2 else "B"
+        treatment = "baseline" if record["data"]["condition"] == baseline_code else "proposed"
+        if record["attention_check_passed"] is True:
+            values = numeric_answers(record["data"]["responses"]["condition_questionnaire"], scoring)
+            for qid, value in values.items():
+                if qid != "c21":
+                    observations[(treatment, qid)].append(value)
         comparison = record["data"]["responses"]["comparison_questionnaire"]
         if comparison:
             for qid, answer in answer_map(comparison).items():
@@ -309,14 +357,22 @@ def run(args: argparse.Namespace) -> int:
 
     paired_rows = []
     paired_differences: dict[str, list[float]] = defaultdict(list)
+    attention_eligible_pairs = 0
     for participant, (first, second) in sorted(complete_pairs.items()):
+        if first["attention_check_passed"] is not True or second["attention_check_passed"] is not True:
+            pair_issues.append({"participant": participant, "issue": "attention_check_failed_or_missing_in_one_or_both_sessions"})
+            continue
+        attention_eligible_pairs += 1
         treatment_records = {}
         for record in (first, second):
             p = record["participant"]
             condition = record["data"]["condition"]
             baseline_code = "A" if p % 2 else "B"
             treatment = "baseline" if condition == baseline_code else "proposed"
-            treatment_records[treatment] = numeric_answers(record["data"]["responses"]["condition_questionnaire"], scoring)
+            treatment_records[treatment] = {
+                qid: value for qid, value in numeric_answers(record["data"]["responses"]["condition_questionnaire"], scoring).items()
+                if qid != "c21"
+            }
         for qid in sorted(set(treatment_records.get("baseline", {})) & set(treatment_records.get("proposed", {}))):
             baseline, proposed = treatment_records["baseline"][qid], treatment_records["proposed"][qid]
             difference = proposed - baseline
@@ -353,7 +409,8 @@ def run(args: argparse.Namespace) -> int:
             continue
         safe_name = re.sub(r"[^a-zA-Z0-9_-]+", "_", qid)
         filename = f"question_{safe_name}.svg"
-        svg_bar_chart(output_dir / filename, f"{qid}: mean response by agent condition",
+        label = QUESTION_LABELS.get(qid, qid)
+        svg_bar_chart(output_dir / filename, f"{label}: mean response by agent condition",
                       ["Baseline", "Proposed"], [base, proposed])
         charts.append(filename)
 
@@ -379,13 +436,18 @@ def run(args: argparse.Namespace) -> int:
         "analysis_scope": "questionnaire submissions only",
         "input_directory": str(input_dir),
         "valid_submissions_included": len(records),
+        "attention_check_passed_submissions": attention_passed_count,
+        "attention_check_failed_or_missing_submissions": len(records) - attention_passed_count,
         "complete_participant_pairs": len(complete_pairs),
+        "attention_eligible_complete_pairs": attention_eligible_pairs,
         "participants_missing_or_mismatched_sessions": pair_issues,
         "quality_checks": quality,
         "comparison_response_counts": comparison_rows,
         "scoring_config_used": str(args.scoring_config.resolve()) if args.scoring_config else None,
         "reverse_scored_question_ids": scoring["reverse_scored_question_ids"],
         "configured_subscales": list(scoring["subscales"].keys()),
+        "active_question_labels": QUESTION_LABELS,
+        "attention_check_rule": "C21 must equal 4 (Agree); failed or missing checks are excluded from condition-rating summaries and paired rating comparisons.",
         "charts": charts,
         "interpretation_note": (
             "Questionnaire results measure participant perceptions. They are not training rewards, "
