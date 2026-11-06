@@ -774,16 +774,19 @@ namespace
                               std::ofstream &stepLog,
                               const std::string &agentName,
                               int episodeIndex,
-                              bool recordDetailedSteps)
+                              bool recordDetailedSteps,
+                              float initialEnergy,
+                              float initialStress,
+                              float initialSatisfaction)
     {
         agent.reset();
         agent.setLearningEnabled(learning);
         agent.setExplorationRate(epsilon);
 
         EpisodeMetrics metrics;
-        float environmentEnergy = 0.8f;
-        float environmentStress = 0.2f;
-        float userSatisfaction = 0.5f;
+        float environmentEnergy = std::clamp(initialEnergy, 0.25f, 1.0f);
+        float environmentStress = std::clamp(initialStress, 0.0f, 0.75f);
+        float userSatisfaction = std::clamp(initialSatisfaction, 0.2f, 0.8f);
         RepetitionTracker repetitionTracker;
         int repetitionCount = 0;
         EnvironmentObservation currentObservation = observations.front();
@@ -1101,6 +1104,12 @@ bool runTrainingExperiment(const std::string &mode,
     for (int episode = 0; episode < episodes; ++episode)
     {
         const int episodeSteps = episodeLengthDist(environmentRng);
+        std::uniform_real_distribution<float> initialEnergyDist(0.45f, 0.95f);
+        std::uniform_real_distribution<float> initialStressDist(0.10f, 0.55f);
+        std::uniform_real_distribution<float> initialSatisfactionDist(0.35f, 0.75f);
+        const float episodeInitialEnergy = initialEnergyDist(environmentRng);
+        const float episodeInitialStress = initialStressDist(environmentRng);
+        const float episodeInitialSatisfaction = initialSatisfactionDist(environmentRng);
         const unsigned int episodeScenarioSeed =
             seed ^ (static_cast<unsigned int>(episode + 1) * 2654435761u);
         std::mt19937 scenarioRng(episodeScenarioSeed);
@@ -1133,10 +1142,10 @@ bool runTrainingExperiment(const std::string &mode,
         const bool recordDetailedSteps = episode >= std::max(0, episodes - kDetailedStepLogEpisodes);
         const EpisodeMetrics baselineMetrics = runEpisode(
             baseline, observations, elapsedIntervals, learning, epsilon, baselineLog, "baseline", episode,
-            recordDetailedSteps);
+            recordDetailedSteps, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction);
         const EpisodeMetrics proposedMetrics = runEpisode(
             proposed, observations, elapsedIntervals, learning, epsilon, proposedLog, "proposed", episode,
-            recordDetailedSteps);
+            recordDetailedSteps, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction);
 
         baselineGlobalStates.insert(baselineMetrics.visited_states.begin(), baselineMetrics.visited_states.end());
         proposedGlobalStates.insert(proposedMetrics.visited_states.begin(), proposedMetrics.visited_states.end());
@@ -1158,12 +1167,22 @@ bool runTrainingExperiment(const std::string &mode,
         baselineRow["episode"] = episode;
         baselineRow["scenario_seed"] = episodeScenarioSeed;
         baselineRow["scenario_steps"] = observations.size();
+        baselineRow["initial_environment"] = {
+            {"energy", episodeInitialEnergy},
+            {"stress", episodeInitialStress},
+            {"user_satisfaction", episodeInitialSatisfaction}
+        };
         baselineRow["scenario_composition"] = scenarioComposition;
         baselineEpisodes.push_back(baselineRow);
         nlohmann::json proposedRow = metricsToJson(proposedMetrics);
         proposedRow["episode"] = episode;
         proposedRow["scenario_seed"] = episodeScenarioSeed;
         proposedRow["scenario_steps"] = observations.size();
+        proposedRow["initial_environment"] = {
+            {"energy", episodeInitialEnergy},
+            {"stress", episodeInitialStress},
+            {"user_satisfaction", episodeInitialSatisfaction}
+        };
         proposedRow["scenario_composition"] = scenarioComposition;
         proposedEpisodes.push_back(proposedRow);
     }
