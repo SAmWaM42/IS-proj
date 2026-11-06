@@ -60,6 +60,14 @@ class QuestionnaireAnalysisTests(unittest.TestCase):
         errors = MODULE.validate_submission(value, "P20-S1.json")
         self.assertTrue(any("duplicates question_id" in error for error in errors))
 
+    def test_active_questionnaire_reverse_scoring_defaults(self):
+        scoring = MODULE.load_scoring_config(None)
+        q = {"answers": [
+            {"question_id": "c3", "answer_type": "likert", "value": 2},
+            {"question_id": "c13", "answer_type": "likert", "value": 1}
+        ]}
+        self.assertEqual(MODULE.numeric_answers(q, scoring), {"c3": 4.0, "c13": 5.0})
+
     def test_reverse_scoring_and_numeric_filter(self):
         scoring = {"reverse_scored_question_ids": ["negative_item"], "subscales": {}}
         q = {"answers": [
