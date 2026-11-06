@@ -30,7 +30,7 @@ The output directory must be outside the repository and must not be the input di
 - `questionnaire_condition_summary.csv`: per-question descriptive statistics (n, mean, median, standard deviation, min, max) split by baseline/proposed treatment.
 - `paired_question_differences.csv`: per-participant baseline and proposed values, and proposed-minus-baseline difference for each numeric question answered in both sessions.
 - `paired_question_summary.csv`: descriptive summaries of the paired differences.
-- `comparison_response_counts.csv`: counts for categorical answers in the final comparison questionnaire.
+- `comparison_response_counts.csv`: counts for categorical answers in the final comparison questionnaire.\n- `comparison_numeric_summary.csv`: descriptive statistics for numeric final-comparison answers, such as confidence.\n- `comparison_*.svg`: response-count charts for categorical final-comparison answers.
 - `configured_subscale_scores.csv`: paired subscale scores only for subscales explicitly defined in the scoring configuration.
 - `question_*.svg`: per-question baseline/proposed mean charts, using readable labels for the active shortened questionnaire.
 
