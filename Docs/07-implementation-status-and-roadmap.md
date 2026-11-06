@@ -255,3 +255,43 @@ Requirements:
 6. Re-run training and validation for both agents using matched profiles and seeds. Preserve a clear distinction between training reward/behavioural diagnostics and participant-perceived-believability outcomes.
 
 These are researcher-side training changes on `Dev`. Any change affecting agent behaviour, state transitions, reward, action vocabulary, or simulation structure must also be reflected in `deployment/participant-client` and built/tested there under the project's deployment-parity requirement. Do not modify or redeploy the production Vercel project as part of this work without explicit approval. The synthetic-user model is a training tool unless a separate, approved participant-study change is specified.
+
+### Stage A implementation progress — 6 November 2026
+
+**Status: Source-integrated on `Dev`; build/runtime validation outstanding. Deployment branch unchanged.**
+
+The first four Stage A work items have now been implemented in the researcher-side training path:
+
+1. **Scenario randomisation and composition**
+   - Replaced the fixed `stepIndex % 14` schedule with seeded shuffled scenario blocks.
+   - Scenario blocks can be probabilistically omitted, while multi-step fetch retry and ignored-request sequences are preserved.
+   - Episode lengths vary between approximately 75% and 125% of the requested step count (bounded to at least one step).
+   - Episode starting energy, stress, and user-satisfaction values vary within bounded ranges and are shared by both agents.
+   - Each episode records its scenario seed, starting environment values, and complete observation composition. Transition randomness is also seeded per run and paired by episode/step.
+   - Both agents are run against the same observations, elapsed intervals, initial conditions, and transition random stream.
+
+2. **Repeated no-response scenario and delayed INSIST eligibility**
+   - Added a three-observation pending-task sequence with no user response.
+   - Added `no_response_count` to the shared environment observation and encoded state for both agents.
+   - `INSIST` is unavailable on the first two no-response observations and becomes valid when the count reaches two.
+   - This creates an opportunity for either policy to select INSIST after persistent non-response; it does not force the action.
+   - The visible simulation mapping already exists, but end-to-end runtime behaviour still needs validation.
+
+3. **Shared environmental repetition/boredom reward constraint**
+   - Added a shared training-environment penalty based on consecutive action categories when no meaningful user/environment response occurs.
+   - First occurrence is unpenalised; repeated categories incur an additional 0.04 penalty per repeat, capped at 0.20.
+   - A meaningful response or change of action category resets the consecutive-repeat counter.
+   - The same reward calculation is applied to Baseline and Proposed. Per-step logs record category, consecutive count, penalty, and response flag.
+   - This is an environmental reward constraint, not a Proposed-only affect or memory update.
+
+4. **Coverage and scenario diagnostics**
+   - Episode metrics now report unique selected state-action pairs, valid state-action pairs available on encountered states, and their coverage ratio.
+   - Run summaries report global unions of unique states and state-action pairs, separately for each agent, rather than summing episode-level unique counts.
+   - Per-episode scenario composition and seeds are retained for reproducibility.
+   - The existing Q-table-supported decision rate remains a separate metric; it must not be described as state-space coverage.
+
+Focused self-tests were added to the existing training/agent self-test paths for deterministic scenario generation, delayed INSIST eligibility, shared bounded repetition penalties, and state encoding of the no-response count. **These tests have not yet been compiled or executed on the current revision.** The code must not be considered validated until the researcher runs a clean development build, `--self-test`, the paired-agent scenario tests, and controlled train/validate runs with multiple seeds.
+
+**Q-table compatibility:** adding `no_response_count` changes the encoded state key. Existing Q-table checkpoints were created under the previous state encoding and must not be reused for the updated training experiment. Start with fresh policies using `--train`; do not use `--resume-training` with pre-change checkpoints.
+
+**Deployment boundary:** all changes are currently limited to `Dev`. Do not cherry-pick or port them to `deployment/participant-client` until build, self-test, paired-condition, scenario-distribution, reward-parity, and runtime INSIST validation have passed and the project owner explicitly authorises the deployment update. No production deployment was changed.
