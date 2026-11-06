@@ -600,7 +600,7 @@ namespace
         const float sniffWhenCompetingNeeds = rewardFor("SNIFF", feedingTimeRequest, false, 0.55f, 0.20f);
         const float sniffWhenIdle = rewardFor("SNIFF", idle, false, 0.75f, 0.20f);
         std::mt19937 scenarioRng(42);
-        const EnvironmentObservation generated = makeObservation(scenarioRng, 13);
+        // Keep this test focused on the mixed-affordance context; scenario generation has its own test.
         return fetchReward > sniffWhenCompetingNeeds &&
                eatWhenHungry > sniffWhenCompetingNeeds &&
                sleepWhenOverwhelmed > sniffWhenCompetingNeeds &&
@@ -1703,10 +1703,10 @@ bool runTrainingSelfTests()
 {
     const bool scenarioGenerationPassed = testScenarioGenerationAndIgnoredRequest();
     std::cout << "Seeded scenario randomisation and ignored-request/INSIST eligibility: "
-              << (scenarioGenerationPassed ? "PASS" : "FAIL") << '\\n';
+              << (scenarioGenerationPassed ? "PASS" : "FAIL") << '\n';
     const bool repetitionPenaltyPassed = testSharedRepetitionPenalty();
     std::cout << "Shared bounded repetition/boredom reward penalty: "
-              << (repetitionPenaltyPassed ? "PASS" : "FAIL") << '\\n';
+              << (repetitionPenaltyPassed ? "PASS" : "FAIL") << '\n';
     const bool energyDrainPassed = testPassiveEnergyDrain();
     std::cout << "Shared passive energy drain across elapsed simulation time: "
               << (energyDrainPassed ? "PASS" : "FAIL") << '\n';
