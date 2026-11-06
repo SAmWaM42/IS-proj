@@ -82,6 +82,10 @@ class QuestionnaireAnalysisTests(unittest.TestCase):
             self.assertTrue((output / "questionnaire_condition_summary.csv").is_file())
             self.assertTrue((output / "paired_question_differences.csv").is_file())
             self.assertTrue((output / "comparison_response_counts.csv").is_file())
+            self.assertTrue((output / "question_c1.svg").is_file())
+            report = json.loads((output / "analysis_report.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["attention_check_passed_submissions"], 2)
+            self.assertEqual(report["attention_eligible_complete_pairs"], 1)
             generated = "\\n".join(p.read_text(encoding="utf-8") for p in output.iterdir() if p.is_file())
             self.assertNotIn("private free text", generated)
 
