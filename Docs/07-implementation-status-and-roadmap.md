@@ -30,7 +30,8 @@ No real participant data should be collected using the current build.
 | Server-side questionnaire validation | Incomplete | API validates envelope metadata, authentication and idempotency, but not active questionnaire IDs/types/required fields/version. |
 | Packaging and live integration | Unverified | Bundled Python, assets, endpoint, Vercel, OAuth and Drive need tests. |
 | Local Google Drive questionnaire retrieval | Implemented — unverified on `Dev` | Researcher-side Python downloader and focused unit tests exist; local tests and live Drive dry-run/download remain outstanding. |
-| Training and behavioural-data retrieval | Separate / not included in this feature | Training records, interaction logs, memory/affect traces and Q-table data are not downloaded by the questionnaire retrieval utility. |
+| Questionnaire JSON analysis and visualisation | Implemented — unverified on `Dev` | Researcher-side analysis script validates downloaded envelopes, pairs sessions, reports question-level descriptive summaries/A-B comparisons, applies the active attention check and emits SVG charts; synthetic tests must be run locally. |
+| Training and behavioural-data retrieval | Separate / not included in this feature | Training records, interaction logs, memory/affect traces and Q-table data are not downloaded or analysed by the questionnaire JSON utility. |
 | Research protocol/ethics | Not ready | Questionnaire/protocol approval and ethics gate remain. |
 
 ## 3. Milestone order
