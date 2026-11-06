@@ -162,7 +162,7 @@ def validate_questionnaire(value: Any, label: str) -> list[str]:
             errors.append(f"{prefix} duplicates question_id {qid}")
         else:
             seen.add(qid)
-        if kind not in {"likert", "integer", "number", "single_choice", "multiple_choice", "text", "boolean"}:
+        if not isinstance(kind, str) or kind not in {"likert", "integer", "number", "single_choice", "multiple_choice", "text", "boolean"}:
             errors.append(f"{prefix} has unsupported answer_type")
             continue
         valid = True
