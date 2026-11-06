@@ -25,12 +25,21 @@ def submission(participant=20, session=1):
             "condition_questionnaire": {"answers": [
                 {"question_id": "c1", "answer_type": "likert", "value": 4},
                 {"question_id": "c3", "answer_type": "likert", "value": 2},
+                {"question_id": "c4", "answer_type": "likert", "value": 4},
+                {"question_id": "c5", "answer_type": "likert", "value": 3},
+                {"question_id": "c11", "answer_type": "likert", "value": 4},
+                {"question_id": "c13", "answer_type": "likert", "value": 2},
+                {"question_id": "c18", "answer_type": "likert", "value": 4},
                 {"question_id": "c21", "answer_type": "likert", "value": 4},
                 {"question_id": "summary_believability", "answer_type": "integer", "value": 4},
                 {"question_id": "session_feedback", "answer_type": "text", "value": "private free text"}
             ]},
             "comparison_questionnaire": None if session == 1 else {"answers": [
-                {"question_id": "preferred_agent", "answer_type": "single_choice", "value": "A"}
+                {"question_id": "cmp_consistent", "answer_type": "single_choice", "value": "Companion A"},
+                {"question_id": "cmp_adapted", "answer_type": "single_choice", "value": "Companion A"},
+                {"question_id": "cmp_believable", "answer_type": "single_choice", "value": "Companion A"},
+                {"question_id": "cmp_confidence", "answer_type": "integer", "value": 4},
+                {"question_id": "cmp_built_differently", "answer_type": "single_choice", "value": "No"}
             ]}
         }
     }
@@ -91,7 +100,7 @@ class QuestionnaireAnalysisTests(unittest.TestCase):
             self.assertTrue((output / "paired_question_differences.csv").is_file())
             self.assertTrue((output / "comparison_response_counts.csv").is_file())
             self.assertTrue((output / "comparison_numeric_summary.csv").is_file())
-            self.assertTrue((output / "comparison_preferred_agent.svg").is_file())
+            self.assertTrue((output / "comparison_cmp_believable.svg").is_file())
             self.assertTrue((output / "question_c1.svg").is_file())
             report = json.loads((output / "analysis_report.json").read_text(encoding="utf-8"))
             self.assertEqual(report["attention_check_passed_submissions"], 2)
