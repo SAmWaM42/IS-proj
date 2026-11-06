@@ -75,7 +75,12 @@ class QuestionnaireAnalysisTests(unittest.TestCase):
             records, issues = MODULE.read_input_files(source)
             self.assertEqual(len(records), 2)
             self.assertTrue(all(row["status"] == "included" for row in issues))
-            self.assertNotIn("private free text", json.dumps(records[0]["data"]["responses"]["condition_questionnaire"]))
+            scored = MODULE.numeric_answers(
+                records[0]["data"]["responses"]["condition_questionnaire"],
+                {"reverse_scored_question_ids": [], "subscales": {}}
+            )
+            self.assertEqual(scored, {"believability": 4.0})
+            self.assertNotIn("comment", scored)
 
     def test_duplicate_participant_session_is_flagged(self):
         with tempfile.TemporaryDirectory() as tmp:
