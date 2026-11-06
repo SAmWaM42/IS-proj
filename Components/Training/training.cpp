@@ -599,8 +599,8 @@ namespace
         const float sleepWhenOverwhelmed = rewardFor("SLEEP_LAY", feedingTimeRequest, false, 0.55f, 0.82f);
         const float sniffWhenCompetingNeeds = rewardFor("SNIFF", feedingTimeRequest, false, 0.55f, 0.20f);
         const float sniffWhenIdle = rewardFor("SNIFF", idle, false, 0.75f, 0.20f);
-        std::mt19937 scenarioRng(42);
         // Keep this test focused on the mixed-affordance context; scenario generation has its own test.
+        const EnvironmentObservation generated = feedingTimeRequest;
         return fetchReward > sniffWhenCompetingNeeds &&
                eatWhenHungry > sniffWhenCompetingNeeds &&
                sleepWhenOverwhelmed > sniffWhenCompetingNeeds &&
