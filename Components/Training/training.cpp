@@ -3,7 +3,10 @@
 #include "Components/State-Action/state-action.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
+#include <cstdint>
+#include <system_error>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -12,9 +15,78 @@
 #include <set>
 #include <vector>
 #include <utility>
+#include <type_traits>
 
 namespace
 {
+    // Sample varied but bounded elapsed time between decisions. Paired agents
+    // receive the same interval sequence within each episode.
+    constexpr int kDetailedStepLogEpisodes = 2;
+    constexpr float kMinSecondsPerTrainingStep = 0.5f;
+    constexpr float kMaxSecondsPerTrainingStep = 5.0f;
+
+    // Old verbose per-step logs can grow to tens of megabytes. Since current
+    // runs retain only the final few episodes, discard obsolete oversized step
+    // logs instead of rotating them into another large tracked artifact.
+    void pruneOversizedStepLogs(const std::filesystem::path& outputDirectory)
+    {
+        constexpr std::uintmax_t kMaxRetainedStepLogBytes = 5u * 1024u * 1024u;
+        std::error_code error;
+        for (const auto& entry : std::filesystem::directory_iterator(outputDirectory, error))
+        {
+            if (error)
+                break;
+            if (!entry.is_regular_file(error) || error)
+            {
+                error.clear();
+                continue;
+            }
+            const std::string filename = entry.path().filename().string();
+            const std::string stepLogSuffix = "_steps.jsonl";
+            if (filename.size() < stepLogSuffix.size() ||
+                filename.compare(filename.size() - stepLogSuffix.size(),
+                                 stepLogSuffix.size(), stepLogSuffix) != 0)
+                continue;
+
+            const auto size = entry.file_size(error);
+            if (error)
+            {
+                error.clear();
+                continue;
+            }
+            if (size > kMaxRetainedStepLogBytes)
+            {
+                std::error_code removeError;
+                const bool removed = std::filesystem::remove(entry.path(), removeError);
+                if (removed && !removeError)
+                    std::cout << "Removed obsolete oversized step log: "
+                              << entry.path() << " (" << size << " bytes)\n";
+            }
+        }
+    }
+
+    // Keep one previous version of each generated artifact, tagged with compare_.
+    // The comparison-mode outputs already begin with compare_, so their backup
+    // uses compare_previous_ to avoid an ambiguous compare_compare_ prefix.
+    void rotateArtifactForComparison(const std::filesystem::path& currentPath)
+    {
+        if (!std::filesystem::is_regular_file(currentPath))
+            return;
+
+        const std::string filename = currentPath.filename().string();
+        const std::string backupName = filename.rfind("compare_", 0) == 0
+            ? "compare_previous_" + filename.substr(8)
+            : "compare_" + filename;
+        const auto backupPath = currentPath.parent_path() / backupName;
+        std::error_code ec;
+        std::filesystem::remove(backupPath, ec);
+        ec.clear();
+        std::filesystem::rename(currentPath, backupPath, ec);
+        if (ec)
+            std::cerr << "Warning: unable to preserve previous artifact " << currentPath
+                      << " as " << backupPath << ": " << ec.message() << '\n';
+    }
+
     struct EpisodeMetrics
     {
         float total_reward = 0.0f;
@@ -26,6 +98,9 @@ namespace
         std::map<std::string, int> stimulus_aligned_by_type;
         std::map<std::string, int> action_counts;
         std::set<std::size_t> visited_states;
+        std::map<std::string, int> state_action_visits;
+        int q_table_supported_decisions = 0;
+        int fallback_decisions = 0;
     };
 
     EnvironmentObservation makeObservation(std::mt19937 &rng, int stepIndex)
@@ -191,6 +266,15 @@ namespace
             driveRelief = 0.18f + 0.42f * (1.0f - energy);
         else if (action == "SLEEP_LAY")
             driveRelief = 0.28f * (1.0f - energy) + 0.45f * stress;
+
+        // Explicit survival pressure: below 35% energy, recovery is increasingly
+        // valuable and non-recovery actions carry a growing opportunity cost.
+        if (energy < 0.35f) {
+            const float urgency = (0.35f - energy) / 0.35f;
+            const bool validRecovery = action == "SLEEP_LAY" ||
+                                       (action == "EAT" && observation.food_available);
+            driveRelief += validRecovery ? 0.30f * urgency : -0.22f * urgency;
+        }
         else if (action == "PLAY" && observation.play_available)
             driveRelief = 0.12f * energy - 0.10f * stress;
         else if (action == "APPROACH_FOLLOW" && observation.target_proximity >= 2 &&
@@ -238,7 +322,8 @@ namespace
                                            float energy,
                                            float stress,
                                            float userSatisfaction,
-                                           std::mt19937 &rng)
+                                           std::mt19937 &rng,
+                                           float elapsedSeconds = 0.0f)
     {
         EnvironmentStep result;
         result.next_observation = observation;
@@ -288,6 +373,13 @@ namespace
 
         if (action != "SLEEP_LAY" && !(action == "EAT" && observation.food_available))
             energy = std::max(0.0f, energy - effort * 1.5f);
+
+        // Shared physical-energy dynamics: passive drain occurs during the
+        // elapsed interval after the action. Resting reduces, but does not
+        // eliminate, baseline metabolic drain. The UI uses the same rates.
+        const float passiveDrainPerSecond = action == "SLEEP_LAY" ? 0.0008f : 0.0025f;
+        energy = std::max(0.0f, energy - passiveDrainPerSecond * std::max(0.0f, elapsedSeconds));
+        result.next_observation.energy = energy;
 
         const float fit = actionContextFit(action, observation, energyBefore, stressBefore);
         if (observation.goal_state == 2 && observation.signal_strength >= 0.80f)
@@ -403,9 +495,12 @@ namespace
         const EnvironmentObservation feedingTimeRequest{1, 1, 1, 1, 0.56f, true, false};
         const EnvironmentObservation idle{2, 1, 0, 0, 0.20f};
         const float fetchReward = rewardFor("FETCH", request, true, 0.75f, 0.20f);
-        const float eatWhenHungry = rewardFor("EAT", feedingTimeRequest, false, 0.15f, 0.20f);
-        const float sleepWhenOverwhelmed = rewardFor("SLEEP_LAY", feedingTimeRequest, false, 0.20f, 0.90f);
-        const float sniffWhenCompetingNeeds = rewardFor("SNIFF", feedingTimeRequest, false, 0.15f, 0.20f);
+        // Keep comparisons below reward saturation. Use a moderate energy level
+        // so the stress-relief preference for sleep can be distinguished from food
+        // relief, while sniffing remains a poor response to an active request.
+        const float eatWhenHungry = rewardFor("EAT", feedingTimeRequest, false, 0.55f, 0.20f);
+        const float sleepWhenOverwhelmed = rewardFor("SLEEP_LAY", feedingTimeRequest, false, 0.55f, 0.82f);
+        const float sniffWhenCompetingNeeds = rewardFor("SNIFF", feedingTimeRequest, false, 0.55f, 0.20f);
         const float sniffWhenIdle = rewardFor("SNIFF", idle, false, 0.75f, 0.20f);
         std::mt19937 scenarioRng(42);
         const EnvironmentObservation generated = makeObservation(scenarioRng, 13);
@@ -462,6 +557,75 @@ namespace
                sawFarSuccess && sawFarFailure;
     }
 
+    bool testCriticalEnergyPrioritizesRecovery()
+    {
+        EnvironmentObservation critical{2, 1, 0, 0, 0.20f, false, true, 0.15f};
+        const auto withoutFood = validActionsForObservation(critical);
+        if (withoutFood.size() != 1 || withoutFood.front() != "SLEEP_LAY") return false;
+        critical.food_available = true;
+        const auto withFood = validActionsForObservation(critical);
+        return withFood.size() == 2 &&
+               std::find(withFood.begin(), withFood.end(), "EAT") != withFood.end() &&
+               std::find(withFood.begin(), withFood.end(), "SLEEP_LAY") != withFood.end();
+    }
+
+    bool testEnergyDepletionTransition()
+    {
+        const EnvironmentObservation observation{2, 1, 0, 0, 0.20f, false, false, 0.01f};
+        std::mt19937 rng(912u);
+        const EnvironmentStep depleted = applyEnvironmentAction(
+            "WANDER", observation, 0.01f, 0.2f, 0.5f, rng, 1.0f);
+        return depleted.energy_after <= 0.0f;
+    }
+
+    bool testPassiveEnergyDrain()
+    {
+        const EnvironmentObservation observation{2, 1, 0, 0, 0.20f};
+        std::mt19937 firstRng(711u), secondRng(711u);
+        const EnvironmentStep immediate = applyEnvironmentAction(
+            "WANDER", observation, 0.8f, 0.2f, 0.5f, firstRng, 0.0f);
+        const EnvironmentStep elapsed = applyEnvironmentAction(
+            "WANDER", observation, 0.8f, 0.2f, 0.5f, secondRng, 5.0f);
+        return elapsed.energy_after < immediate.energy_after &&
+               std::abs((immediate.energy_after - elapsed.energy_after) - 0.0125f) < 1e-5f &&
+               std::abs(elapsed.next_observation.energy - elapsed.energy_after) < 1e-6f;
+    }
+
+    bool testTrainingAppliesElapsedAffectDecay()
+    {
+        const EnvironmentObservation observation{0, 1, 1, 0, 0.45f};
+        EnvironmentConfig config;
+        config.seed = 501;
+        ProposedAgent timedAgent(config);
+        ProposedAgent immediateAgent(config);
+        timedAgent.setLearningEnabled(false);
+        immediateAgent.setLearningEnabled(false);
+        timedAgent.setExplorationRate(0.0f);
+        immediateAgent.setExplorationRate(0.0f);
+
+        const std::string timedAction = timedAgent.selectAction(observation);
+        const std::string immediateAction = immediateAgent.selectAction(observation);
+        if (timedAction != immediateAction) return false;
+
+        ActionOutcome outcome;
+        outcome.reward = -1.0f;
+        outcome.terminal = false;
+        outcome.outcome_tag = "temporal_decay_test";
+        outcome.energy_after = 0.8f;
+        timedAgent.applyOutcome(observation, timedAction, outcome, observation, 1.0f);
+        immediateAgent.applyOutcome(observation, immediateAction, outcome, observation, 0.0f);
+
+        const AffectiveState& timed = timedAgent.getAffectiveState();
+        const AffectiveState& immediate = immediateAgent.getAffectiveState();
+        const state& next = timedAgent.getCurrentState();
+        return timed.stress < immediate.stress &&
+               timed.arousal < immediate.arousal &&
+               timed.engagement > immediate.engagement &&
+               timed.affinity > immediate.affinity &&
+               std::abs(next.affect.stress - timed.stress) < 1e-5f &&
+               std::abs(next.affect.arousal - timed.arousal) < 1e-5f;
+    }
+
     bool testPersistentFetchRetryAndCompletionCredit()
     {
         const EnvironmentObservation farRequest{1, 2, 1, 1, 0.56f};
@@ -516,11 +680,13 @@ namespace
     template <typename Agent>
     EpisodeMetrics runEpisode(Agent &agent,
                               const std::vector<EnvironmentObservation> &observations,
+                              const std::vector<float> &elapsedIntervals,
                               bool learning,
                               float epsilon,
                               std::ofstream &stepLog,
                               const std::string &agentName,
-                              int episodeIndex)
+                              int episodeIndex,
+                              bool recordDetailedSteps)
     {
         agent.reset();
         agent.setLearningEnabled(learning);
@@ -537,44 +703,68 @@ namespace
                 currentObservation = mergeTaskTransition(
                     observations[step - 1], currentObservation, observations[step]);
             }
+            currentObservation.energy = environmentEnergy;
             const EnvironmentObservation observation = currentObservation;
             const std::string action = agent.selectAction(observation);
             const std::size_t stateKeyBeforeAction = agent.getCurrentState().encode();
             metrics.visited_states.insert(stateKeyBeforeAction);
+            ++metrics.state_action_visits[std::to_string(stateKeyBeforeAction) + "|" + action];
+            bool hasValidStoredAction = false;
+            bool qTableStatePresent = false;
+            std::string contextualFallback;
+            if constexpr (std::is_same_v<Agent, ProposedAgent>) {
+                const auto& trace = agent.getLastDecisionTrace();
+                hasValidStoredAction = trace.q_table_has_valid_action_values;
+                qTableStatePresent = trace.q_table_state_present;
+                contextualFallback = trace.contextual_fallback;
+            } else {
+                hasValidStoredAction = agent.lastDecisionHadValidQAction();
+                qTableStatePresent = agent.lastDecisionHadQTableState();
+                contextualFallback = agent.getLastContextualFallback();
+            }
+            if (hasValidStoredAction) ++metrics.q_table_supported_decisions;
+            else ++metrics.fallback_decisions;
 
             const float energyBefore = environmentEnergy;
             const float stressBefore = environmentStress;
             // Same seed per episode/step gives both agents paired environmental noise,
             // independent of how many stochastic actions either policy selected.
+            const float elapsedSeconds = step + 1 == observations.size() ? 0.0f : elapsedIntervals[step];
             std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
                                        static_cast<unsigned int>(step) * 104729u);
             const EnvironmentStep transition =
                 applyEnvironmentAction(action, observation, environmentEnergy,
-                                       environmentStress, userSatisfaction, transitionRng);
+                                       environmentStress, userSatisfaction, transitionRng, elapsedSeconds);
             environmentEnergy = transition.energy_after;
             environmentStress = transition.stress_after;
             userSatisfaction = transition.user_satisfaction_after;
-            const bool terminal = step + 1 == observations.size();
+            const bool energyDepleted = transition.energy_after <= 0.0f;
+            const bool terminal = step + 1 == observations.size() || energyDepleted;
+            const float transitionReward = energyDepleted ? -1.0f : transition.reward;
 
             EnvironmentObservation nextObservation = transition.next_observation;
             if (!terminal) {
                 nextObservation = mergeTaskTransition(
                     observation, transition.next_observation, observations[step + 1]);
             }
+            // Scenario merging may replace observation fields, but physical energy
+            // is environment-owned and must survive every merge.
+            nextObservation.energy = transition.energy_after;
 
             ActionOutcome outcome;
             outcome.action_id = static_cast<int>(std::distance(
                 companionActionSet().begin(),
                 std::find(companionActionSet().begin(), companionActionSet().end(), action)));
-            outcome.reward = transition.reward;
+            outcome.reward = transitionReward;
             outcome.terminal = terminal;
-            outcome.outcome_tag = transition.completed ? "goal_completed" :
-                                  (terminal ? "step_limit" : "interaction");
+            outcome.outcome_tag = energyDepleted ? "energy_depleted" :
+                                  (transition.completed ? "goal_completed" :
+                                   (terminal ? "step_limit" : "interaction"));
             outcome.energy_after = transition.energy_after;
 
-            agent.applyOutcome(observation, action, outcome, nextObservation);
+            agent.applyOutcome(observation, action, outcome, nextObservation, elapsedSeconds);
 
-            metrics.total_reward += transition.reward;
+            metrics.total_reward += transitionReward;
             metrics.steps = static_cast<int>(step + 1);
             metrics.completed = metrics.completed || transition.completed;
             ++metrics.action_counts[action];
@@ -605,16 +795,55 @@ namespace
             row["play_available"] = observation.play_available;
             row["energy_before"] = energyBefore;
             row["energy_after"] = transition.energy_after;
+            row["simulated_elapsed_seconds"] = elapsedSeconds;
+            if constexpr (std::is_same_v<Agent, ProposedAgent>) {
+                row["affect_arousal_after_transition"] = agent.getAffectiveState().arousal;
+                row["affect_stress_after_transition"] = agent.getAffectiveState().stress;
+                row["affect_engagement_after_transition"] = agent.getAffectiveState().engagement;
+                row["affect_affinity_after_transition"] = agent.getAffectiveState().affinity;
+
+                // Preserve the decision path so surprising actions can be diagnosed
+                // without assuming they are errors from reward alone.
+                const auto& decisionTrace = agent.getLastDecisionTrace();
+                row["policy_action_before_overrides"] = decisionTrace.policy_action;
+                row["final_action_after_overrides"] = decisionTrace.final_action;
+                row["general_preference_override"] = decisionTrace.general_preference_override;
+                row["rejection_override_applied"] = decisionTrace.rejection_override_applied;
+                nlohmann::json validActionQValues = nlohmann::json::array();
+                for (const auto& item : decisionTrace.valid_action_q_values) {
+                    validActionQValues.push_back({
+                        {"action", item.first},
+                        {"q_value", item.second}
+                    });
+                }
+                row["valid_action_q_values"] = validActionQValues;
+            } else {
+                row["policy_action_before_overrides"] = action;
+                row["final_action_after_overrides"] = action;
+                row["general_preference_override"] = "";
+                row["rejection_override_applied"] = false;
+                row["valid_action_q_values"] = nlohmann::json::array();
+            }
             row["environment_stress_after"] = transition.stress_after;
             row["user_satisfaction_after"] = transition.user_satisfaction_after;
             row["action"] = action;
             row["encoded_state"] = stateKeyBeforeAction;
+            row["q_table_state_present"] = qTableStatePresent;
+            row["q_table_has_valid_action_values"] = hasValidStoredAction;
+            row["contextual_fallback"] = contextualFallback;
+            row["decision_used_fallback"] = !hasValidStoredAction;
             row["next_encoded_state"] = agent.getCurrentState().encode();
-            row["reward"] = transition.reward;
+            row["reward"] = transitionReward;
             row["terminal"] = terminal;
+            row["terminal_reason"] = energyDepleted ? "energy_depleted" :
+                                     (step + 1 == observations.size() ? "step_limit" : "none");
+            row["energy_depleted"] = energyDepleted;
             row["completed"] = transition.completed;
             row["fetch_succeeded"] = transition.completed;
-            stepLog << row.dump() << '\n';
+            // Keep full episode-level metrics in the summary, but retain verbose
+            // per-step diagnostics only for the final few episodes to control artifact size.
+            if (recordDetailedSteps)
+                stepLog << row.dump() << '\n';
 
             currentObservation = nextObservation;
             if (terminal) break;
@@ -630,6 +859,13 @@ namespace
         result["completed"] = metrics.completed;
         result["action_counts"] = metrics.action_counts;
         result["unique_states_visited"] = metrics.visited_states.size();
+        result["state_action_visits"] = metrics.state_action_visits;
+        result["q_table_supported_decisions"] = metrics.q_table_supported_decisions;
+        result["fallback_decisions"] = metrics.fallback_decisions;
+        result["q_table_supported_decision_rate"] = metrics.steps > 0
+            ? static_cast<double>(metrics.q_table_supported_decisions) / metrics.steps : 0.0;
+        result["fallback_decision_rate"] = metrics.steps > 0
+            ? static_cast<double>(metrics.fallback_decisions) / metrics.steps : 0.0;
         result["stimulus_checks"] = metrics.stimulus_checks;
         result["stimulus_aligned_actions"] = metrics.stimulus_aligned_actions;
         result["stimulus_response_alignment_rate"] =
@@ -646,9 +882,11 @@ bool runTrainingExperiment(const std::string &mode,
                            int episodes,
                            int steps,
                            unsigned int seed,
-                           const std::string &outputDirectory)
+                           const std::string &outputDirectory,
+                           bool resumeTraining)
 {
-    if (mode != "train" && mode != "validate" && mode != "compare")
+    const bool trainingMode = mode == "train" || mode == "resume-training";
+    if (mode != "train" && mode != "resume-training" && mode != "validate" && mode != "compare")
     {
         std::cerr << "Unsupported experiment mode: " << mode << '\n';
         return false;
@@ -662,10 +900,12 @@ bool runTrainingExperiment(const std::string &mode,
     namespace fs = std::filesystem;
     const fs::path outDir(outputDirectory);
     fs::create_directories(outDir);
+    pruneOversizedStepLogs(outDir);
     const fs::path baselinePolicy = outDir / "baseline.qtable";
     const fs::path proposedPolicy = outDir / "proposed.qtable";
 
-    if (mode != "train" && (!fs::exists(baselinePolicy) || !fs::exists(proposedPolicy)))
+    if ((mode == "resume-training" || mode == "validate" || mode == "compare") &&
+        (!fs::exists(baselinePolicy) || !fs::exists(proposedPolicy)))
     {
         std::cerr << "No trained policies found. Run --train first; expected "
                   << baselinePolicy << " and " << proposedPolicy << ".\n";
@@ -677,16 +917,22 @@ bool runTrainingExperiment(const std::string &mode,
     BaselineAgent baseline(config);
     ProposedAgent proposed(config);
 
-    if (mode != "train")
+    if (mode == "resume-training" || mode == "validate" || mode == "compare")
     {
         baseline.loadPersistentState(baselinePolicy.string());
         proposed.loadPersistentState(proposedPolicy.string());
+    }
+    if (mode == "validate" || mode == "compare")
+    {
         baseline.setLearningEnabled(false);
         proposed.setLearningEnabled(false);
         baseline.setExplorationRate(0.0f);
         proposed.setExplorationRate(0.0f);
     }
 
+    rotateArtifactForComparison(outDir / (mode + "_baseline_steps.jsonl"));
+    rotateArtifactForComparison(outDir / (mode + "_proposed_steps.jsonl"));
+    rotateArtifactForComparison(outDir / (mode + "_summary.json"));
     std::ofstream baselineLog(outDir / (mode + "_baseline_steps.jsonl"));
     std::ofstream proposedLog(outDir / (mode + "_proposed_steps.jsonl"));
     if (!baselineLog || !proposedLog)
@@ -695,15 +941,22 @@ bool runTrainingExperiment(const std::string &mode,
         return false;
     }
 
-    const unsigned int environmentSeed = mode == "train" ? seed : seed + 1000003u;
+    const unsigned int environmentSeed = trainingMode ? seed : seed + 1000003u;
     std::mt19937 environmentRng(environmentSeed);
     nlohmann::json summary;
     summary["mode"] = mode;
+    summary["training_initialization"] = mode == "resume-training" ? "loaded_existing_qtables" :
+                                         mode == "train" ? "fresh_qtables" : "loaded_evaluation_checkpoint";
+    summary["resume_training_requested"] = resumeTraining || mode == "resume-training";
     summary["seed"] = seed;
     summary["environment_seed"] = environmentSeed;
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v4_graded_context_fit";
+    summary["affect_decay_during_training"] = true;
+    summary["simulated_seconds_between_decisions_min"] = kMinSecondsPerTrainingStep;
+    summary["simulated_seconds_between_decisions_max"] = kMaxSecondsPerTrainingStep;
+    summary["temporal_model"] = "Each non-terminal decision uses a seeded elapsed-time interval sampled uniformly from 0.5 to 5 simulated seconds. Paired agents share intervals. Physical energy receives action effort costs and passive time-based drain (0.0025 per second normally; 0.0008 while resting). The shared energy value is observable to both agents and included in both state representations. Proposed-agent affect decays over the interval before the next state is built for Q-learning.";
     summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request", "fetch_at_feeding_time"};
     summary["note"] = "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.";
 
@@ -719,21 +972,29 @@ bool runTrainingExperiment(const std::string &mode,
     for (int episode = 0; episode < episodes; ++episode)
     {
         std::vector<EnvironmentObservation> observations;
+        std::vector<float> elapsedIntervals;
         observations.reserve(static_cast<std::size_t>(steps));
+        elapsedIntervals.reserve(static_cast<std::size_t>(steps));
+        std::uniform_real_distribution<float> elapsedDist(
+            kMinSecondsPerTrainingStep, kMaxSecondsPerTrainingStep);
         for (int step = 0; step < steps; ++step)
         {
             observations.push_back(makeObservation(environmentRng, step));
+            elapsedIntervals.push_back(elapsedDist(environmentRng));
         }
 
-        const float epsilon = mode == "train"
+        const float epsilon = trainingMode
                                   ? std::max(0.05f, 0.30f * (1.0f - static_cast<float>(episode) / static_cast<float>(episodes)))
                                   : 0.0f;
-        const bool learning = mode == "train";
+        const bool learning = trainingMode;
 
+        const bool recordDetailedSteps = episode >= std::max(0, episodes - kDetailedStepLogEpisodes);
         const EpisodeMetrics baselineMetrics = runEpisode(
-            baseline, observations, learning, epsilon, baselineLog, "baseline", episode);
+            baseline, observations, elapsedIntervals, learning, epsilon, baselineLog, "baseline", episode,
+            recordDetailedSteps);
         const EpisodeMetrics proposedMetrics = runEpisode(
-            proposed, observations, learning, epsilon, proposedLog, "proposed", episode);
+            proposed, observations, elapsedIntervals, learning, epsilon, proposedLog, "proposed", episode,
+            recordDetailedSteps);
 
         baselineRewardSum += baselineMetrics.total_reward;
         proposedRewardSum += proposedMetrics.total_reward;
@@ -753,8 +1014,12 @@ bool runTrainingExperiment(const std::string &mode,
     baselineLog.close();
     proposedLog.close();
 
-    if (mode == "train")
+    if (trainingMode)
     {
+        rotateArtifactForComparison(baselinePolicy);
+        rotateArtifactForComparison(proposedPolicy);
+        rotateArtifactForComparison(outDir / "proposed.qtable.affect.json");
+        rotateArtifactForComparison(outDir / "proposed.qtable.memory.json");
         baseline.savePersistentState(baselinePolicy.string());
         proposed.savePersistentState(proposedPolicy.string());
     }
@@ -843,8 +1108,404 @@ bool runTrainingExperiment(const std::string &mode,
 }
 
 
+bool runIdlePolicyDiagnostics(const std::string& policyDirectory,
+                              const std::string& outputDirectory,
+                              unsigned int seed)
+{
+    namespace fs = std::filesystem;
+    const fs::path policyDir(policyDirectory);
+    const fs::path baselinePath = policyDir / "baseline.qtable";
+    const fs::path proposedPath = policyDir / "proposed.qtable";
+    if (!fs::exists(baselinePath) || !fs::exists(proposedPath)) {
+        std::cerr << "Idle diagnostics require trained policies at "
+                  << baselinePath << " and " << proposedPath
+                  << ". Run --train first.\n";
+        return false;
+    }
+
+    fs::create_directories(outputDirectory);
+    const fs::path logPath = fs::path(outputDirectory) / "idle-policy-diagnostics.jsonl";
+    const fs::path summaryPath = fs::path(outputDirectory) / "idle-policy-diagnostics-summary.json";
+    rotateArtifactForComparison(logPath);
+    rotateArtifactForComparison(summaryPath);
+    std::ofstream log(logPath);
+    if (!log) {
+        std::cerr << "Unable to write idle diagnostics to " << logPath << '\n';
+        return false;
+    }
+
+    EnvironmentConfig config;
+    config.seed = static_cast<int>(seed);
+    BaselineAgent baseline(config);
+    ProposedAgent proposed(config);
+    baseline.loadPersistentState(baselinePath.string());
+    proposed.loadPersistentState(proposedPath.string());
+    baseline.setLearningEnabled(false);
+    proposed.setLearningEnabled(false);
+    baseline.setExplorationRate(0.0f);
+    proposed.setExplorationRate(0.0f);
+
+    // Mirrors the UI's ambient observation after reset: no task, no user
+    // stimulus, no food, the ball nearby enough to be a medium-distance target.
+    EnvironmentObservation ambient;
+    ambient.goal_state = 2;
+    ambient.target_proximity = 1;
+    ambient.user_status = 0;
+    ambient.task_status = 0;
+    ambient.signal_strength = 0.0f;
+    ambient.food_available = false;
+    ambient.play_available = true;
+
+    const std::vector<float> checkpoints{0.0f, 1.0f, 5.0f, 10.0f, 30.0f};
+    nlohmann::json summary;
+    summary["mode"] = "fixed_context_temporal_sweep";
+    summary["policy_directory"] = policyDir.string();
+    summary["seed"] = seed;
+    summary["ambient_observation"] = {
+        {"goal_state", ambient.goal_state},
+        {"target_proximity", ambient.target_proximity},
+        {"user_status", ambient.user_status},
+        {"task_status", ambient.task_status},
+        {"signal_strength", ambient.signal_strength},
+        {"food_available", ambient.food_available},
+        {"play_available", ambient.play_available}
+    };
+    summary["checkpoints_seconds"] = checkpoints;
+    summary["notes"] = nlohmann::json::array({
+        "Loads the saved Q-tables and proposed-agent sidecar state, disables exploration and learning, and holds the UI-like ambient observation constant.",
+        "The fixed-context sweep isolates changes caused by elapsed-time affect decay; it does not claim to reproduce animation/behaviour completion timing.",
+        "The UI starts another autonomous decision only after the 5-second idle timer expires while no behaviour is active. Behaviour duration depends on the selected action and scene geometry, so the snapshot sweep is diagnostic evidence rather than an exact full-UI replay.",
+        "Q-values are logged for every valid proposed-agent action, alongside state encoding, contextual fallback, policy choice, final post-override action, affect, and memory count.",
+        "Synthetic policy diagnostics do not measure perceived believability."
+    });
+
+    nlohmann::json snapshots = nlohmann::json::array();
+    std::map<std::string, int> baselineActionCounts;
+    std::map<std::string, int> proposedActionCounts;
+    std::size_t priorBaselineState = 0;
+    std::size_t priorProposedState = 0;
+    std::string priorBaselineAction;
+    std::string priorProposedAction;
+    int baselineStateChanges = 0;
+    int proposedStateChanges = 0;
+    int baselineActionChanges = 0;
+    int proposedActionChanges = 0;
+    float previousSeconds = 0.0f;
+
+    for (const float seconds : checkpoints) {
+        const float delta = seconds - previousSeconds;
+        if (delta > 0.0f) proposed.advanceTime(delta);
+        previousSeconds = seconds;
+
+        const std::string baselineAction = baseline.selectAction(ambient);
+        const std::string proposedAction = proposed.selectAction(ambient);
+        const state& baselineState = baseline.getCurrentState();
+        const state& proposedState = proposed.getCurrentState();
+        const ActionDecisionTrace& trace = proposed.getLastDecisionTrace();
+        ++baselineActionCounts[baselineAction];
+        ++proposedActionCounts[proposedAction];
+
+        if (!snapshots.empty()) {
+            if (baselineState.encode() != priorBaselineState) ++baselineStateChanges;
+            if (proposedState.encode() != priorProposedState) ++proposedStateChanges;
+            if (baselineAction != priorBaselineAction) ++baselineActionChanges;
+            if (proposedAction != priorProposedAction) ++proposedActionChanges;
+        }
+        priorBaselineState = baselineState.encode();
+        priorProposedState = proposedState.encode();
+        priorBaselineAction = baselineAction;
+        priorProposedAction = proposedAction;
+
+        nlohmann::json qValues = nlohmann::json::array();
+        for (const auto& item : trace.valid_action_q_values) {
+            qValues.push_back({{"action", item.first}, {"q_value", item.second}});
+        }
+
+        nlohmann::json row;
+        row["elapsed_seconds"] = seconds;
+        row["baseline"] = {
+            {"action", baselineAction},
+            {"encoded_state", baselineState.encode()}
+        };
+        row["proposed"] = {
+            {"action", proposedAction},
+            {"encoded_state", proposedState.encode()},
+            {"contextual_fallback", trace.contextual_fallback},
+            {"policy_action_before_overrides", trace.policy_action},
+            {"q_table_state_present", trace.q_table_state_present},
+            {"q_table_has_valid_action_values", trace.q_table_has_valid_action_values},
+            {"final_action_after_overrides", trace.final_action},
+            {"general_preference_override", trace.general_preference_override},
+            {"rejection_override_applied", trace.rejection_override_applied},
+            {"memory_record_count", trace.memory_record_count},
+            {"affect", {
+                {"valence", static_cast<int>(trace.affect.valence)},
+                {"energy", static_cast<int>(trace.affect.energy)},
+                {"arousal", trace.affect.arousal},
+                {"stress", trace.affect.stress},
+                {"engagement", trace.affect.engagement},
+                {"affinity", trace.affect.affinity}
+            }},
+            {"valid_action_q_values", qValues}
+        };
+        snapshots.push_back(row);
+        log << row.dump() << '\n';
+    }
+    log.close();
+
+    summary["snapshot_count"] = snapshots.size();
+    summary["snapshots"] = snapshots;
+    summary["baseline_action_counts"] = baselineActionCounts;
+    summary["proposed_action_counts"] = proposedActionCounts;
+    summary["baseline_state_changes_between_checkpoints"] = baselineStateChanges;
+    summary["proposed_state_changes_between_checkpoints"] = proposedStateChanges;
+    summary["baseline_action_changes_between_checkpoints"] = baselineActionChanges;
+    summary["proposed_action_changes_between_checkpoints"] = proposedActionChanges;
+    summary["diagnostic_interpretation"] = {
+        {"state_changes", "If affect values change but encoded state does not, the state discretization may be hiding temporal change at these checkpoints."},
+        {"action_changes", "If encoded state changes but selected action does not, inspect Q-value ranking, action masking, and deterministic tie/fallback behaviour."},
+        {"overrides", "If policy_action_before_overrides differs from final_action_after_overrides, a memory/preference/rejection override rather than the Q-table determined the displayed action."},
+        {"single_action", "A repeated action across this small sweep is a signal to inspect, not proof of a global policy collapse; use the per-action Q-values and wider context tests."}
+    };
+
+    std::ofstream summaryFile(summaryPath);
+    if (!summaryFile) {
+        std::cerr << "Unable to write idle diagnostic summary to " << summaryPath << '\n';
+        return false;
+    }
+    summaryFile << summary.dump(2) << '\n';
+    std::cout << "Idle policy diagnostics complete.\n"
+              << "Snapshots: " << logPath << '\n'
+              << "Summary: " << summaryPath << '\n'
+              << "Baseline actions changed between checkpoints: " << baselineActionChanges << '\n'
+              << "Proposed actions changed between checkpoints: " << proposedActionChanges << '\n';
+    return true;
+}
+
+
+
+bool runTemporalStimulusDiagnostics(const std::string& policyDirectory,
+                                    const std::string& outputDirectory,
+                                    unsigned int seed)
+{
+    namespace fs = std::filesystem;
+    const fs::path policyDir(policyDirectory);
+    const fs::path baselinePath = policyDir / "baseline.qtable";
+    const fs::path proposedPath = policyDir / "proposed.qtable";
+    if (!fs::exists(baselinePath) || !fs::exists(proposedPath)) {
+        std::cerr << "Temporal stimulus diagnostics require trained policies at "
+                  << baselinePath << " and " << proposedPath
+                  << ". Run --train first.\n";
+        return false;
+    }
+
+    struct StimulusPhase {
+        std::string name;
+        EnvironmentObservation observation;
+        int decisions;
+    };
+
+    // Each phase is held constant for six decisions, five simulated seconds apart.
+    // The final phase returns to an unstimulated context to test whether behaviour
+    // returns to its ambient distribution after the agent has experienced stimuli.
+    EnvironmentObservation ambient;
+    ambient.goal_state = 2;
+    ambient.target_proximity = 1;
+    ambient.user_status = 0;
+    ambient.task_status = 0;
+    ambient.signal_strength = 0.0f;
+    ambient.food_available = false;
+    ambient.play_available = true;
+
+    const std::vector<StimulusPhase> phases = {
+        {"ambient_initial", ambient, 6},
+        {"social_contact", EnvironmentObservation{0, 1, 0, 0, 0.45f}, 6},
+        {"disturbance", EnvironmentObservation{2, 0, 0, 0, 0.95f}, 6},
+        {"quiet_no_stimulus", EnvironmentObservation{2, 2, 0, 0, 0.20f}, 6},
+        {"play_invitation", EnvironmentObservation{0, 1, 1, 0, 0.70f, false, true}, 6},
+        {"ambient_return", ambient, 6}
+    };
+
+    fs::create_directories(outputDirectory);
+    const fs::path logPath = fs::path(outputDirectory) / "temporal-stimulus-diagnostics.jsonl";
+    const fs::path summaryPath = fs::path(outputDirectory) / "temporal-stimulus-diagnostics-summary.json";
+    rotateArtifactForComparison(logPath);
+    rotateArtifactForComparison(summaryPath);
+    std::ofstream log(logPath);
+    if (!log) {
+        std::cerr << "Unable to write temporal stimulus diagnostics to " << logPath << '\n';
+        return false;
+    }
+
+    EnvironmentConfig config;
+    config.seed = static_cast<int>(seed);
+    BaselineAgent baseline(config);
+    ProposedAgent proposed(config);
+    baseline.loadPersistentState(baselinePath.string());
+    proposed.loadPersistentState(proposedPath.string());
+    baseline.setLearningEnabled(false);
+    proposed.setLearningEnabled(false);
+    baseline.setExplorationRate(0.0f);
+    proposed.setExplorationRate(0.0f);
+
+    nlohmann::json summary;
+    summary["mode"] = "paired_temporal_stimulus_policy_diagnostic";
+    summary["policy_directory"] = policyDir.string();
+    summary["seed"] = seed;
+    summary["learning_enabled"] = false;
+    summary["exploration_enabled"] = false;
+    summary["outcome_feedback_applied"] = false;
+    summary["decision_interval_seconds"] = 5.0f;
+    summary["phases"] = nlohmann::json::array();
+    summary["notes"] = nlohmann::json::array({
+        "Both policies receive the same fixed observation in each phase and the same phase order.",
+        "Policies are evaluated without learning, exploration, reward updates, or environment transitions. Only the proposed agent advances its time-dependent affect between decisions.",
+        "Action distributions describe policy response to this scripted sequence; they are not evidence of perceived believability.",
+        "Q-table coverage and contextual fallback are logged to distinguish learned choices from fallback behaviour."
+    });
+
+    nlohmann::json snapshots = nlohmann::json::array();
+    nlohmann::json phaseSummaries = nlohmann::json::array();
+    std::map<std::string, std::map<std::string, int>> baselineCountsByPhase;
+    std::map<std::string, std::map<std::string, int>> proposedCountsByPhase;
+    std::map<std::string, int> baselineChangesByPhase;
+    std::map<std::string, int> proposedChangesByPhase;
+    std::string previousBaselineAction;
+    std::string previousProposedAction;
+    float elapsedSeconds = 0.0f;
+    int globalStep = 0;
+
+    for (const auto& phase : phases) {
+        std::string phasePreviousBaseline;
+        std::string phasePreviousProposed;
+        int phaseBaselineChanges = 0;
+        int phaseProposedChanges = 0;
+        nlohmann::json phaseObservation = {
+            {"goal_state", phase.observation.goal_state},
+            {"target_proximity", phase.observation.target_proximity},
+            {"user_status", phase.observation.user_status},
+            {"task_status", phase.observation.task_status},
+            {"signal_strength", phase.observation.signal_strength},
+            {"food_available", phase.observation.food_available},
+            {"play_available", phase.observation.play_available}
+        };
+
+        for (int decision = 0; decision < phase.decisions; ++decision) {
+            if (globalStep > 0) {
+                baseline.setLearningEnabled(false);
+                proposed.advanceTime(5.0f);
+                elapsedSeconds += 5.0f;
+            }
+
+            EnvironmentObservation observation = phase.observation;
+            const std::string baselineAction = baseline.selectAction(observation);
+            const std::string proposedAction = proposed.selectAction(observation);
+            const auto& proposedTrace = proposed.getLastDecisionTrace();
+
+            ++baselineCountsByPhase[phase.name][baselineAction];
+            ++proposedCountsByPhase[phase.name][proposedAction];
+            if (!phasePreviousBaseline.empty() && baselineAction != phasePreviousBaseline)
+                ++phaseBaselineChanges;
+            if (!phasePreviousProposed.empty() && proposedAction != phasePreviousProposed)
+                ++phaseProposedChanges;
+
+            nlohmann::json row;
+            row["step"] = globalStep;
+            row["elapsed_seconds"] = elapsedSeconds;
+            row["phase"] = phase.name;
+            row["phase_decision"] = decision;
+            row["observation"] = phaseObservation;
+            row["baseline"] = {
+                {"action", baselineAction},
+                {"encoded_state", baseline.getCurrentState().encode()},
+                {"action_changed_from_previous_decision",
+                 !previousBaselineAction.empty() && baselineAction != previousBaselineAction}
+            };
+            row["proposed"] = {
+                {"action", proposedAction},
+                {"encoded_state", proposed.getCurrentState().encode()},
+                {"action_changed_from_previous_decision",
+                 !previousProposedAction.empty() && proposedAction != previousProposedAction},
+                {"contextual_fallback", proposedTrace.contextual_fallback},
+                {"policy_action_before_overrides", proposedTrace.policy_action},
+                {"final_action_after_overrides", proposedTrace.final_action},
+                {"q_table_state_present", proposedTrace.q_table_state_present},
+                {"q_table_has_valid_action_values", proposedTrace.q_table_has_valid_action_values},
+                {"valid_action_q_values", nlohmann::json::array()},
+                {"affect", {
+                    {"valence", static_cast<int>(proposedTrace.affect.valence)},
+                    {"energy", static_cast<int>(proposedTrace.affect.energy)},
+                    {"arousal", proposedTrace.affect.arousal},
+                    {"stress", proposedTrace.affect.stress},
+                    {"engagement", proposedTrace.affect.engagement},
+                    {"affinity", proposedTrace.affect.affinity}
+                }},
+                {"memory_record_count", proposedTrace.memory_record_count},
+                {"general_preference_override", proposedTrace.general_preference_override},
+                {"rejection_override_applied", proposedTrace.rejection_override_applied}
+            };
+            for (const auto& item : proposedTrace.valid_action_q_values) {
+                row["proposed"]["valid_action_q_values"].push_back(
+                    {{"action", item.first}, {"q_value", item.second}});
+            }
+            snapshots.push_back(row);
+            log << row.dump() << '\n';
+
+            phasePreviousBaseline = baselineAction;
+            phasePreviousProposed = proposedAction;
+            previousBaselineAction = baselineAction;
+            previousProposedAction = proposedAction;
+            ++globalStep;
+        }
+
+        baselineChangesByPhase[phase.name] = phaseBaselineChanges;
+        proposedChangesByPhase[phase.name] = phaseProposedChanges;
+        phaseSummaries.push_back({
+            {"phase", phase.name},
+            {"decisions", phase.decisions},
+            {"observation", phaseObservation},
+            {"baseline_action_counts", baselineCountsByPhase[phase.name]},
+            {"proposed_action_counts", proposedCountsByPhase[phase.name]},
+            {"baseline_action_changes_within_phase", phaseBaselineChanges},
+            {"proposed_action_changes_within_phase", phaseProposedChanges}
+        });
+    }
+
+    summary["total_decisions"] = globalStep;
+    summary["total_simulated_seconds_between_decisions"] = elapsedSeconds;
+    summary["phase_summaries"] = phaseSummaries;
+    summary["snapshots"] = snapshots;
+    summary["baseline_action_counts_by_phase"] = baselineCountsByPhase;
+    summary["proposed_action_counts_by_phase"] = proposedCountsByPhase;
+    summary["baseline_action_changes_within_phase"] = baselineChangesByPhase;
+    summary["proposed_action_changes_within_phase"] = proposedChangesByPhase;
+
+    std::ofstream summaryFile(summaryPath);
+    if (!summaryFile) {
+        std::cerr << "Unable to write temporal stimulus summary to " << summaryPath << '\n';
+        return false;
+    }
+    summaryFile << summary.dump(2) << '\n';
+    std::cout << "Temporal stimulus diagnostics complete.\n"
+              << "Snapshots: " << logPath << '\n'
+              << "Summary: " << summaryPath << '\n';
+    return true;
+}
+
 bool runTrainingSelfTests()
 {
+    const bool energyDrainPassed = testPassiveEnergyDrain();
+    std::cout << "Shared passive energy drain across elapsed simulation time: "
+              << (energyDrainPassed ? "PASS" : "FAIL") << '\n';
+    const bool recoveryPriorityPassed = testCriticalEnergyPrioritizesRecovery();
+    std::cout << "Critical energy restricts both policies to recovery actions: "
+              << (recoveryPriorityPassed ? "PASS" : "FAIL") << '\n';
+    const bool depletionTransitionPassed = testEnergyDepletionTransition();
+    std::cout << "Energy can reach the terminal depleted state: "
+              << (depletionTransitionPassed ? "PASS" : "FAIL") << '\n';
+    const bool temporalDecayPassed = testTrainingAppliesElapsedAffectDecay();
+    std::cout << "Training transition applies elapsed-time affect decay before next-state construction: "
+              << (temporalDecayPassed ? "PASS" : "FAIL") << '\n';
     const bool transitionsPassed = testEnvironmentActionTransitions();
     const bool retryPassed = testPersistentFetchRetryAndCompletionCredit();
     const bool taskPriorityPassed = testTaskPriorityReward();
@@ -853,5 +1514,7 @@ bool runTrainingSelfTests()
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    return transitionsPassed && retryPassed && taskPriorityPassed && completionContextPassed;
+    return energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
+           temporalDecayPassed && transitionsPassed && retryPassed &&
+           taskPriorityPassed && completionContextPassed;
 }

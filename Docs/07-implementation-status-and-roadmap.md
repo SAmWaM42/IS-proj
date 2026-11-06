@@ -1,257 +1,153 @@
 # Implementation Status and Roadmap
 
-**Last reviewed:** 2026-10-23  
-**Branch reviewed:** `Dev`  
-**Purpose:** Working status register for implemented features, outstanding work, refinements, tests, and their source/specification paths.
+**Current branch under review:** `Dev` (researcher-side data retrieval work is being reviewed)  
+**Last documentation review:** 5 November 2026  
+**Authoritative milestone tracker:** [21-participant-study-milestones.md](21-participant-study-milestones.md)
 
-This is an implementation tracker, not evidence that every current source edit compiles or that the research design is validated. For architecture and design decisions, see [Docs/project-context.md](project-context.md). Feature-specific design contracts are linked below.
+## 1. Current project state
 
-## Status key
+The core simulated companion and its baseline/proposed agent architecture exist. The current participant application is a single CMake executable whose output name is AnimalAgent. It opens an SFML menu with **Free Roam** and **Research Session** choices.
 
-- **Implemented — locally confirmed:** feature is in the source and has been confirmed working in the local application.
-- **Implemented — tests recorded:** implementation and tests are documented, but the checked-in results may predate newer edits.
-- **Implemented — verification required:** source changes exist, but a fresh build/test is still required.
-- **Pending:** not yet completed or not yet demonstrated end-to-end.
-- **Research gate:** software exists, but research validity, ethics, or participant-data collection is not established by implementation alone.
+The participant research workflow remains a prototype, not a completed data-collection pipeline. Participant credentials are parsed from credentials.json beside AnimalAgent and the guided-study local counter has been removed. The project owner confirms valid credentials.json loading; IS-2 and participant_config_test previously built successfully and the focused CTest passed. The embedded shortened questionnaire is now integrated into the guided flow and saves durable local drafts. A new adapter maps its completed results into the API response envelope and connects session 1 / session 2 completion to SubmissionManager. These latest source changes have not yet been built or tested. The upload endpoint configuration remains a placeholder; the tested Vercel Preview is deployment-protected and the participant uploader does not carry the smoke-test OIDC bypass token. Server-side answer validation, restart recovery, packaging, and protocol approval remain outstanding.
 
-## 1. Current project snapshot
+No real participant data should be collected using the current build.
 
-The project is a simulated companion-animal research prototype comparing a baseline tabular Q-learning agent with a proposed agent that incorporates semantic memory and affective state. The interactive SFML interface is a **working sprint-demo MVP**; it must not be described as proof that participants perceive the proposed agent as more believable.
+## 2. Status summary
 
-### Confirmed at the latest review
+| Area | Status | Current note |
+|---|---|---|
+| Baseline tabular Q-learning | Implemented in source | Existing tests/results must be rerun against the current revision when needed. |
+| Proposed memory/affect agent | Implemented in source | Do not change model design during the first participant-pipeline milestone. |
+| Shared simulation/action environment | Implemented in source | Maintain identical conditions and shared physical variables. |
+| Participant executable/menu | Implemented in source | One executable; menu selects Free Roam or Research Session. |
+| Guided study sequence | Partially implemented | Consent, warm-up, 12 prompts, bounded free period, per-condition rating phase. |
+| Stable participant identity | Partially verified | Credentials parser and A/B assignment tests pass; valid credentials loading is confirmed by the owner. Invalid-file handling, packaged release path, and restart recovery remain. |
+| Questionnaire content/data model | Implemented — unverified | Active participant UI uses `companion-believability-short-v2`: 10 items per condition and 7 comparison items; shortened instrument still requires review/approval. |
+| Embedded questionnaires | Implemented — unverified | Condition A/B and final comparison forms are rendered in-app and save local JSON drafts; interactive testing remains. |
+| Participant response persistence | Partially implemented | Per-form drafts are atomically written; restart restoration and full-session recovery remain. |
+| Local submission queue | Connected in source — unverified | Completed questionnaire results are adapted and queued; session 1 follows rating A, session 2 follows rating B plus comparison; startup retry exists. |
+| Authenticated web API | Implemented in separate repo branch | IS-proj-web/test passes nine API smoke tests and synthetic Drive persistence checks; participant-client access to the protected Preview is not established. |
+| Server-side questionnaire validation | Incomplete | API validates envelope metadata, authentication and idempotency, but not active questionnaire IDs/types/required fields/version. |
+| Packaging and live integration | Unverified | Bundled Python, assets, endpoint, Vercel, OAuth and Drive need tests. |
+| Local Google Drive questionnaire retrieval | Implemented — unverified on `Dev` | Researcher-side Python downloader and focused unit tests exist; local tests and live Drive dry-run/download remain outstanding. |
+| Training and behavioural-data retrieval | Separate / not included in this feature | Training records, interaction logs, memory/affect traces and Q-table data are not downloaded by the questionnaire retrieval utility. |
+| Research protocol/ethics | Not ready | Questionnaire/protocol approval and ethics gate remain. |
 
-- The owner confirmed the local SFML UI builds and launches for the sprint demonstration.
-- `./build/IS-2 --sim` opens the participant-facing simulation mode.
-- `./build/IS-2 --sim-researcher` opens researcher/debug mode.
-- The UI includes A/B companion selection, a backyard scene, companion animation, preset interactions, typed interaction input, and session/interaction logging.
-- Typed input is routed through the persistent Python NLP service when available, with keyword fallback.
-- Session summaries and Q-table copies are written under `artifacts/simulation/`.
-- The participant-facing mode hides internal action labels and memory/affect diagnostics; researcher mode exposes them.
-- A questionnaire URL can be configured through `ANIMAL_AGENT_STUDY_FORM_URL`; the URL should not be hard-coded into source control.
-- The current shared-action architecture and action-dependent environment-transition edits are committed on `Dev`, but those latest edits still require a fresh build and test run.
+## 3. Milestone order
 
-### Important boundaries
+The implementation order is intentionally pipeline-first. Do not return to agent-behaviour tuning until the participant study can reliably collect, preserve, and submit the intended dataset.
 
-- NLP is bounded intent classification, not general dialogue generation.
-- Preset rewards are development signals, not validated measures of user feedback or believability.
-- Synthetic training/comparison scores are engineering diagnostics, not participant believability results.
-- The `--study` workflow is a prototype. Do not collect real participant data until the supervisor/institutional ethics process, approved consent, and questionnaire/protocol requirements are satisfied.
-- `Docs/test-results.json` records 30/30 PASS at **2026-10-22T08:06:21Z**. That report predates the latest Stage −1 edits and must not be treated as a fresh pass for the current revision.
+1. **M0 — Documentation and shared context:** establish the source of truth. This documentation update records the current state and intended structure.
+2. **M1 — Local participant identity and questionnaire workflow:** load assigned credentials; implement deterministic A/B allocation; embed the per-condition and final comparison questionnaires; define response data; persist and recover completed/partial sessions offline.
+3. **M2 — Authenticated backend delivery:** connect questionnaire completion to the local queue and uploader; configure the real endpoint; strengthen API validation; test retry/idempotency.
+4. **M3 — Packaging and end-to-end technical pilot:** verify clean-machine Linux/Windows packages and test both A/B orders, interruption recovery, offline retry, and Drive storage.
+5. **M4 — Research protocol readiness:** approve and pilot the questionnaire, consent, experimental controls, data retention and ethics process before recruiting participants.
 
-## 2. Implemented features and source paths
+Detailed task checklists, acceptance criteria, unresolved decisions, and verification log are maintained in [Docs/21-participant-study-milestones.md](21-participant-study-milestones.md).
 
-### 2.1 Baseline tabular Q-learning
+## 4. Intended component boundaries
 
-**Status:** Implemented; baseline tests are recorded.
+- ParticipantMenu: choose Free Roam or Research Session.
+- ParticipantConfig: load assigned participant number and private token.
+- StudyController: own study phases, A/B assignment, sequencing and recovery.
+- CompanionUI: render the simulation and handle companion interaction.
+- QuestionnaireUI: render questions and collect validated answers.
+- StudySessionData: own structured response data and local persistence.
+- SubmissionManager: queue, upload, retry, and report delivery state without depending on SFML.
+- Web API: authenticate, validate questionnaire schema and store submissions.
 
-Capabilities:
-- Tabular Q-value lookup/update and handling of unseen states.
-- Q-table persistence and terminal-state handling.
-- Baseline remains the control condition and excludes memory/affect inputs.
-- Exploration can be seeded for reproducible runs; evaluation mode disables exploration and policy updates.
+New study-specific code should be grouped under Components/Study/. Do not perform a broad refactor of the simulation. The existing submission manager currently resides in Components/Simulation/; move it only when needed for the separation above.
 
-Paths:
-- Implementation: [Components/State-Action/state-action.h](../Components/State-Action/state-action.h), [Components/State-Action/state-action.cpp](../Components/State-Action/state-action.cpp)
-- Design: [Docs/03-baseline-learning-loop.md](03-baseline-learning-loop.md)
-- Tests/spec: [Docs/04-baseline-learning-tests.md](04-baseline-learning-tests.md)
+## 5. Important project decisions
 
-### 2.2 Memory and affect state
+- One participant-facing executable, with Free Roam and Research Session selected from an in-app menu.
+- Participant number is assigned externally and loaded from a private per-participant credentials.json placed beside AnimalAgent in the extracted application root; it is not incremented locally.
+- Odd participant numbers: A = baseline, B = proposed. Even participant numbers: A = proposed, B = baseline.
+- Both conditions use the same environment, action space, scenarios and frozen policy settings.
+- Upload questionnaire responses and required metadata only. Do not upload raw interaction text, memory records, affect traces, Q-tables or diagnostics by default.
+- Persist locally before attempting network delivery. “Queued locally” is not the same as “stored by server”.
+- Store final comparison answers in a separate comparison_questionnaire object in session 2 (Pxx-S2); session 1 carries null. This preserves the current two-submission API pattern.
+- Do not collect real participant data until the supervisor/institutional ethics process, approved consent, and questionnaire/protocol requirements are satisfied.
+- Synthetic rewards and policy metrics are engineering diagnostics, not perceived-believability results.
 
-**Status:** Implemented in the agent/state pipeline; end-to-end runtime behavior still merits focused verification.
+## 6. Verification rules
 
-Capabilities:
-- Structured semantic memory records and affect-state contracts.
-- Bounded `memory_bias` and `affect_trend` inputs for state construction.
-- Memory records can be ranked and summarised before being represented as a bounded state signal.
-- Proposed-agent memory and affect persistence/rest aggregation are implemented in the persistence layer.
-- Memory can preserve explicit semantic preferences and prior interaction outcomes; negative feedback can influence subsequent proposed-agent behavior.
+- A source-level implementation is not marked verified until its acceptance tests pass on the current revision.
+- Historical Docs/test-results.json must not be represented as a fresh test run.
+- No live Vercel deployment, Google OAuth/Drive connection, or end-to-end participant submission has been verified by the current documentation review.
+- Update this roadmap and the milestone tracker whenever a milestone status changes.
+- Record exact changed files, branch/revision, commands, outcomes, and known limitations.
 
-Paths:
-- Implementation: [Components/Memory/memory.h](../Components/Memory/memory.h), [Components/Memory/memory.cpp](../Components/Memory/memory.cpp)
-- State encoding: [Components/State-Action/state-action.h](../Components/State-Action/state-action.h), [Components/State-Action/state-action.cpp](../Components/State-Action/state-action.cpp)
-- Specs: [Docs/05-memory-affect-scaffolding.md](05-memory-affect-scaffolding.md), [Docs/06-memory-affect-state-integration.md](06-memory-affect-state-integration.md), [Docs/08-live-memory-retrieval-and-ranking.md](08-live-memory-retrieval-and-ranking.md), [Docs/09-persistence-and-rest-aggregation.md](09-persistence-and-rest-aggregation.md)
-- Runtime contracts to review: [Docs/10-runtime-state-lifecycle.md](10-runtime-state-lifecycle.md), [Docs/11-live-memory-activation-and-ranking.md](11-live-memory-activation-and-ranking.md), [Docs/12-runtime-affect-and-rest-state-orchestration.md](12-runtime-affect-and-rest-state-orchestration.md), [Docs/13-runtime-persistence-and-continuity-contract.md](13-runtime-persistence-and-continuity-contract.md)
+See [README.md](../README.md) for build and launch instructions, and [project-context.md](project-context.md) for the full project hand-off.
 
-### 2.3 Shared actions, observations, and environment transitions
 
-**Status:** Implemented in source; **fresh build and regression verification required**.
+**Build target clarification:** `IS-2` is the sole participant application CMake target and produces the executable file `AnimalAgent`. Free Roam and Research Session are runtime menu choices in that executable. `participant_config_test` and other optional targets enabled by `ANIMAL_AGENT_BUILD_RESEARCH_TESTS` are developer/test executables, not additional participant application builds.
 
-Capabilities added in the latest Stage −1 work:
-- One canonical 14-action vocabulary shared by baseline/proposed agents, scenarios, and UI action labels/animation grouping.
-- Shared observable-context validity rules and invalid-action masking during action selection and next-state Q-value bootstrapping.
-- Food/play affordances included in observations and policy state.
-- Training and study scenarios include food, play, and negative-feedback contexts.
-- Initial action-dependent environment transitions: approach changes proximity; fetch effort/success depend on distance and environment energy; rest/eating restore energy; far-fetch follow-up scenario added.
-- Removed disconnected/unused legacy simulation and scaffolding identified in the Stage −1 specification.
+**Questionnaire styling:** the project owner will supply a styling template for later integration. Until then, proceed with questionnaire content/data contract and functional flow; do not assume final visual styling. The embedded SFML questionnaire is source-integrated; its response adapter and SubmissionManager connection are now source-integrated but unverified. The endpoint remains a placeholder.
 
-Paths:
-- Action contract: [Components/State-Action/action-space.h](../Components/State-Action/action-space.h)
-- State and learning implementation: [Components/State-Action/state-action.h](../Components/State-Action/state-action.h), [Components/State-Action/state-action.cpp](../Components/State-Action/state-action.cpp)
-- Tracking spec: [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md)
-- Environment/comparison contracts: [Docs/14-pre-simulation-environment-contract.md](14-pre-simulation-environment-contract.md), [Docs/15-proposed-agent-comparison-spec.md](15-proposed-agent-comparison-spec.md), [Docs/16-baseline-agent-comparison-spec.md](16-baseline-agent-comparison-spec.md)
 
-**Fairness issue to resolve:** the latest implementation gives the proposed policy access to environment energy while the baseline does not. Decide whether energy is an explicitly intended treatment difference or make the observation available consistently to both agents. Document the decision and test it before interpreting comparison results.
+### M1.2 progress
 
-### 2.4 Headless training, validation, and comparison
+The generic response model is now populated by `companion-believability-v1` in Components/Study/questionnaire-definition.h/.cpp. It defines 26 per-condition items and 8 final comparison items from `Docs/Google Form Template Companion Believability Study.md`, with stable IDs, prompts, types, required flags, options, 1–5 bounds, text limits, and scale endpoint labels. Section 2 demographic/context questions are omitted; consent is a separate gate and session metadata comes from the app. Engagement remains secondary/exploratory. The CMake application and test targets include the definition, and the focused test checks its structure. This is still an unverified draft transcription: no local build/CTest run has been reported, no SFML questionnaire UI exists yet, and supervisor/ethics approval and piloting remain necessary. The web API contract has not yet been updated; that belongs to M2.
 
-**Status:** Implemented; run again after the latest action/environment changes.
+### Embedded questionnaire UI progress — 5 November 2026
 
-Commands:
-```sh
-./build/IS-2 --self-test
-./build/IS-2 --train --episodes 1000 --steps 40 --seed 42 --out artifacts/training
-./build/IS-2 --validate --episodes 200 --steps 40 --seed 43 --out artifacts/training
-./build/IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training
-```
+The project owner's supplied questionnaire UI has now been integrated into `Components/Questionnaire/` and connected to the guided study flow. It replaces the browser-form launch for the two condition ratings and final A/B comparison. Each completed questionnaire is saved as a separate JSON file in the participant study output directory. Demographic/familiarity items remain omitted. Conditional technical-issue and comparison-difference follow-ups are supported.
 
-The runner saves baseline/proposed Q-table checkpoints and mode-specific step logs/episode summaries. Retrain both policies after state/action encoding changes before validation or comparison. The current synthetic observations/reward setup is an engineering test harness; it is not evidence of long-horizon planning or perceived believability.
+This is source-integrated but not yet verified: the project owner must build the application and run `questionnaire_content_test`, then manually test text entry, pagination, conditional follow-ups, saving, and the complete A/B/comparison sequence. The new JSON format is not yet adapted to the existing submission schema and is not uploaded. The menu's separate-window ownership and full app-level StudyController are also not solved by this change.
 
-Paths:
-- Entrypoint/options and self-tests: `main.c++`
-- Build setup: `CMakeLists.txt`
-- Comparison design: [Docs/15-proposed-agent-comparison-spec.md](15-proposed-agent-comparison-spec.md), [Docs/16-baseline-agent-comparison-spec.md](16-baseline-agent-comparison-spec.md), [Docs/16-paired-agent-scenario-tests.md](16-paired-agent-scenario-tests.md)
-- Training/evaluation notes: [Docs/17-training-validation-implementation.md](17-training-validation-implementation.md)
-- Historical test report: [Docs/test-results.json](test-results.json)
+### Questionnaire UX and persistence revision — 5 November 2026
 
-### 2.5 SFML interactive simulation MVP
+The questionnaire has been reduced to 10 questions per condition (A/B) and 7 comparison questions. Rating forms use two pages of four Likert items plus one overall/feedback page; comparison uses two pages. A shared aspect-preserving 1280x900 logical viewport now scales the participant menu, simulation UI, and questionnaire consistently on window resize, with centered letterboxing for mismatched aspect ratios.
 
-**Status:** Implemented and locally confirmed by the project owner for sprint demonstration. Run regression checks after pulling the latest `Dev`.
+Questionnaire JSON is now intended to be written on open and after every answer/navigation change, not only after final submission. A temporary-file/rename strategy protects the last saved snapshot; JSON records distinguish `in_progress` from `completed`. The participant output directory is the app's user-data `study-linkage` folder (Linux default: `~/.local/share/animal-agent/study-linkage`, unless `XDG_DATA_HOME` is set). Automatic draft restoration into the UI and backend upload are not implemented.
 
-Launch:
-```sh
-./build/IS-2 --sim
-./build/IS-2 --sim-researcher
-```
+Current status: source changes and focused test updates are committed, but compile/runtime verification remains outstanding. Do not mark responsive layout or draft durability as verified until tested on the project owner's machine.
 
-Features:
-- Participant-facing mode and separate researcher/debug mode.
-- A/B companion selection, backyard scene, companion sprite animation, preset interactions, scene-object hover descriptions, and typed text interaction.
-- Persistent NLP service with spaCy/model support and labelled keyword fallback.
-- Session/interaction logging and session Q-table copies under `artifacts/simulation/`.
-- Optional questionnaire button driven by `ANIMAL_AGENT_STUDY_FORM_URL`.
 
-Paths:
-- UI: [Components/Simulation/companion-ui.h](../Components/Simulation/companion-ui.h), [Components/Simulation/companion-ui.cpp](../Components/Simulation/companion-ui.cpp)
-- NLP adapter: [Components/NLP/nlp_intent_service.py](../Components/NLP/nlp_intent_service.py)
-- Build: [CMakeLists.txt](../CMakeLists.txt)
-- Usage/limitations: [README.md](../README.md), [Docs/18-sfml-companion-ui.md](18-sfml-companion-ui.md)
+### Participant questionnaire submission integration — 5 November 2026
 
-### 2.6 Persistence and generated artifacts
+The active questionnaire result is now adapted by `Components/Study/questionnaire-submission.*` into the current API envelope. Item IDs are normalised to lowercase for compatibility with the drafted client JSON Schema; Likert, scale, choice, and text answers are mapped to the API's `likert`, `integer`, `single_choice`, and `text` answer types. Non-completed forms and unsupported answer types are rejected by the adapter.
 
-**Status:** Persistence features implemented; restart continuity and generated files should be rechecked after runtime changes.
+`CompanionUI` now owns a `SubmissionManager` for Research Session:
+- Rating A is atomically queued as Pxx-S1 with `comparison_questionnaire: null`.
+- Rating B is retained until the final comparison is completed; then both are submitted together as Pxx-S2.
+- The existing manager writes the token-bearing local queue record before upload, strips `_upload_token` from the transmitted JSON, sends Bearer authentication and the matching `Idempotency-Key`, and retains pending files after upload failure.
+- Existing application startup retry remains in place. The participant event log distinguishes server acknowledgement from locally queued / pending upload.
+- Developer `--study` runs without participant credentials remain local-only.
 
-The persistence subsystem covers Q-tables, memory records, affective state, session context, interaction history, and low-confidence aggregated facts. The interactive UI writes session summaries and Q-table copies to `artifacts/simulation/`; do not assume this is equivalent to restoring the complete episodic memory and affect state in the next UI launch.
+A focused `questionnaire_submission_test` target was added. **No build, CTest, SFML interaction, or participant-client HTTP test has yet been run on this revision.** The endpoint remains the placeholder in `Data/Study/upload-config.json`. The Vercel Preview used for smoke tests is protected by Deployment Protection; the participant uploader deliberately does not send the local Vercel OIDC bypass token. Do not point participant builds at that protected Preview. A participant-accessible, approved deployment endpoint is required before network submission can be verified.
 
-Paths:
-- Memory persistence: [Components/Memory/memory.h](../Components/Memory/memory.h), [Components/Memory/memory.cpp](../Components/Memory/memory.cpp)
-- Persistence design: [Docs/09-persistence-and-rest-aggregation.md](09-persistence-and-rest-aggregation.md), [Docs/13-runtime-persistence-and-continuity-contract.md](13-runtime-persistence-and-continuity-contract.md)
-- Example state files: `Docs/affect_state.json`, `Docs/aggregated_facts.json`, `Docs/interaction_history.json`, `Docs/memory_records.json`, `Docs/session_context.json`
-- Runtime output: `artifacts/simulation/`, `artifacts/training/`, `artifacts/study/` (study output may contain restricted research data)
+The backend currently accepts arbitrary questionnaire response properties after validating the submission metadata. It must be updated to enforce the active shortened questionnaire version, question IDs, answer types, required fields, ranges/options, and payload limits before real collection. This work is not implied by the successful nine-case API smoke test.
 
-## 3. Pending work and refinements
 
-Prioritised order reflects the next useful engineering gates, not a claim that the items are already implemented.
+### Research data separation and local retrieval — 5 November 2026
 
-### P0 — Build and regression-check the latest `Dev` revision
+The research evaluation contains two distinct evidence streams. They must remain separate in collection, retrieval, processing, and reporting.
 
-- [ ] Pull latest `Dev` and configure/build with CMake.
-- [ ] Run `./build/IS-2 --self-test`.
-- [ ] Run the configured CTest suite, if present in the build.
-- [ ] Run a short seeded training job and inspect its logs.
-- [ ] Run a fresh NLP smoke test with the intended virtual environment.
-- [ ] Re-open `--sim` and `--sim-researcher` and check the interaction/logging path.
+1. **Training and behavioural analysis:** concerns the agent's learning and computational behaviour, including training experiences, Q-table/learning progression, rewards, action selection, memory formation and retrieval, affective-state changes, behavioural consistency, and adaptability. These are engineering or behavioural measures used to examine how the agent operates.
+2. **Perceived-believability evaluation:** concerns participants' subjective assessments of the companion, collected through the condition-specific and comparison questionnaires. Believability is a human-evaluation outcome; it is not a training metric or a proxy for learning performance.
 
-### P1 — Validate Stage −1 environment and action changes
+A change in training performance must not be reported as a change in perceived believability, and a change in believability ratings must not be interpreted as evidence of improved learning. The two streams may be compared or interpreted alongside one another during the research analysis, but their measures, datasets, and conclusions must remain identifiable and distinct.
 
-- [ ] Verify every canonical action is accepted/rejected in the intended contexts.
-- [ ] Verify impossible actions are not selected and do not contribute to next-state Q-value bootstrapping.
-- [ ] Verify approach/far-fetch changes distance, and fetch logs show successful and failed outcomes under the intended distance/energy conditions.
-- [ ] Verify rest/eating restore energy and do not bypass task/action constraints.
-- [ ] Verify food/play availability is encoded consistently in observations and state.
-- [ ] Resolve and document baseline/proposed energy-observation fairness.
-- [ ] Confirm terminal transitions do not bootstrap from next-state Q-values.
+#### Local Google Drive questionnaire retrieval
 
-Tracking: [Docs/20-stage-minus-one-action-architecture.md](20-stage-minus-one-action-architecture.md).
+A researcher-side retrieval utility has been added on `Dev`:
 
-### P1 — Audit memory retrieval and action-decision traces
+- `scripts/download_study_submissions.py` authenticates directly to Google OAuth using researcher credentials.
+- It lists and downloads questionnaire submission JSON files from the configured Drive folder.
+- It supports dry-run, participant/session filters, local output selection, and explicit overwrite.
+- It validates the submission envelope, participant/session assignment, questionnaire version, answer structure, and session-specific comparison-questionnaire rule.
+- It writes a retrieval report and stores downloaded data outside the repository by default.
+- It does not use participant upload tokens or the participant-facing submission endpoint.
+- It performs read-only operations against Google Drive; it does not modify or delete Drive files.
 
-- [ ] Check whether query relevance changes the final memory summary, not merely record ordering.
-- [ ] Keep retrieval score, baseline record weight, query relevance, and summary weight conceptually distinct.
-- [ ] Confirm the active runtime path uses the intended retrieval/persistence methods rather than relying on stubs or unused helpers.
-- [ ] Log the reason/source for each final action: policy selection, contextual fallback, memory preference, rejection override, or invalid-action recovery.
-- [ ] Measure fallback frequency so fallback behavior does not conceal poor policy performance.
-- [ ] Test valence transitions and confirm the affect trend has the intended behavioral semantics.
+**Status: Implemented — unverified.** The downloader and focused unit-test file exist on `Dev`, but the unit tests have not yet been run on the current revision and no live Google Drive dry-run or download has been verified. Do not treat the feature as operational until those checks pass.
 
-Relevant paths: [Components/Memory/memory.cpp](../Components/Memory/memory.cpp), [Components/State-Action/state-action.cpp](../Components/State-Action/state-action.cpp), [Docs/08-live-memory-retrieval-and-ranking.md](08-live-memory-retrieval-and-ranking.md), [Docs/11-live-memory-activation-and-ranking.md](11-live-memory-activation-and-ranking.md).
+#### Explicit scope boundary
 
-### P2 — Runtime continuity and persistence
+The current retrieval utility downloads **participant questionnaire submissions only**. It does not retrieve training datasets, interaction logs, Q-tables, memory records, affect traces, or diagnostic output. Those belong to a separate training/behavioural data pipeline and require their own retrieval specification if needed.
 
-- [ ] Verify a full save/load round trip for Q-table, memory, affect, session context, interaction history, and aggregated facts.
-- [ ] Verify a restarted runtime can retrieve prior semantic preferences and does not accidentally promote low-confidence candidates to confirmed facts.
-- [ ] Separate UI session-summary persistence from complete agent-state restoration.
-- [ ] Test malformed/missing persistence files and ensure safe defaults/recoverable errors.
+The downloader preserves the submitted JSON and does not calculate, redefine, combine, or transform the believability metric. Any adapter that makes questionnaire JSON consumable by an analysis script is a separate analysis-layer task. It must preserve the questionnaire's response values and keep perceived-believability results separate from training and behavioural measures.
 
-Relevant specs: [Docs/09-persistence-and-rest-aggregation.md](09-persistence-and-rest-aggregation.md), [Docs/10-runtime-state-lifecycle.md](10-runtime-state-lifecycle.md), [Docs/13-runtime-persistence-and-continuity-contract.md](13-runtime-persistence-and-continuity-contract.md).
-
-### P2 — NLP/UI robustness
-
-- [ ] Confirm the NLP view reports spaCy/model processing when the configured environment has `spacy` and `en_core_web_sm`.
-- [ ] Temporarily disable the model/service and confirm the fallback is labelled and still usable.
-- [ ] Verify the service lifecycle, failure handling, and typed interaction latency.
-- [ ] Verify sprite-sheet/frame assumptions and action-to-animation mapping against the actual bundled assets.
-- [ ] Check all controls at the current window size and verify session files are written on normal close.
-- [ ] Keep participant-facing UI free of internal action/memory/affect diagnostics.
-
-Relevant paths: [Components/Simulation/companion-ui.cpp](../Components/Simulation/companion-ui.cpp), [Components/NLP/nlp_intent_service.py](../Components/NLP/nlp_intent_service.py), [Docs/18-sfml-companion-ui.md](18-sfml-companion-ui.md).
-
-### P3 — Research protocol and believability evaluation
-
-- [ ] Define the believability construct and the questionnaire items/scale before data collection.
-- [ ] Pilot the interaction scenarios and verify both conditions receive matched scenarios and equivalent instructions.
-- [ ] Ensure the only intended experimental differences are documented; avoid accidentally giving one agent extra environment information.
-- [ ] Validate logs and analysis fields, including missing/no-response handling and condition-key protection.
-- [ ] Obtain required supervisor/institutional ethics approval, approved consent, and questionnaire/protocol review before recruiting participants or collecting real data.
-- [ ] Report perceived believability as an empirical outcome; do not infer it from synthetic reward or action counts.
-
-Relevant paths: [Docs/08-research-validity-memory-affect-and-logging-spec.md](08-research-validity-memory-affect-and-logging-spec.md), [Docs/09-research-validity-implementation-progress.md](09-research-validity-implementation-progress.md), [Docs/16-paired-agent-scenario-tests.md](16-paired-agent-scenario-tests.md), [README.md](../README.md).
-
-## 4. Test and verification register
-
-| Check | Command / procedure | What it covers | Status at this review |
-| --- | --- | --- | --- |
-| Build | `cmake -S . -B build && cmake --build build --target IS-2` | Compile current sources and link the executable | **Required after latest Stage −1 edits** |
-| Self-test | `./build/IS-2 --self-test` | Q-learning, state/action, memory/affect, persistence, runtime contracts | Historical report says PASS; rerun on current revision |
-| CTest | `ctest --test-dir build --output-on-failure` | Registered CMake tests, if configured | Required to confirm current result |
-| Training smoke test | `./build/IS-2 --train --episodes 10 --steps 20 --seed 42 --out artifacts/training-smoke` | Runtime startup, scenario loop, logs, action/environment transitions | Required |
-| Full training | Command in §2.4 | Generate checkpoints for later evaluation | Rerun after state/action encoding changes |
-| Validation | `./build/IS-2 --validate --episodes 200 --steps 40 --seed 43 --out artifacts/training` | Evaluate trained checkpoints without policy updates/exploration | Run only after retraining |
-| Comparison | `./build/IS-2 --compare --episodes 200 --steps 40 --seed 44 --out artifacts/training` | Paired synthetic policy diagnostics | Run only after retraining; not a believability measure |
-| NLP smoke test | Activate `.venv`, then submit text in `--sim` and inspect method label/log | spaCy/model path and fallback path | Required after current revision |
-| Participant UI | `./build/IS-2 --sim` | Participant-facing interaction and logging | Locally confirmed by owner; regression check recommended |
-| Researcher UI | `./build/IS-2 --sim-researcher` | Debug screens and comparison diagnostics | Regression check recommended |
-| Study prototype | `./build/IS-2 --study --policy-dir artifacts/training --study-out artifacts/study` | Study flow and data writing | Software prototype only; ethics/research gate remains open |
-
-Historical machine-readable report: [Docs/test-results.json](test-results.json), generated 2026-10-22. Do not edit its timestamp or treat it as current; regenerate it only through the project's test/report workflow after running the current build and tests.
-
-## 5. Implementation map
-
-| Area | Main source paths | Spec / status record |
-| --- | --- | --- |
-| Q-learning and state encoding | `Components/State-Action/state-action.h/.cpp` | [03](03-baseline-learning-loop.md), [04](04-baseline-learning-tests.md), [06](06-memory-affect-state-integration.md) |
-| Canonical action set | `Components/State-Action/action-space.h` | [20](20-stage-minus-one-action-architecture.md) |
-| Memory and affect | `Components/Memory/memory.h/.cpp` | [05](05-memory-affect-scaffolding.md), [08](08-live-memory-retrieval-and-ranking.md), [09](09-persistence-and-rest-aggregation.md) |
-| Runtime contracts | state/action and memory components | [10](10-runtime-state-lifecycle.md)–[14](14-pre-simulation-environment-contract.md) |
-| Proposed/baseline comparison | `main.c++` and shared state/action components | [15](15-proposed-agent-comparison-spec.md), [16](16-baseline-agent-comparison-spec.md), [16 paired tests](16-paired-agent-scenario-tests.md) |
-| Training and evaluation | `main.c++`, `CMakeLists.txt` | [17](17-training-validation-implementation.md), [19](19-training-and-evaluation-redesign-spec.md) |
-| SFML UI | `Components/Simulation/companion-ui.h/.cpp` | [18](18-sfml-companion-ui.md) |
-| NLP | `Components/NLP/nlp_intent_service.py` | [README](../README.md), [18](18-sfml-companion-ui.md) |
-| Research logging and validity | UI/study output and agent interaction logging | [08 research validity](08-research-validity-memory-affect-and-logging-spec.md), [09 progress](09-research-validity-implementation-progress.md) |
-| Project-wide architecture/context | project architecture and implementation | [Docs/project-context.md](project-context.md) |
-
-## 6. Working rules
-
-1. Mark work as complete only when source paths are identified and the relevant check has passed on the current revision.
-2. Keep historical test reports immutable; create a fresh report for a fresh test run.
-3. Keep baseline exclusions explicit so it remains a genuine control.
-4. Keep implementation behavior separate from research claims: a working UI is not a believability result.
-5. Prefer small, independently testable changes and update this file when implementation status changes.
+The detailed retrieval specification is [22-local-study-data-retrieval.md](22-local-study-data-retrieval.md). Its acceptance criteria remain open until local tests and a live read-only Drive verification have been completed.

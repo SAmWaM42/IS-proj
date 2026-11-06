@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "valid_paired_sessions": 1,
+  "excluded_records": 2,
+  "mean_baseline_believability": 3.4,
+  "mean_proposed_believability": 4.0,
+  "mean_paired_difference_proposed_minus_baseline": 0.6000000000000001,
+  "median_paired_difference_proposed_minus_baseline": 0.6000000000000001,
+  "mean_cross_condition_action_agreement": 0.7777777777777778,
+  "behaviour_metric_note": "Repeated-scenario consistency and adaptation are marked not estimable when repeated scenario IDs or matched event/control pairs are absent.",
+  "interpretation": "Descriptive pilot summary only; does not establish causality or statistical significance.",
+  "exclusions": [
+    {
+      "file": "artifacts/study/S1792463631980-234821.json",
+      "reason": "invalid_or_missing_rating:plausibility;invalid_or_missing_rating:coherence;invalid_or_missing_rating:responsiveness"
+    },
+    {
+      "file": "artifacts/study/S1792465025638-283854.json",
+      "reason": "invalid_or_missing_rating:plausibility;invalid_or_missing_rating:coherence;invalid_or_missing_rating:responsiveness"
+    }
+  ]
+}

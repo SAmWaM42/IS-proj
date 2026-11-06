@@ -1,11 +1,20 @@
 #include "memory.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+#include <filesystem>
+#include <cstdio>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 void AffectiveState::updateFromFeedback(float reward, bool positive_feedback, bool explicit_negative) {
     if (explicit_negative) {
@@ -28,6 +37,31 @@ void AffectiveState::updateFromFeedback(float reward, bool positive_feedback, bo
     arousal = std::clamp(arousal + reward * 0.1f, 0.0f, 1.0f);
     energy = reward > 0.0f ? AffectEnergy::HIGH :
              reward < 0.0f ? AffectEnergy::LOW : AffectEnergy::MODERATE;
+}
+
+void AffectiveState::decay(float elapsedSeconds) {
+    if (!std::isfinite(elapsedSeconds) || elapsedSeconds <= 0.0f) return;
+
+    // Exponential relaxation toward variable-specific resting values. These
+    // rates are initial engineering defaults, not empirically calibrated values.
+    const float dt = std::min(elapsedSeconds, 60.0f);
+    const auto relax = [dt](float value, float baseline, float rate) {
+        const float fraction = 1.0f - std::exp(-rate * dt);
+        return std::clamp(value + (baseline - value) * fraction, 0.0f, 1.0f);
+    };
+
+    arousal = relax(arousal, 0.25f, 0.12f);
+    stress = relax(stress, 0.15f, 0.04f);
+    engagement = relax(engagement, 0.35f, 0.015f);
+    affinity = relax(affinity, 0.50f, 0.002f);
+
+    // Valence represents the current affective tone, not a stored event.
+    // Neutralise it once transient arousal and stress have substantially settled.
+    if (arousal < 0.32f && stress < 0.22f) {
+        valence = AffectValence::NEUTRAL;
+    }
+    // AffectEnergy intentionally does not decay here: it tracks environment
+    // energy and must change through exertion, feeding, or rest.
 }
 
 void MemoryRecord::update_record() {
@@ -189,6 +223,16 @@ bool isRestState(const SessionContext& context, float memory_signal, float affec
 
 namespace {
 
+bool replaceFileAtomically(const std::filesystem::path& temporary,
+                           const std::filesystem::path& destination) {
+#ifdef _WIN32
+    return MoveFileExA(temporary.string().c_str(), destination.string().c_str(),
+                       MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+#else
+    return std::rename(temporary.string().c_str(), destination.string().c_str()) == 0;
+#endif
+}
+
 nlohmann::json recordToJson(const record& entry) {
     nlohmann::json item = nlohmann::json::object();
     item["subject"] = entry.raw_fact.subject;
@@ -309,16 +353,22 @@ std::vector<std::string> splitSummary(const std::string& text) {
 } // namespace
 
 bool saveMemoryRecords(const std::string& path, const std::vector<record>& records) {
-    std::ofstream output(path);
-    if (!output.is_open()) {
-        return false;
-    }
+    const std::filesystem::path destination(path);
+    const std::filesystem::path temporary = destination.string() + ".tmp";
+    std::ofstream output(temporary, std::ios::trunc);
+    if (!output.is_open()) return false;
 
     nlohmann::json payload = nlohmann::json::array();
-    for (const auto& entry : records) {
-        payload.push_back(recordToJson(entry));
+    for (const auto& entry : records) payload.push_back(recordToJson(entry));
+    output << payload.dump(2) << '\n';
+    output.flush();
+    if (!output.good()) return false;
+    output.close();
+    if (!replaceFileAtomically(temporary, destination)) {
+        std::error_code ec;
+        std::filesystem::remove(temporary, ec);
+        return false;
     }
-    output << payload.dump(2);
     return true;
 }
 
@@ -343,12 +393,20 @@ std::vector<record> loadMemoryRecords(const std::string& path) {
 }
 
 bool saveAffectiveState(const std::string& path, const AffectiveState& affect) {
-    std::ofstream output(path);
-    if (!output.is_open()) {
+    const std::filesystem::path destination(path);
+    const std::filesystem::path temporary = destination.string() + ".tmp";
+    std::ofstream output(temporary, std::ios::trunc);
+    if (!output.is_open()) return false;
+
+    output << affectToJson(affect).dump(2) << '\n';
+    output.flush();
+    if (!output.good()) return false;
+    output.close();
+    if (!replaceFileAtomically(temporary, destination)) {
+        std::error_code ec;
+        std::filesystem::remove(temporary, ec);
         return false;
     }
-
-    output << affectToJson(affect).dump(2);
     return true;
 }
 

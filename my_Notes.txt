@@ -1,5 +1,5 @@
 [x] 1. Define action space (defined interface to add actions) || revisit this after the agent is defined
-[x] 2. Define observable environment
+[x] 2. Define observable environment ( the agent is going to have an active memory that can update what it knows from env based on what it sees. This will be separate from the semantic memory and implemented as either a class,vector or simple json obj )
 [ ] 3. Define baseline state
 [ ] 4. Define proposed state
 [ ] 5. Define state representation

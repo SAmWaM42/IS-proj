@@ -1,60 +1,56 @@
-# SFML Companion Simulation UI
+# SFML Top-Down Companion Simulation UI
 
-Status: initial implementation committed; compilation and interactive verification still required.
+Status: integrated source replacement prepared; local build and interactive verification are still required.
 
-## Source wireframes
+## Architecture integration
 
-The implementation follows Chapter 3, Section 3.5.3 of the project report and its three screens:
+The top-down UI replaces the existing implementation at:
 
-- Main Simulation (Figure 4.6): environment view, interaction controls and text input.
-- Agent State (Figure 4.7): affective values, current context and relevant memory records.
-- Comparison (Figure 4.8): baseline/proposed responses and interaction history.
+- `Components/Simulation/companion-ui.h`
+- `Components/Simulation/companion-ui.cpp`
 
-## Implementation
+It continues to use the existing `CompanionUI` entry point and the current `BaselineAgent` / `ProposedAgent` interfaces from `Components/State-Action/state-action.h`. `CMakeLists.txt` already compiles `Components/Simulation/companion-ui.cpp`, so no build-system source-list change is required.
 
-- `Components/Simulation/companion-ui.h/.cpp`: interface and SFML event/render loop.
-- `main.c++`: `--sim` launches the new interface; `--legacy-sim` preserves the previous scripted window.
-- `CMakeLists.txt`: includes the new UI source and include directory.
-- `README.md`: run instructions and limitations.
+The interface adds a top-down yard, keyboard-controlled participant position, companion movement/poses, ball and food scene objects, interaction controls, and the existing agent-selection, simulation, agent-state, and comparison screens. It keeps policy learning disabled during interactive use so testing does not silently change the trained policies.
 
-The baseline and proposed agents receive the same `EnvironmentObservation` for each interaction. The UI displays both selected actions. The Agent State view shows the proposed agent's current affective variables and recent in-session memory records with relation, confidence and context scope. The Comparison view reports current actions, interaction counts, reward signals and memory counts.
+## Assets
 
-## Current limitations
+The implementation references these existing repository assets:
 
-1. The free-text input currently uses a small keyword-based intent mapper, not the spaCy NLP service. The displayed interpretation should not be treated as general natural-language understanding.
-2. Preset interactions use fixed development reward signals. These are debugging stimuli, not participant-measured feedback or a validated reward model.
-3. The interface saves session summaries and Q-table copies to `artifacts/simulation/`; it does not yet restore the proposed agent's complete episodic memory and affect state when the UI restarts.
-4. The visual environment is a simple schematic yard. Action selection is visible, but there is not yet an animated action-specific world transition.
-5. The participant-study screen and its questionnaire remain separate under `--study`; do not substitute the free simulation for the approved study procedure.
+- `Data/Assets/free version/free.png`
+- `Data/Assets/white_dog_by_Brysia/` sprite frames
+- `Data/Fonts/UIFont.ttf` with a system DejaVu Sans fallback
 
-## Acceptance checks
+These paths were found in the current repository tree. Confirm that the runtime working directory is the repository root when launching the application.
 
-After building locally:
+## Integration procedure
 
-- [ ] `cmake -S . -B build && cmake --build build` completes without errors.
-- [ ] `./build/IS-2 --self-test` passes.
-- [ ] `./build/IS-2 --sim` opens and closes cleanly.
-- [ ] Navigation switches among Simulation, Agent State and Comparison.
-- [ ] Each preset interaction updates both agents and adds an activity log.
-- [ ] Text entry and Enter/Send produce a response.
-- [ ] Agent State displays affect and recent memory after proposed-agent interactions.
-- [ ] Comparison shows both responses to the same event.
-- [ ] Closing the window writes `artifacts/simulation/simulation-session.json` and Q-table copies.
+1. Extract this archive at the repository root, preserving its directory structure.
+2. Review the two replaced UI source files before committing.
+3. Build with `cmake -S . -B build && cmake --build build`.
+4. Run `ctest --test-dir build --output-on-failure`.
+5. Run `./build/IS-2 --sim` and verify the top-down yard, keyboard movement, controls, navigation, agent selection, interactions, and session output.
+6. Run `./build/IS-2 --sim-researcher` for researcher-visible diagnostics; do not use researcher mode for participant-facing sessions.
+7. Inspect `artifacts/simulation/` after closing the UI.
 
-A successful source write is not evidence that these checks have passed; run them locally before presenting the interface as verified.
+## Important research limitations
 
-## NLP and sprite follow-up
+- The visual scene is a presentation layer; do not treat its animations as evidence that the simulated agent has physically realistic behaviour.
+- The UI compares both policies against the same interpreted interaction, but the displayed selected agent is randomized between A/B. Preserve the generated run manifest when analyzing condition order.
+- Fixed development reward signals and keyword/intent mapping are not validated participant feedback or open-ended dialogue understanding.
+- The combined baseline-versus-proposed comparison cannot independently identify the effect of memory versus affect. Use ablations/additional conditions if those individual contributions are research questions.
+- The UI is not, by itself, the believability study protocol. Before participant data collection, define the scenarios, instructions, rating instrument, order/counterbalancing, data handling, consent and ethics approval.
 
-The free-text path now invokes `Components/NLP/nlp_intent_service.py` and parses its JSON intent, observation fields, reward signal, and method label. The Python adapter uses spaCy with `en_core_web_sm` if available; otherwise it reports a keyword fallback. The C++ UI also has a fallback if the service cannot be invoked. The service is started per submitted message, so this first version prioritizes a simple integration contract over latency.
+## Acceptance checklist
 
-The simulation window is taller (1280x900), and the Simulation navigation includes Hide Controls / Show Controls. Hiding controls expands the visible yard area. The UI loads the bundled `Data/Assets/DogMegaPackFree/DogMegaPackFree/Dogs.png` sheet, draws a sprite in place of the circle companion, advances frames while an action is active, and changes sprite-sheet row based on the proposed agent's action category.
+- [ ] CMake build succeeds on the target machine.
+- [ ] Existing automated tests pass.
+- [ ] `--sim` launches and closes cleanly.
+- [ ] Scene assets load without missing-file errors.
+- [ ] Player movement stays within the yard; input focus prevents movement while typing.
+- [ ] Preset and text interactions update both policies and the activity log.
+- [ ] Agent State and Comparison screens remain usable.
+- [ ] Session JSON and policy snapshots are written to the expected output locations.
+- [ ] A fresh run is inspected to ensure the UI does not unintentionally persist participant-specific transient state.
 
-Before considering this finished, verify locally:
-- [ ] Install spaCy and `en_core_web_sm`; confirm the view reports `spacy` for a typed interaction.
-- [ ] Uninstall/disable spaCy temporarily; confirm fallback works and is labelled.
-- [ ] Check the actual `Dogs.png` layout against the assumed 4x4 grid. If the sheet is arranged as static dog variants rather than animation frames, adjust the frame rectangles to the asset's real layout rather than describing the grid as a validated animation.
-- [ ] Check sprite rows against each action visually; the current mapping is a best-effort initial mapping.
-- [ ] Confirm all controls remain clickable at the new 900px window height.
-- [ ] Build with `cmake --build build` and run `./build/IS-2 --sim`.
-
-The NLP adapter is intent classification, not open-ended dialogue generation. Rewards remain predefined development signals, so do not interpret them as user feedback measurements.
+A source import is not evidence that these checks passed. Record the actual build/test results before treating the UI as ready for study use.

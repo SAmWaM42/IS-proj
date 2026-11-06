@@ -1,22 +1,12 @@
 {
-  "baseline_action": "SLEEP_LAY",
+  "baseline_action": "IDLE",
   "condition_code": "A",
-  "interaction_count": 26,
+  "interaction_count": 0,
   "interactions": [
-    "Queued interaction (1 waiting): bad [negative_feedback / spacy]",
-    "You: bad [negative_feedback / spacy]",
-    "Baseline: Hides or moves away",
-    "Proposed: Hides or moves away",
-    "Queued interaction (1 waiting): The companion should rest",
-    "You: The companion should rest",
-    "Baseline: Lies down to rest",
-    "Proposed: Explores the environment",
-    "Queued interaction (1 waiting): The companion should rest",
-    "You: The companion should rest",
-    "Baseline: Lies down to rest",
-    "Proposed: Explores the environment"
+    "Loaded backyard atlas (free.png)",
+    "Simulation ready. Select an interaction or enter a short message."
   ],
-  "latest_stimulus": "The companion should rest",
-  "proposed_action": "WANDER",
-  "run_id": "run-1792656498185"
+  "latest_stimulus": "Welcome. Choose an interaction to begin.",
+  "proposed_action": "IDLE",
+  "run_id": "run-1793274131407"
 }

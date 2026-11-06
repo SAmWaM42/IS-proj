@@ -1,0 +1,606 @@
+# Participant Study Milestones
+
+**Project:** Animal Agent — simulated companion research prototype  
+**Research title:** Investigating the Effect of Memory and Affective State on the Perceived Believability of a Simulated Companion Agent  
+**Tracking branch:** SAmWaM42/IS-proj — deployment/participant-client  
+**Last status review:** 5 November 2026  
+**Document role:** Live implementation tracker. Update this file as work is completed; do not mark an item complete without evidence from the current revision.
+
+---
+
+## 1. How to use this tracker
+
+This document is the working plan for completing the participant research pipeline. It complements, rather than replaces, the detailed component specifications.
+
+For each task:
+
+1. Inspect the current implementation and relevant specification.
+2. Confirm the expected behaviour and data contract.
+3. Implement one small increment.
+4. Build and run focused tests.
+5. Record the changed files, test command, result, and any remaining limitation.
+6. Update the status here and update the README/context document if a lasting decision changed.
+
+**Status meanings**
+
+- **Not started:** no implementation work has been completed.
+- **In progress:** implementation has begun but acceptance criteria are not all met.
+- **Blocked:** cannot proceed until a named dependency or decision is resolved.
+- **Implemented — unverified:** code exists, but the required checks have not passed on the current revision.
+- **Verified:** acceptance criteria passed on the current revision and evidence is recorded below.
+- **Deferred:** intentionally moved outside the current project scope.
+
+Do not equate “code exists” with “works”, “queued” with “uploaded”, or “engineering metric” with “research outcome”.
+
+## 2. Project goal and study protocol
+
+The participant-facing application must support one complete, recoverable research session in one executable:
+
+~~~text
+Launch AnimalAgent
+  |
+  +-- Free Roam
+  |     +-- Ordinary companion interaction
+  |
+  +-- Research Session
+        +-- Load participant credentials
+        +-- Consent
+        +-- Condition A
+        |     +-- Guided interactions
+        |     +-- Bounded free interaction
+        |     +-- Embedded questionnaire A
+        +-- Condition B
+        |     +-- Same guided interactions
+        |     +-- Bounded free interaction
+        |     +-- Embedded questionnaire B
+        +-- Embedded A/B comparison questionnaire
+        +-- Persist completed response data
+        +-- Queue and submit questionnaire dataset
+        +-- Show acknowledged / pending result
+~~~
+
+### 2.1 Experimental controls
+
+- Odd participant IDs: A = baseline, B = proposed.
+- Even participant IDs: A = proposed, B = baseline.
+- The assigned participant ID is stable across the entire session and is loaded from private credentials, not generated locally.
+- Both conditions use the same simulation environment, action vocabulary, scripted interactions, instructions, and scenario timing.
+- Learning is disabled and exploration is zero during participant sessions.
+- The proposed agent starts from a clean per-participant memory state; no participant inherits another participant's memory.
+- Shared physical/environmental variables (including energy) must be treated identically by both conditions.
+- Internal agent state, memory contents, Q-values, and condition labels must not be exposed in the participant-facing UI.
+- The uploaded dataset contains questionnaire responses and required metadata only. Raw interaction text, memory records, affect traces, Q-table data, and debug logs are excluded unless the research protocol is explicitly revised and approved.
+
+### 2.2 Questionnaire content decision — 4 November 2026
+
+The project owner confirmed that `Docs/Google Form Template Companion Believability Study.md` is the source questionnaire template, and that the Google Forms implementation was abandoned due to setup difficulties. The app will use an embedded SFML questionnaire; no live Google Form URL is required. Section 2 (age range, pet ownership, virtual-pet familiarity, and computer-use comfort) is omitted. Consent remains a separate gate, while participant number, session, condition, and run metadata are supplied by the application rather than re-entered by participants.
+
+A first versioned C++ definition now transcribes the per-condition questions and final comparison questions. It includes the original Likert statements, attention check, optional free-text prompts, technical-issue report, A/B comparison, confidence, and neutral blinding check. The 3 engagement statements and comparison item are retained as secondary/exploratory measures rather than being elevated to primary outcomes. Reverse-scoring and subscale definitions remain documented in the source template and should be carried into analysis code, not used to alter participant-facing responses.
+
+This is a source transcription for implementation, not evidence of supervisor/ethics approval or psychometric validation. The consent text still contains placeholders and must be reviewed before recruitment.
+
+### 2.3 Decisions still requiring confirmation
+
+| ID | Decision | Current recommendation | Status |
+|---|---|---|---|
+| D-01 | Where is the final A/B comparison stored? | Store it as a distinct comparison_questionnaire object in Pxx-S2; Pxx-S1 contains null. This preserves the existing two-session API contract. | **Adopted for implementation; can be revised before deployment** |
+| D-02 | What research data is uploaded? | Questionnaire responses and required submission metadata only. No raw interaction text, memory/affect traces, Q-tables, or diagnostics by default. | **Adopted implementation default; protocol review still required** |
+| D-03 | Exact questionnaire items, response scales, and mandatory/optional fields. | Transcribe the supplied Docs template into a versioned definition; obtain supervisor/ethics approval before recruitment. | **Draft transcribed; approval/pilot outstanding** |
+| D-04 | Where should participant credentials live? | appRoot/credentials.json, beside AnimalAgent in the root of each participant's extracted application directory; supplied separately per participant. | **Confirmed by project owner** |
+
+These decisions do not block implementing the generic questionnaire renderer or participant-credential parser, but they must be resolved before final backend validation and real data collection.
+
+## 3. Intended architecture
+
+The goal is to remove study orchestration and data ownership from the rendering class without rewriting the simulation.
+
+~~~text
+main.c++
+  |
+  +-- RuntimePaths
+  |
+  +-- SubmissionManager
+  |     +-- retry pending local submissions on startup
+  |
+  +-- ParticipantMenu
+        |
+        +-- Free Roam
+        |     +-- CompanionUI
+        |
+        +-- Research Session
+              |
+              +-- ParticipantConfig
+              |     +-- participant number
+              |     +-- private upload token
+              |
+              +-- StudyController
+              |     +-- consent / phase transitions
+              |     +-- deterministic A/B assignment
+              |     +-- condition sequencing
+              |     +-- resume / withdrawal handling
+              |
+              +-- CompanionUI
+              |     +-- render simulation
+              |     +-- expose interaction events/results
+              |
+              +-- QuestionnaireUI
+              |     +-- condition A ratings
+              |     +-- condition B ratings
+              |     +-- final comparison
+              |
+              +-- StudySessionData
+                    +-- validated response model
+                    +-- local persistence / recovery
+                    |
+                    +-- SubmissionManager
+                          +-- atomic pending JSON
+                          +-- upload_submission.py
+                                +-- IS-proj-web API
+                                      +-- HMAC participant auth
+                                      +-- questionnaire validation
+                                      +-- Google Drive storage
+~~~
+
+### 3.1 Target file layout
+
+New study-specific responsibilities should be grouped under Components/Study/:
+
+~~~text
+Components/
+  Simulation/
+    participant-menu.h/.cpp
+    companion-ui.h/.cpp
+    runtime-paths.h
+    backyard-environment.h/.cpp
+  Study/
+    participant-config.h/.cpp
+    study-controller.h/.cpp
+    questionnaire-ui.h/.cpp
+    study-session-data.h/.cpp
+    submission-manager.h/.cpp       # relocate only when justified
+  NLP/
+    nlp_intent_service.py
+    upload_submission.py
+  Memory/
+  State-Action/
+Data/
+  Study/
+    upload-config.json              # endpoint only; no secrets
+    questionnaire-config.json       # approved question definitions/version
+    (credentials.json is inserted beside AnimalAgent in the extracted application root; never committed or included in the common ZIP)
+~~~
+
+This is an intended structure, not a list of files already present. The current SubmissionManager is under Components/Simulation/; do not move it as a standalone cleanup task. New components should be added only when their responsibility is clear and independently testable.
+
+### 3.2 Responsibility boundaries
+
+- **StudyController:** owns sequence and condition assignment. It must not draw SFML controls.
+- **QuestionnaireUI:** renders and validates answers. It must not know about HTTP, tokens, or Google Drive.
+- **StudySessionData:** owns response values, schema version, validation, and serialisation. It must not own rendering.
+- **SubmissionManager:** owns durable local queueing and delivery. It must not depend on SFML.
+- **CompanionUI:** owns the simulation scene and interaction experience. It should expose structured events to the study controller rather than writing research submissions itself.
+- **Web API:** owns server-side authentication, strict schema validation, idempotency handling, and storage.
+
+Avoid coupling these components through global variables or direct file writes from UI drawing/event code.
+
+## 4. Current baseline status (before Milestone 1)
+
+The following reflects static source inspection of deployment/participant-client. No build, runtime, deployment, or end-to-end submission test was performed as part of this documentation update.
+
+| Area | Current status | Evidence / limitation |
+|---|---|---|
+| Participant executable and menu | Implemented in source | CMake target IS-2 outputs AnimalAgent; participant build starts the menu without CLI arguments. |
+| Free Roam path | Implemented in source | Menu launches ordinary CompanionUI. |
+| Guided Research Session | Implemented in source | Consent, warm-up, 12 guided prompts, bounded free-interaction phase, per-condition rating phase. |
+| Counterbalancing | Partially implemented | Odd/even assignment now derives from credentials; build/runtime and restart recovery tests pending. |
+| Participant credentials | Verified for valid credentials | Parser/allocation tests pass; owner confirms valid credentials.json loads in the application. Invalid/missing-file handling and packaged-release path still need verification. |
+| Embedded questionnaires | Implemented — unverified | Active SFML forms for condition A/B and final comparison; local draft persistence exists; build and interactive checks pending. |
+| Final comparison questionnaire | Implemented — unverified | Active comparison form opens after condition B; its answers are bundled into Pxx-S2 by the new adapter. |
+| Participant response persistence | Partially implemented | Per-questionnaire JSON drafts are atomically saved under user data; restart restoration and full-session recovery remain. |
+| Submission queue | Connected in source — unverified | Completed forms are adapted and passed to SubmissionManager: Pxx-S1 after A; Pxx-S2 after B plus comparison. Build and live-client tests pending. |
+| Startup retry | Implemented in source | Participant startup calls uploadPendingSubmissions(). |
+| Upload configuration | Incomplete | Data/Study/upload-config.json still contains a placeholder endpoint; protected Preview is not a participant-accessible endpoint. |
+| Backend authentication | Implemented in web test branch | HMAC-SHA256 digest map and bearer token validation exist; production deployment is unverified. |
+| Backend questionnaire validation | Incomplete | API validates metadata/assignment but accepts arbitrary answer properties; strict version/question/type/range validation remains. |
+| Google Drive storage | Implemented in source, unverified live | OAuth/Drive code exists; no live credentials/deployment test performed. |
+| Packaging | Unverified | Participant uploader expects bundled Python runtime; assets/configuration/credentials need packaging checks. |
+| Ethics and study readiness | Not complete | Approval, final questionnaire, and pilot remain prerequisites. |
+
+## 5. Milestone tracker
+
+### M0 — Documentation and shared project context
+
+**Status: completed and verified on the target branch (documentation only).**
+
+Goal: establish one consistent source of truth before implementation resumes.
+
+- [x] Record current source-level implementation status.
+- [x] Record intended participant workflow and component responsibilities.
+- [x] Record A/B counterbalancing and data-handling constraints.
+- [x] Separate current implementation from intended architecture.
+- [x] Add milestone tracker and link it from README/context/roadmap.
+- [x] Verify the documentation updates are visible on the target branch.
+
+Completion evidence (all files re-fetched successfully from the target branch after writing):
+- README.md: b607938e2087a9cca93fc32f2818e89960c482ee
+- Docs/project-context.md: 66c2a3c76a5b0947f5a3b3bd463c0ea66fdf685c
+- Docs/07-implementation-status-and-roadmap.md: 8cc1db3b37afe48d3e040d78c2c3e2458427adb4
+- Docs/21-participant-study-milestones.md: 84feb1333516dba21bf154b6ee18b7eaca064430
+
+The re-fetch confirms the files are present on deployment/participant-client. The milestone file was then updated to record this verification. No application build or runtime test is implied by M0.
+
+### Build target clarification
+
+The project has one participant application executable:
+- CMake target: `IS-2`
+- Output filename: `AnimalAgent`
+
+These are the target name and produced executable filename for the **same application**, not two different participant builds. Free Roam and Research Session are runtime menu choices within that executable.
+
+The additional `participant_config_test` target is a developer test executable, not a second participant application. When `ANIMAL_AGENT_BUILD_RESEARCH_TESTS=ON`, CMake also defines other validation/test targets (including `backyard_environment_test`, `paired_agent_scenarios_test`, and `tokenizer_probe`); these do not create alternative participant modes or release applications. The normal participant build is `cmake --build build --target IS-2`.
+
+### M1 — Complete local participant identity and questionnaire workflow
+
+**Status: M1.1 credentials parsing, build, focused test, and valid-file loading verified; restart recovery and invalid-file UI handling remain.**
+
+Goal: a participant can complete the full research sequence offline, with the correct assigned identity and all questionnaire answers saved locally. No backend deployment is required to pass M1.
+
+#### M1.1 — Participant configuration and deterministic assignment
+
+- [x] Define and document the credentials JSON schema: participant_number (integer 1–9999), token (non-empty string).
+- [x] Load credentials from appRoot/credentials.json, beside AnimalAgent in the root of the extracted application directory.
+- [x] Validate participant number range and non-empty token; malformed/missing credentials prevent entry into Research Session and report an error to stderr.
+- [x] Stop using the local incrementing counter for participant allocation; the study counter file read/write was removed.
+- [x] Derive A/B mapping from participant number: odd = baseline first; even = proposed first.
+- [ ] Keep the participant number and run/session identifier stable through both conditions and restart recovery.
+- [x] Keep the token out of logs, manifests, source control, and the common package; it is held only in the loaded ParticipantConfig for now.
+
+**Source changes and verification:**
+- Components/Study/participant-config.h/.cpp — credentials parsing, validation, participant-code formatting, odd/even allocation.
+- Components/Simulation/companion-ui.h/.cpp — receive ParticipantConfig and initialise participant identity/condition mapping from it; remove machine-local counter use.
+- main.c++ — load appRoot/credentials.json only after Research Session is selected; on failure report and return to menu so Free Roam remains available.
+- tests/participant_config_test.cpp and CMakeLists.txt — focused parser/allocation test target.
+
+**Verification reported by the project owner (4 November 2026):**
+- [x] Configured and built the participant executable target and the focused test target successfully with `cmake --build build --target participant_config_test IS-2`.
+- [x] Ran `ctest --test-dir build -R participant_config_test --output-on-failure`; the test passed after correcting the test expectation for even participant 100.
+- [x] Confirmed by the project owner that credentials.json loads successfully in the application.
+- [ ] Manually verify missing and malformed credentials: Research Session must not start, while Free Roam remains available. The current error is reported through stderr; a participant-visible in-app error message is still desirable.
+- [ ] Verify that the extracted release layout resolves appRoot correctly on each supported platform.
+
+The initial CTest run failed because the test incorrectly expected participant 100 (even) to use baseline as A. The implementation's modulo-2 allocation was correct; the assertion was corrected in commit 3f09f40. The subsequent build and CTest run passed as reported by the project owner.
+
+**Acceptance criteria**
+- Participant 1 loads baseline as A and proposed as B (focused test passed).
+- Participant 2 loads proposed as A and baseline as B (focused test passed).
+- Invalid/missing credentials prevent entry into Research Session but do not prevent Free Roam (source path implemented; negative-path runtime test still pending).
+- Restarting the same participant does not allocate a new ID or reverse the condition order (the ID comes from credentials, but stable run/session recovery is not implemented).
+
+#### M1.2 — Questionnaire content and data contract
+
+**Status: in progress — generic response model and schema drafted; approved question content remains outstanding.**
+
+- [ ] Obtain the final approved per-condition questionnaire items and response scales.
+- [ ] Obtain the final approved A/B comparison items.
+- [ ] Define the final required/optional status and allowed values for each approved item.
+- [x] Define a typed response model and JSON representation in StudySessionData (generic model; no research prompts or scales invented).
+- [x] Adopt D-01: comparison answers are stored as a separate comparison_questionnaire object in Pxx-S2; Pxx-S1 contains null.
+- [x] Adopt D-02 as the implementation default: upload questionnaire answers and required metadata only.
+- [x] Add a versioned submission JSON Schema and focused C++ validation test target.
+- [ ] Confirm the actual questionnaire version and question IDs once the approved instrument is supplied.
+- [ ] Align and strictly validate the same contract in IS-proj-web before any live submissions.
+
+**Current response contract (schema version 1):**
+- Top-level metadata: schema_version, submission_id (Pxx-S1 or Pxx-S2), participant_number, session_index, condition (A/B), and questionnaire_version.
+- responses.condition_questionnaire.answers: array of {question_id, answer_type, value} records for the condition just completed.
+- responses.comparison_questionnaire: null for session 1; an answer object for session 2.
+- Supported generic answer types: likert, integer, number, single_choice, multiple_choice, text, and boolean.
+- Each question definition provides a stable ID, type, required flag, optional numeric bounds, allowed options, and text length limit.
+- Validation rejects unknown/duplicate answer IDs, missing required answers, type mismatches, out-of-range numbers, invalid choices, duplicate multi-select options, oversized text, wrong A/B assignment, version mismatch, and comparison answers in the wrong session.
+- No question wording, rating scale, or research item has been assumed. The current test question IDs are explicitly synthetic fixtures.
+
+**Source changes added (not yet built or executed):**
+- Components/Study/study-session-data.h/.cpp — typed answer model, session metadata, validation, submission ID and JSON serialization.
+- Data/Study/questionnaire-submission.schema.json — JSON Schema for the submission envelope and answer types.
+- tests/study_session_data_test.cpp — synthetic valid/invalid response fixtures.
+- CMakeLists.txt — adds study-session-data.cpp to IS-2 and registers study_session_data_test under ANIMAL_AGENT_BUILD_RESEARCH_TESTS.
+
+**Acceptance criteria**
+- Every approved question has a stable key, type, prompt, allowed answer range/options, and required/optional rule (blocked on approved content).
+- Invalid or missing required answers cannot be marked complete (generic validator implemented; tests pending).
+- The payload records questionnaire version and separates condition and comparison responses (source implemented; tests pending).
+- The UI does not expose internal condition identity (UI integration is later in M1.3).
+
+#### M1.3 — Embedded questionnaire UI
+
+**Status: source-integrated — unverified; StudyController separation remains incomplete.**
+
+- [x] Replace external browser form launch with an SFML questionnaire screen (active UI is in Components/Questionnaire/).
+- [x] Support paginated question groups with progress indication.
+- [x] Implement Likert, choice, 1–5 scale, and optional text controls with selected-state feedback (active shortened instrument; not yet approved).
+- [x] Validate required responses before allowing completion.
+- [x] Add condition A, condition B, and final comparison stages in the guided study flow.
+- [x] Use the same per-condition questionnaire definition after both conditions.
+- [ ] Move study orchestration/data ownership behind a StudyController; currently CompanionUI receives the structured result and handles draft/queue integration.
+
+**Acceptance criteria**
+- The entire study can be completed without opening a browser.
+- A participant cannot accidentally skip a required response.
+- The comparison stage appears only after both condition questionnaires.
+- Closing or withdrawing before completion does not create a falsely complete submission.
+
+#### M1.4 — Study data ownership, local persistence, and recovery
+
+**Status: partially implemented — unverified; automatic restoration and a single StudySessionData owner remain outstanding.**
+
+- [ ] Introduce StudySessionData as the owner of the active questionnaire UI's participant metadata and responses (the generic typed model exists, but active forms currently produce their own JSON result).
+- [x] Persist an in-progress/completed questionnaire draft atomically after answer and navigation changes (source integrated; build/runtime check pending).
+- [x] Keep questionnaire drafts under the OS user-data `study-linkage` directory, not the repository working tree.
+- [ ] Define safe resume behaviour after an application crash/restart.
+- [x] Keep uploaded questionnaire answers separate from simulation memory, affect state, Q-tables, and interaction diagnostics.
+- [ ] Define deletion/retention behaviour for incomplete or withdrawn sessions in line with the approved protocol.
+
+**Acceptance criteria**
+- Completing condition A and restarting does not lose A responses or reassign the participant.
+- A partial questionnaire is not submitted as a complete response.
+- A completed local dataset can be parsed and validated independently of SFML.
+- Writes are atomic or recoverable; a truncated JSON file does not silently appear complete.
+
+#### M1.5 — Offline milestone verification
+
+- [x] Add focused tests for credentials parsing and odd/even assignment (build and CTest passed on the project owner's local checkout).
+- [x] Add focused source tests for questionnaire content and submission adapter mapping/context/serialisation (build and CTest execution on the current revision remain pending).
+- [ ] Add tests for partial save/reload and completed-session state.
+- [x] Build the participant executable (project owner reports successful build of target IS-2).
+- [ ] Manually complete a full offline session using test credentials and inspect the saved JSON.
+- [ ] Confirm no external form/browser is opened.
+
+**M1 exit gate:** all M1 acceptance criteria pass using synthetic/test credentials and no live participant data.
+
+### M2 — Connect local responses to the authenticated web backend
+
+**Goal:** a completed local questionnaire dataset is securely queued and delivered to the canonical backend without data loss.
+
+- [ ] Confirm the backend branch and promote/review its implementation before production deployment. Current implementation is in IS-proj-web/test; its README says it is not yet the production deployment target.
+- [ ] Configure and verify Vercel environment variables: Google OAuth values, Drive folder ID, HMAC SEED, and PARTICIPANT_TOKENS digest map.
+- [ ] Generate participant tokens privately; distribute only each participant's own token.
+- [ ] Configure the real endpoint in Data/Study/upload-config.json.
+- [x] Connect questionnaire completion to SubmissionManager::queueSubmission() (source implemented; build/runtime verification pending).
+- [x] Queue session 1 after condition A questionnaire completion (source implemented; upload endpoint remains unconfigured).
+- [x] Queue session 2 after condition B and final comparison completion (source implemented; upload endpoint remains unconfigured).
+- [x] Preserve pending JSON on upload failure using the existing SubmissionManager queue (source path connected; failure simulation pending).
+- [x] Retry pending submissions on startup; log server-acknowledged versus locally pending status (source implemented; runtime verification pending).
+- [x] Keep token out of the HTTP JSON body; send it only as bearer authentication (existing uploader removes `_upload_token` before POST).
+- [x] Restrict Linux pending-file permissions to owner read/write (0600) before publishing the queue file; uploader removes the token before POST and does not log it. Windows ACL/package verification remains.
+- [ ] Add strict backend validation for questionnaire keys, types, ranges, required fields, questionnaire version, and maximum payload size.
+- [ ] Test invalid token, wrong A/B mapping, malformed payload, server unavailable, lost acknowledgement, and ordinary duplicate retry.
+
+**Acceptance criteria**
+- Valid session 1 and session 2 payloads are accepted for both odd/even assignment.
+- Invalid tokens and malformed questionnaire payloads are rejected.
+- A failed upload remains locally queued and succeeds on a later retry.
+- A successful acknowledgement removes or marks the pending item as delivered.
+- Repeating the same submission ID does not create an ordinary duplicate Drive record.
+- UI distinguishes local queueing from server acknowledgement.
+
+**Known backend limitation:** Drive lookup-before-create is not atomic; simultaneous duplicate requests may race. This is acceptable only as a documented pilot-scale limitation unless strict uniqueness is required.
+
+### M3 — Packaging and end-to-end technical pilot
+
+**Goal:** the packaged participant application works on a clean supported machine and the entire submission path is verified.
+
+- [ ] Verify Linux package layout: executable, SFML runtime libraries, assets, fonts, uploader, Python runtime, and configuration.
+- [ ] Verify Windows package layout and process invocation.
+- [ ] Confirm credentials are installed separately per participant and are not included in the common ZIP.
+- [ ] Test participant 1 (baseline → proposed) from launch through server acknowledgement.
+- [ ] Test participant 2 (proposed → baseline) from launch through server acknowledgement.
+- [ ] Test app restart during each study phase and verify recovery behaviour.
+- [ ] Test offline completion, queued upload, and later retry.
+- [ ] Test duplicate retry and server rejection.
+- [ ] Verify stored Drive JSON contains only the approved response schema and metadata.
+- [ ] Verify condition mapping can be decoded for analysis without revealing it in the participant UI.
+- [ ] Record exact tested OS, build revision, package contents, endpoint revision, and test results.
+
+**M3 exit gate:** repeatable technical pilot on each supported OS, with no real participant recruitment implied.
+
+### M4 — Research protocol readiness and data collection gate
+
+**Goal:** ensure the experiment is ethically approved, interpretable, and ready for controlled participant use.
+
+- [ ] Define perceived believability and justify the questionnaire items/scales with relevant literature.
+- [ ] Confirm behavioural consistency/adaptability measures are operationally defined if retained as outcomes.
+- [ ] Obtain supervisor/institutional ethics approval and approved consent materials.
+- [ ] Pilot the wording, timing, scenario equivalence, and participant burden.
+- [ ] Verify both conditions receive equivalent instructions and interaction opportunities.
+- [ ] Freeze software revision, policies, scenarios, questionnaire version, and backend schema before recruitment.
+- [ ] Define anonymisation, access control, retention, deletion, and analysis procedures.
+- [ ] Confirm no unapproved telemetry or sensitive data is collected.
+- [ ] Run a small approved pilot and review missing data / failure cases before the main study.
+
+**M4 exit gate:** explicit supervisor/institutional approval and a signed-off pilot protocol. Software readiness alone is not ethics approval.
+
+## 6. Data and API contract notes
+
+### 6.1 Current backend metadata contract
+
+The current IS-proj-web/test API expects:
+
+- schema_version: 1
+- submission_id: "P{participant}-S{session}"
+- participant_number: 1..9999
+- session_index: 1 | 2
+- condition: "A" | "B"
+- Idempotency-Key header exactly matching submission_id
+- Authorization: Bearer <participant-token>
+
+The backend validates that odd participant numbers have session 1 = A and session 2 = B, while even numbers have session 1 = B and session 2 = A. The current server does not yet validate the questionnaire response fields beyond the metadata; that must be tightened in M2.
+
+### 6.2 Questionnaire submission schema version 1
+
+The implemented client-side contract is described by Data/Study/questionnaire-submission.schema.json. The C++ representation is StudySessionData in Components/Study/study-session-data.h/.cpp. This is a generic envelope; the approved questionnaire items and scales are not yet populated.
+
+~~~json
+{
+  "schema_version": 1,
+  "submission_id": "P03-S1",
+  "participant_number": 3,
+  "session_index": 1,
+  "condition": "A",
+  "questionnaire_version": "approved-version-to-be-assigned",
+  "responses": {
+    "condition_questionnaire": {
+      "answers": [
+        {
+          "question_id": "synthetic_example_item",
+          "answer_type": "likert",
+          "value": 4
+        }
+      ]
+    },
+    "comparison_questionnaire": null
+  }
+}
+~~~
+
+Session 2 carries the condition-B answers and a separate comparison_questionnaire object containing its own answers array. The answer types supported by the generic model are likert, integer, number, single_choice, multiple_choice, text, and boolean. Each item is defined separately with its stable ID, type, required flag, numeric bounds/options as applicable, and text length limit.
+
+The example ID above is illustrative only and is not a real questionnaire item. The approved question IDs, wording, scale endpoints, options, required flags, and questionnaire version must come from the supervisor-approved instrument. The C++ model and schema do not establish the validity of the research instrument. The web API still needs matching strict validation in M2.
+
+### 6.3 Credential handling
+
+Proposed participant-local file:
+
+~~~json
+{
+  "participant_number": 3,
+  "token": "participant-private-token"
+}
+~~~
+
+This is a format illustration only. Real credentials must be generated by the backend token-generation process, distributed privately, inserted as credentials.json beside AnimalAgent in each participant's extracted application directory, and excluded from Git and the common application ZIP.
+
+## 7. Verification and decision log
+
+### Verification log
+
+| Date | Revision | Check | Result | Notes |
+|---|---|---|---|---|
+| 2026-11-04 | deployment/participant-client (source inspected; exact HEAD not recorded here) | Static source inspection of startup, menu, study flow, persistence, uploader, and config | Findings recorded; not a runtime test | No build, deployment, OAuth/Drive, or end-to-end test was run during this documentation update. |
+| 2026-11-04 | deployment/participant-client (M1.1 source increment) | Static inspection of credentials parser, startup wiring, condition assignment, CMake target, and test source | Source changes present; build/test not run | Credentials loaded from appRoot/credentials.json; local counter removed; stderr error path preserves Free Roam. Participant-visible error UI and restart recovery remain outstanding. |
+| 2026-11-04 | deployment/participant-client (M1.1 verification update) | Project-owner local build, CTest, and valid credentials loading check | Build targets IS-2 and participant_config_test succeeded; participant_config_test passed; valid credentials loading is confirmed by the project owner | Negative-path UI/runtime handling, release-layout verification, and restart recovery remain unverified. |\n| 2026-11-04 | deployment/participant-client (M1.2 source increment) | Static review of StudySessionData, JSON Schema, CMake registration, and synthetic test source | Source added; build and CTest not yet run | Typed answer model, session metadata/A-B validation, schema v1, and comparison-in-session-2 contract added. Approved question content and backend validation remain outstanding. |
+
+Add one row per meaningful verification. Include command, environment, and exact revision wherever possible.
+
+### Decision log
+
+| Date | Decision | Rationale / effect |
+|---|---|---|
+| 2026-11-04 | One participant executable with menu-selected Free Roam and Research Session | Keeps participant distribution simple; mode selection is not a separate build target. |
+| 2026-11-04 | Participant credentials are placed at appRoot/credentials.json beside AnimalAgent | Matches the participant distribution workflow: the assigned file is inserted into each extracted application directory. |
+| 2026-11-04 | Use assigned participant ID, not a per-machine counter | Makes counterbalancing stable across machines and reinstalls. |
+| 2026-11-04 | Keep uploads questionnaire-only by default | Matches the current backend README and minimises unnecessary research data collection. |
+| 2026-11-04 | Keep submission manager independent of SFML | Separates persistence/delivery from UI and improves offline recovery/testing. |
+| 2026-11-04 | Treat embedded questionnaire and final comparison as required study-flow work | External browser launch cannot verify submission and breaks the intended single-app experience. |\n| 2026-11-04 | Store the final comparison as comparison_questionnaire in Pxx-S2 | Preserves the existing two-session API and submission ID pattern; session 1 has no comparison object. |\n| 2026-11-04 | Upload questionnaire answers and required metadata only | Excludes raw interaction, memory/affect traces, Q-table data, and diagnostics unless separately approved. |
+
+## 8. Next implementation task
+
+First, build and run the new M1.2 test target on the current checkout:
+
+~~~sh
+cmake -S . -B build -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=ON
+cmake --build build --target study_session_data_test IS-2
+ctest --test-dir build -R study_session_data_test --output-on-failure
+~~~
+
+Resolve any compile/test issues before marking the generic response contract verified. Then obtain the approved per-condition and comparison questionnaire content, including stable item IDs, exact wording, response scales/options, required/optional status, and version. Populate the generic question definitions from that source rather than inventing items. Keep final styling deferred until the project owner supplies the template.
+
+M1.1 still has separate follow-up work for missing/malformed credentials feedback and restart/session recovery. Do not change the agent's memory/affect model, Q-learning policy, scenario design, or visual theme as part of M1.2.
+
+
+### M1.2 implementation update — 4 November 2026
+
+The questionnaire source has now been transcribed into `Components/Study/questionnaire-definition.h/.cpp` as `companion-believability-v1`. It defines 26 per-condition items and 8 final comparison items, including question IDs, prompts, types, required flags, options, numeric bounds, text limits, and Likert endpoint labels. The CMake application and focused test targets include the definition; tests now check its item counts and required metadata. Section 2 demographic/context questions are intentionally excluded. Consent remains separate from questionnaire responses, and participant/session metadata is populated by the application.
+
+The Google Forms configuration is legacy and is not part of the new embedded workflow. The current implementation only defines the content/data model; it does not yet render an SFML questionnaire, persist completed responses, or connect submission. No local build or test has been run against these latest commits, so this remains implemented — unverified.
+
+A generic questionnaire response contract has been added to the participant-client branch. It is deliberately independent of the future visual template. The data model supports typed answers and separates each condition's questionnaire from the final comparison questionnaire. The comparison is stored in Pxx-S2 under a distinct object to preserve the backend's existing two-session ID pattern. The project owner has not yet supplied the approved question content, so no real prompts or rating scales are included.
+
+The new source and test target have been added to CMake, but the project owner has not yet built or run them. Do not mark M1.2 verified until the new target and tests pass on the current branch revision. The web API still accepts arbitrary response fields; strict server-side validation and deployment alignment are M2 tasks.
+
+### Embedded questionnaire integration update — 5 November 2026
+
+The supplied `questionnaire-UI-changes/files (2)/` implementation has been integrated under `Components/Questionnaire/`:
+- `questionnaire.h/.cpp` provide the reusable paginated SFML view, including Likert rows, choices, 1–5 scales, free text, scrolling, required-answer checks, timing, shuffled item order, reverse-scoring metadata, and structured JSON output.
+- `questionnaire_content.cpp` defines the per-condition rating and final comparison forms. The demographic/familiarity page remains omitted, consistent with the current protocol decision. Technical-issue details and the comparison-difference prompt are conditionally displayed.
+- `CompanionUI` now opens the in-app rating form after each condition, saves separate `rating-A` and `rating-B` JSON files, opens the final comparison after condition B, and saves that result separately. It renders within the existing CompanionUI window; the questionnaire itself does not create another window.
+- `tests/questionnaire_content_test.cpp` and the `questionnaire_content_test` CMake target check item counts, stable IDs, attention-check metadata, reverse scoring, and conditional follow-up definitions.
+
+Verification status: source integration and CMake registration are committed, but no local compile, CTest run, or interactive SFML test has yet been performed against this revision. The new JSON result files are currently saved locally only. They are not yet transformed into the existing `StudySessionData` submission schema or passed to `SubmissionManager`; backend upload must not be described as integrated. Consent remains the existing separate gate, and the placeholder consent copy in the unused content definition is not approved for recruitment.
+
+### Required local verification after questionnaire integration
+
+Run from the repository root on the latest `deployment/participant-client` checkout:
+
+~~~sh
+git pull origin deployment/participant-client
+cmake -S . -B build -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=ON
+cmake --build build --target questionnaire_content_test IS-2
+ctest --test-dir build -R questionnaire_content_test --output-on-failure
+~~~
+
+Then run the participant app and manually verify: condition A rating opens after the guided/free phase; the 21 Likert items paginate and preserve answers when navigating back; text fields accept typing and backspace/newlines; technical details appear only after selecting Yes; rating A saves under a distinct JSON filename; condition B follows the rating-A completion; the final comparison appears after rating B; the comparison detail appears only for Yes/Not sure; and the final comparison JSON saves separately. Inspect the saved files to confirm participant/session/condition context, answer values, item IDs, attention-check metadata, and no raw interaction/memory/affect traces. The build and test commands have not been run by the assistant in this environment.
+
+### Questionnaire usability and responsive-layout revision — 5 November 2026
+
+Following the project owner's runtime feedback, the embedded questionnaire has been shortened and the shared application layout made aspect-preserving when resized.
+
+**Questionnaire content**
+- Each condition rating (A and B) now contains 10 questions: 8 Likert statements (including the attention check), 1 overall believability scale, and 1 optional combined feedback/technical-issue text prompt.
+- The final comparison contains 7 questions, including consistency, adaptability, believability, confidence, the neutral blinding check, and optional follow-up/comments.
+- Rating items are grouped into two pages of four Likert statements plus a third two-item overall/feedback page. Comparison uses two pages of four and three items.
+- This is a shortened implementation instrument, not a validated scale. The omitted source-template items should be retained in version history/analysis notes; approval is still required before recruitment.
+
+**Responsive layout**
+- `Components/Simulation/ui-layout.h` supplies a shared 1280x900 logical design view with uniform scaling and centered letterboxing.
+- The participant menu and all CompanionUI screens apply this view. The questionnaire's clipped content panel derives its viewport from the same logical design space, and mouse coordinates are mapped through the active view.
+- This preserves the intended proportions instead of independently stretching or shrinking the UI along each axis. Very different window aspect ratios may show letterbox margins by design.
+
+**Durable draft persistence**
+- The questionnaire now writes an `in_progress` JSON snapshot immediately when opened and after answer/text/navigation input, using a temporary file followed by rename.
+- Submitting updates that same per-form file to `completion_status: completed`; closing the application retains the latest draft.
+- The JSON includes page progress, timestamps, duration, participant/session/condition/run metadata, and response values.
+- Participant build passes `userDataRoot/study-linkage` as the output directory. On Linux the default is `$XDG_DATA_HOME/animal-agent/study-linkage` when XDG_DATA_HOME is set, otherwise `~/.local/share/animal-agent/study-linkage`. It is not saved inside the Git checkout. Draft recovery/loading into a later app launch is not implemented; the JSON remains available for researcher recovery.
+
+**Verification status:** source and focused tests have been updated, but this revision has not been compiled or interactively tested by the assistant. The project owner should verify resize behaviour at the default, wide, narrow, and portrait sizes; confirm click hitboxes; terminate during a partially answered form and inspect the JSON; then submit each form and confirm its completion status. SubmissionManager/backend upload remains unconnected.
+
+**Versioning clarification:** the earlier `Components/Study/questionnaire-definition.*` / `companion-believability-v1` 26-item transcription remains in the generic study data-model/test area. It is not the active embedded UI definition. The active participant-facing content is `Components/Questionnaire/questionnaire_content.cpp`, tagged in saved response context as `companion-believability-short-v2`. The shortened content is a deliberate pilot/usability revision and must be reviewed as a changed instrument before recruitment.
+
+
+### Questionnaire-to-backend submission integration — 5 November 2026
+
+**Status: implemented in source — unverified.** This is a source integration milestone, not a claim that a participant-device HTTP submission has succeeded.
+
+**Changes on `deployment/participant-client`:**
+- `Components/Study/questionnaire-submission.h/.cpp` converts the active SFML questionnaire result into the version-1 API envelope. It accepts only `completion_status: completed`, maps Likert / scale / choice / text values to the API answer types, strips presentation-only metadata, and normalises item IDs to lowercase for the drafted JSON Schema.
+- `Components/Simulation/companion-ui.h/.cpp` owns a SubmissionManager in Research Session and invokes it at questionnaire completion.
+- Condition A is queued as Pxx-S1 with a null comparison object immediately after rating A.
+- Condition B is retained in memory until the comparison questionnaire is complete; the B answers and comparison answers are then queued together as Pxx-S2, matching D-01.
+- Queueing occurs before upload. Linux pending records are mode 0600. The manager writes a token-free local receipt after acknowledgement, preventing a later run from silently reusing the same Pxx-S1/Pxx-S2 identifier. The Python uploader removes the token from the JSON body; bearer authentication and the matching Idempotency-Key are sent as headers.
+- Existing startup retry is retained. The participant UI displays whether a submission was acknowledged by the server or remains locally queued for retry.
+- Developer-only `--study` runs without assigned credentials remain local-only and do not claim to upload.
+- `tests/questionnaire_submission_test.cpp` and the `questionnaire_submission_test` CMake/CTest target cover answer-type mapping, session-one comparison null, session-two comparison inclusion, rejection of incomplete/unsupported results, and mismatched questionnaire context.
+
+**Verification and blockers:**
+- [ ] Configure/build `IS-2` and `questionnaire_submission_test` on the current revision.
+- [ ] Run `ctest --test-dir build -R questionnaire_submission_test --output-on-failure`.
+- [ ] Manually complete both questionnaires and comparison using synthetic credentials; inspect Pxx-S1/Pxx-S2 queue JSON.
+- [ ] Verify offline queue retention and successful startup retry.
+- [ ] Verify an actual participant-client HTTP POST reaches the backend and is stored in Drive.
+- [ ] Replace the placeholder endpoint only after an approved participant-accessible deployment is available.
+- [ ] Add strict backend validation for the active `companion-believability-short-v2` question IDs, answer types, required items, allowed values, and payload limits.
+
+**Important Preview limitation:** the nine API smoke tests were run through a local Node script that supplied Vercel's trusted OIDC deployment-protection header. The participant uploader sends only the participant Bearer token and Idempotency-Key; it does not possess or send the local Vercel OIDC token. Therefore, the currently protected Preview URL is not a suitable participant endpoint. Keep Deployment Protection enabled; use an appropriately accessible deployment for participant-client testing rather than embedding a bypass token in the application.
+
+**API contract alignment note:** the API smoke test proved metadata/authentication/Drive behaviour with a synthetic `responses` object, not strict validation of the active questionnaire. The server currently accepts arbitrary response fields. The client adapter emits `questionnaire_version` and `responses.condition_questionnaire.answers` / `comparison_questionnaire.answers`; server-side validation must be aligned before live data collection.
+
+**Verification log:** the project owner reports that the separate backend's nine smoke cases passed and that valid synthetic files were present in Drive without duplicates. This verifies the backend smoke-test path only; it does not verify this C++ participant integration or bypass the Preview protection limitation.
