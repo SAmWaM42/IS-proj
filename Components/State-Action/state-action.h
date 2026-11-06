@@ -59,6 +59,7 @@ struct state
     int signal_strength_bucket = 1;
     bool food_available = false;
     bool play_available = false;
+    int no_response_count = 0;
 
     std::size_t encode() const;
 };
