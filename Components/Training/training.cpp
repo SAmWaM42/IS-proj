@@ -775,6 +775,7 @@ namespace
                               const std::string &agentName,
                               int episodeIndex,
                               bool recordDetailedSteps,
+                              unsigned int transitionSeed,
                               float initialEnergy,
                               float initialStress,
                               float initialSatisfaction)
@@ -826,8 +827,9 @@ namespace
             // Same seed per episode/step gives both agents paired environmental noise,
             // independent of how many stochastic actions either policy selected.
             const float elapsedSeconds = step + 1 == observations.size() ? 0.0f : elapsedIntervals[step];
-            std::mt19937 transitionRng(static_cast<unsigned int>(episodeIndex + 1) * 7919u +
-                                       static_cast<unsigned int>(step) * 104729u);
+            std::mt19937 transitionRng(transitionSeed ^
+                (static_cast<unsigned int>(episodeIndex + 1) * 7919u) ^
+                (static_cast<unsigned int>(step) * 104729u));
             const EnvironmentStep transition =
                 applyEnvironmentAction(action, observation, environmentEnergy,
                                        environmentStress, userSatisfaction, transitionRng, elapsedSeconds);
@@ -1142,10 +1144,10 @@ bool runTrainingExperiment(const std::string &mode,
         const bool recordDetailedSteps = episode >= std::max(0, episodes - kDetailedStepLogEpisodes);
         const EpisodeMetrics baselineMetrics = runEpisode(
             baseline, observations, elapsedIntervals, learning, epsilon, baselineLog, "baseline", episode,
-            recordDetailedSteps, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction);
+            recordDetailedSteps, environmentSeed, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction);
         const EpisodeMetrics proposedMetrics = runEpisode(
             proposed, observations, elapsedIntervals, learning, epsilon, proposedLog, "proposed", episode,
-            recordDetailedSteps, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction);
+            recordDetailedSteps, environmentSeed, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction);
 
         baselineGlobalStates.insert(baselineMetrics.visited_states.begin(), baselineMetrics.visited_states.end());
         proposedGlobalStates.insert(proposedMetrics.visited_states.begin(), proposedMetrics.visited_states.end());
