@@ -23,8 +23,11 @@ def submission(participant=20, session=1):
         "questionnaire_version": "test-v1",
         "responses": {
             "condition_questionnaire": {"answers": [
-                {"question_id": "believability", "answer_type": "likert", "value": 4},
-                {"question_id": "comment", "answer_type": "text", "value": "private free text"}
+                {"question_id": "c1", "answer_type": "likert", "value": 4},
+                {"question_id": "c3", "answer_type": "likert", "value": 2},
+                {"question_id": "c21", "answer_type": "likert", "value": 4},
+                {"question_id": "summary_believability", "answer_type": "integer", "value": 4},
+                {"question_id": "session_feedback", "answer_type": "text", "value": "private free text"}
             ]},
             "comparison_questionnaire": None if session == 1 else {"answers": [
                 {"question_id": "preferred_agent", "answer_type": "single_choice", "value": "A"}
