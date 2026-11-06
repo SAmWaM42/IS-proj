@@ -92,8 +92,8 @@ def load_scoring_config(path: Path | None) -> dict[str, Any]:
         raise AnalysisError(f"Cannot read scoring config: {exc}") from None
     if not isinstance(supplied, dict):
         raise AnalysisError("Scoring config must be a JSON object.")
-    reverse = supplied.get("reverse_scored_question_ids", [])
-    scales = supplied.get("subscales", {})
+    reverse = supplied.get("reverse_scored_question_ids", config["reverse_scored_question_ids"])
+    scales = supplied.get("subscales", config["subscales"])
     if not isinstance(reverse, list) or not all(isinstance(x, str) for x in reverse):
         raise AnalysisError("reverse_scored_question_ids must be an array of strings.")
     if not isinstance(scales, dict):
