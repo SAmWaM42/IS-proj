@@ -205,3 +205,8 @@ This contract does not invent the research questions or rating scales. Synthetic
 ## Research data retrieval
 
 Questionnaire submissions can be downloaded from the configured Google Drive folder using the researcher-side local utility. See [Local Google Drive Study Data Retrieval](Docs/22-local-study-data-retrieval.md) and run `python3 scripts/download_study_submissions.py --dry-run` after configuring the researcher's Google OAuth environment variables. Downloaded participant data is stored outside the repository by default.
+
+
+## Questionnaire analysis
+
+After downloading questionnaire submissions, run the researcher-side descriptive analysis and visualisation tool. See [Questionnaire JSON Analysis and Visualisation](Docs/23-questionnaire-json-analysis.md). The tool analyses participant questionnaire responses only and keeps these outcomes separate from training and behavioural diagnostics.
