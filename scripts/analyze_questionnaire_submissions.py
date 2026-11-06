@@ -195,7 +195,7 @@ def validate_questionnaire(value: Any, label: str,
             valid = isinstance(answer_value, bool)
         if not valid:
             errors.append(f"{prefix}.value does not match {kind}")
-        if qid in ACTIVE_SCALE_IDS and kind in {"likert", "integer"}:
+        if isinstance(qid, str) and qid in ACTIVE_SCALE_IDS and kind in {"likert", "integer"}:
             if type(answer_value) is not int or not 1 <= answer_value <= 5:
                 errors.append(f"{prefix}.value must be within the active 1–5 scale")
     if required_ids:
