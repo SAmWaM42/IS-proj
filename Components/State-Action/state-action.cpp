@@ -1069,9 +1069,12 @@ bool testActionMaskUsesOnlyObservableAvailability() {
     foodState.food_available = true;
     state playState = ordinaryState;
     playState.play_available = true;
+    state delayedInsistState = ordinaryState;
+    delayedInsistState.no_response_count = 1;
     if (ordinaryState.encode() == foodState.encode() ||
         ordinaryState.encode() == playState.encode() ||
-        foodState.encode() == playState.encode()) {
+        foodState.encode() == playState.encode() ||
+        ordinaryState.encode() == delayedInsistState.encode()) {
         return false;
     }
 
