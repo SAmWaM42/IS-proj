@@ -1087,7 +1087,7 @@ bool runTrainingExperiment(const std::string &mode,
         {"requested_steps", steps},
         {"episode_length_range", {std::max(1, steps * 3 / 4), std::max(1, steps * 5 / 4)}},
         {"preserved_sequences", {"fetch retries", "three-step ignored request / no-response sequence"}},
-        {"ignored_request_contract", "task_status=1 and user_status=0; INSIST is action-valid during the no-response sequence"},
+        {"ignored_request_contract", "task_status=1 and user_status=0; INSIST becomes action-valid only after no_response_count reaches 2"},
         {"random_seed_recorded_per_episode", true}
     };
     summary["environment_repetition_constraint"] = {
