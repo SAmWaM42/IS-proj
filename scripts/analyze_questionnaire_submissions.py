@@ -498,7 +498,7 @@ def run(args: argparse.Namespace) -> int:
         "attention_check_failed_or_missing_submissions": len(records) - attention_passed_count,
         "complete_participant_pairs": len(complete_pairs),
         "attention_eligible_complete_pairs": attention_eligible_pairs,
-        "participants_missing_or_mismatched_sessions": pair_issues,
+        "participant_pair_quality_issues": pair_issues,
         "quality_checks": quality,
         "comparison_response_counts": comparison_rows,
         "scoring_config_used": str(args.scoring_config.resolve()) if args.scoring_config else None,
