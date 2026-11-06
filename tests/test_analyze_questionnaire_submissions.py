@@ -1,3 +1,4 @@
+import argparse
 import importlib.util
 import json
 import tempfile
@@ -72,15 +73,14 @@ class QuestionnaireAnalysisTests(unittest.TestCase):
             source.mkdir()
             (source / "P20-S1.json").write_text(json.dumps(submission(20, 1)), encoding="utf-8")
             (source / "P20-S2.json").write_text(json.dumps(submission(20, 2)), encoding="utf-8")
-            records, issues = MODULE.read_input_files(source)
-            self.assertEqual(len(records), 2)
-            self.assertTrue(all(row["status"] == "included" for row in issues))
-            scored = MODULE.numeric_answers(
-                records[0]["data"]["responses"]["condition_questionnaire"],
-                {"reverse_scored_question_ids": [], "subscales": {}}
-            )
-            self.assertEqual(scored, {"believability": 4.0})
-            self.assertNotIn("comment", scored)
+            args = argparse.Namespace(input_dir=source, out_dir=output, scoring_config=None)
+            self.assertEqual(MODULE.run(args), 0)
+            self.assertTrue((output / "analysis_report.json").is_file())
+            self.assertTrue((output / "questionnaire_condition_summary.csv").is_file())
+            self.assertTrue((output / "paired_question_differences.csv").is_file())
+            self.assertTrue((output / "comparison_response_counts.csv").is_file())
+            generated = "\\n".join(p.read_text(encoding="utf-8") for p in output.iterdir() if p.is_file())
+            self.assertNotIn("private free text", generated)
 
     def test_duplicate_participant_session_is_flagged(self):
         with tempfile.TemporaryDirectory() as tmp:
