@@ -154,14 +154,12 @@ namespace
                     blocks[index][0].user_status == 0;
                 if (!isIgnoredRequestBlock && !includeScenario(rng))
                     continue;
-                for (const auto &observation : blocks[index])
-                {
-                    schedule.push_back(observation);
-                    if (schedule.size() >= static_cast<std::size_t>(std::max(1, requestedSteps)))
-                        break;
-                }
-                if (schedule.size() >= static_cast<std::size_t>(std::max(1, requestedSteps)))
-                    break;
+                // Never truncate a multi-step block at the episode boundary:
+                // in particular, retain all three no-response counts.
+                if (schedule.size() + blocks[index].size() >
+                    static_cast<std::size_t>(std::max(1, requestedSteps)))
+                    continue;
+                schedule.insert(schedule.end(), blocks[index].begin(), blocks[index].end());
             }
         }
         return schedule;
