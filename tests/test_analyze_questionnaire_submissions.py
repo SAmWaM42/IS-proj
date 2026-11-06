@@ -64,7 +64,7 @@ class QuestionnaireAnalysisTests(unittest.TestCase):
     def test_rejects_duplicate_question_ids(self):
         value = submission(20, 1)
         value["responses"]["condition_questionnaire"]["answers"].append(
-            {"question_id": "believability", "answer_type": "likert", "value": 3}
+            {"question_id": "c1", "answer_type": "likert", "value": 3}
         )
         errors = MODULE.validate_submission(value, "P20-S1.json")
         self.assertTrue(any("duplicates question_id" in error for error in errors))
