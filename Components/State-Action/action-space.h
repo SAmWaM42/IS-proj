@@ -36,7 +36,10 @@ inline bool isActionValidForObservation(
         // disturbance is present: survival takes priority at this threshold.
         return observation.signal_strength < 0.80f || observation.energy <= 0.20f;
     if (action == "INSIST")
-        return observation.task_status == 1 && observation.user_status == 0;
+        // Insistence is only eligible after at least two consecutive
+        // no-response observations for the same pending task.
+        return observation.task_status == 1 && observation.user_status == 0 &&
+               observation.no_response_count >= 2;
     if (action == "APPROACH_FOLLOW")
         return observation.target_proximity > 0 && observation.target_proximity < 3 && observation.user_status != 2;
     if (action == "SNIFF")
