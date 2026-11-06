@@ -99,65 +99,153 @@ namespace
         std::map<std::string, int> action_counts;
         std::set<std::size_t> visited_states;
         std::map<std::string, int> state_action_visits;
+        std::set<std::string> valid_state_action_pairs_available;
         int q_table_supported_decisions = 0;
         int fallback_decisions = 0;
     };
 
-    EnvironmentObservation makeObservation(std::mt19937 &rng, int stepIndex)
+    // Scenario blocks preserve meaningful short sequences (fetch retries and
+    // ignored requests) while their order and inclusion vary between episodes.
+    std::vector<EnvironmentObservation> makeScenarioSchedule(std::mt19937 &rng,
+                                                              int requestedSteps)
     {
-        // Use a repeatable interaction pattern rather than unrelated random
-        // observations. Repeated contexts give the tabular policies enough
-        // visits to learn, while small controlled variations prevent a single
-        // exact observation from being the whole training set.
-        std::uniform_int_distribution<int> nearDist(0, 1);
         std::uniform_int_distribution<int> socialDist(0, 1);
-        EnvironmentObservation observation;
-        switch (stepIndex % 14)
+        std::uniform_int_distribution<int> nearDist(0, 1);
+        std::uniform_real_distribution<float> signalDist(0.38f, 0.96f);
+        std::bernoulli_distribution includeScenario(0.88);
+
+        const EnvironmentObservation ignoredRequest{1, 1, 0, 1, 0.82f};
+        std::vector<std::vector<EnvironmentObservation>> blocks = {
+            {{0, 1, socialDist(rng), 0, 0.45f}},
+            {{1, nearDist(rng), 1, 1, 0.82f},
+             {1, 1, 1, 1, 0.82f}},
+            {{2, 0, 0, 0, signalDist(rng)}},
+            {{2, 2, 0, 0, 0.18f}},
+            {{0, 0, 1, 0, 0.72f}},
+            {{1, 2, 1, 1, 0.56f},
+             {1, 2, 1, 1, 0.56f},
+             {1, 2, 1, 1, 0.56f}},
+            {{2, 0, 1, 0, 0.30f, true, false}},
+            {{0, 1, 1, 0, 0.70f, false, true}},
+            {{0, 1, 2, 0, 0.45f}},
+            // Three consecutive no-response observations let the agent
+            // encounter repeated behaviour while INSIST is action-valid.
+            {ignoredRequest, ignoredRequest, ignoredRequest},
+            {{1, 1, 1, 1, 0.56f, true, false}}
+        };
+
+        std::vector<EnvironmentObservation> schedule;
+        schedule.reserve(static_cast<std::size_t>(std::max(1, requestedSteps)));
+        while (schedule.size() < static_cast<std::size_t>(std::max(1, requestedSteps)))
         {
-        case 0: // User initiates a social interaction.
-            observation = {0, 1, socialDist(rng), 0, 0.45f};
-            break;
-        case 1: // Explicit fetch request with a nearby object.
-            observation = {1, nearDist(rng), 1, 1, 0.82f};
-            break;
-        case 2: // The nearby fetch request persists for a second decision.
-            observation = {1, 1, 1, 1, 0.82f};
-            break;
-        case 3: // A loud unexpected disturbance.
-            observation = {2, 0, 0, 0, 0.92f};
-            break;
-        case 4: // Quiet period with no task pending.
-            observation = {2, 2, 0, 0, 0.18f};
-            break;
-        case 5: // Positive social feedback / renewed contact.
-            observation = {0, 0, 1, 0, 0.72f};
-            break;
-        case 6: // Request where the target is too far away.
-            observation = {1, 2, 1, 1, 0.56f};
-            break;
-        case 7: // The far-fetch request persists for another decision.
-            observation = {1, 2, 1, 1, 0.56f};
-            break;
-        case 8: // A third decision permits retrying after a failed fetch.
-            observation = {1, 2, 1, 1, 0.56f};
-            break;
-        case 9: // Food is explicitly available.
-            observation = {2, 0, 1, 0, 0.30f, true, false};
-            break;
-        case 10: // The user explicitly invites play.
-            observation = {0, 1, 1, 0, 0.70f, false, true};
-            break;
-        case 11: // The user rejects an unwanted behaviour.
-            observation = {0, 1, 2, 0, 0.45f};
-            break;
-        case 12: // A task is pending but the user has not responded.
-            observation = {1, 1, 0, 1, 0.82f};
-            break;
-        default: // Fetch is requested during feeding time: the ball and food coexist.
-            observation = {1, 1, 1, 1, 0.56f, true, false};
-            break;
+            std::shuffle(blocks.begin(), blocks.end(), rng);
+            for (std::size_t index = 0; index < blocks.size(); ++index)
+            {
+                // Keep the ignored-request block in every cycle; other contexts
+                // may be omitted to vary scenario composition.
+                const bool isIgnoredRequestBlock = index < blocks.size() &&
+                    blocks[index].size() == 3 &&
+                    blocks[index][0].goal_state == 1 &&
+                    blocks[index][0].user_status == 0;
+                if (!isIgnoredRequestBlock && !includeScenario(rng))
+                    continue;
+                for (const auto &observation : blocks[index])
+                {
+                    schedule.push_back(observation);
+                    if (schedule.size() >= static_cast<std::size_t>(std::max(1, requestedSteps)))
+                        break;
+                }
+                if (schedule.size() >= static_cast<std::size_t>(std::max(1, requestedSteps)))
+                    break;
+            }
         }
-        return observation;
+        return schedule;
+    }
+
+    struct RepetitionTracker
+    {
+        std::string category;
+        int consecutive = 0;
+    };
+
+    std::string repetitionCategory(const std::string &action)
+    {
+        if (action == "FETCH" || action == "APPROACH_FOLLOW") return "task_attempt";
+        if (action == "INSIST") return "insistence";
+        if (action == "GREETING" || action == "NUZZLE" || action == "BARK" ||
+            action == "WHINE") return "social_bid";
+        if (action == "PLAY") return "play";
+        if (action == "EAT") return "feeding";
+        if (action == "SLEEP_LAY") return "rest";
+        return "exploration_or_avoidance";
+    }
+
+    float repetitionPenalty(const std::string &action,
+                            bool meaningfulResponse,
+                            RepetitionTracker &tracker,
+                            int &consecutiveCount)
+    {
+        if (meaningfulResponse)
+        {
+            tracker = {};
+            consecutiveCount = 0;
+            return 0.0f;
+        }
+        const std::string category = repetitionCategory(action);
+        if (tracker.category == category)
+            ++tracker.consecutive;
+        else
+        {
+            tracker.category = category;
+            tracker.consecutive = 1;
+        }
+        consecutiveCount = tracker.consecutive;
+        // First occurrence is unpenalised. Repetition then incurs a bounded
+        // diminishing-return cost shared by both agent conditions.
+        return std::clamp(0.04f * static_cast<float>(std::max(0, tracker.consecutive - 1)),
+                          0.0f, 0.20f);
+    }
+
+    bool testScenarioGenerationAndIgnoredRequest()
+    {
+        std::mt19937 firstRng(410u), repeatRng(410u), otherRng(411u);
+        const auto first = makeScenarioSchedule(firstRng, 40);
+        const auto repeated = makeScenarioSchedule(repeatRng, 40);
+        const auto other = makeScenarioSchedule(otherRng, 40);
+        if (first.size() != 40 || repeated.size() != 40 || other.size() != 40)
+            return false;
+        const auto key = [](const EnvironmentObservation &o) {
+            return std::to_string(o.goal_state) + "|" + std::to_string(o.target_proximity) +
+                "|" + std::to_string(o.user_status) + "|" + std::to_string(o.task_status) +
+                "|" + std::to_string(o.food_available) + "|" + std::to_string(o.play_available);
+        };
+        bool sameSeedMatches = true, differentSeedDiffers = false, ignoredRunFound = false;
+        for (std::size_t i = 0; i < first.size(); ++i) {
+            sameSeedMatches = sameSeedMatches && key(first[i]) == key(repeated[i]);
+            differentSeedDiffers = differentSeedDiffers || key(first[i]) != key(other[i]);
+            if (i + 2 < first.size() &&
+                first[i].goal_state == 1 && first[i].task_status == 1 && first[i].user_status == 0 &&
+                first[i+1].goal_state == 1 && first[i+1].task_status == 1 && first[i+1].user_status == 0 &&
+                first[i+2].goal_state == 1 && first[i+2].task_status == 1 && first[i+2].user_status == 0)
+                ignoredRunFound = true;
+        }
+        const EnvironmentObservation ignored{1, 1, 0, 1, 0.82f};
+        return sameSeedMatches && differentSeedDiffers && ignoredRunFound &&
+               isActionValidForObservation("INSIST", ignored);
+    }
+
+    bool testSharedRepetitionPenalty()
+    {
+        RepetitionTracker tracker;
+        int count = 0;
+        const float first = repetitionPenalty("FETCH", false, tracker, count);
+        const float second = repetitionPenalty("FETCH", false, tracker, count);
+        const float third = repetitionPenalty("APPROACH_FOLLOW", false, tracker, count);
+        const float reset = repetitionPenalty("BARK", true, tracker, count);
+        const float afterReset = repetitionPenalty("BARK", false, tracker, count);
+        return first == 0.0f && std::abs(second - 0.04f) < 1e-6f &&
+               std::abs(third - 0.08f) < 1e-6f && reset == 0.0f &&
+               afterReset == 0.0f && count == 1;
     }
 
     struct EnvironmentStep
@@ -696,6 +784,8 @@ namespace
         float environmentEnergy = 0.8f;
         float environmentStress = 0.2f;
         float userSatisfaction = 0.5f;
+        RepetitionTracker repetitionTracker;
+        int repetitionCount = 0;
         EnvironmentObservation currentObservation = observations.front();
         for (std::size_t step = 0; step < observations.size(); ++step)
         {
@@ -709,6 +799,9 @@ namespace
             const std::size_t stateKeyBeforeAction = agent.getCurrentState().encode();
             metrics.visited_states.insert(stateKeyBeforeAction);
             ++metrics.state_action_visits[std::to_string(stateKeyBeforeAction) + "|" + action];
+            for (const auto &validAction : validActionsForObservation(observation))
+                metrics.valid_state_action_pairs_available.insert(
+                    std::to_string(stateKeyBeforeAction) + "|" + validAction);
             bool hasValidStoredAction = false;
             bool qTableStatePresent = false;
             std::string contextualFallback;
@@ -740,7 +833,11 @@ namespace
             userSatisfaction = transition.user_satisfaction_after;
             const bool energyDepleted = transition.energy_after <= 0.0f;
             const bool terminal = step + 1 == observations.size() || energyDepleted;
-            const float transitionReward = energyDepleted ? -1.0f : transition.reward;
+            const bool meaningfulResponse = transition.completed || observation.user_status != 0;
+            const float boredomPenalty = repetitionPenalty(
+                action, meaningfulResponse, repetitionTracker, repetitionCount);
+            const float transitionReward = energyDepleted ? -1.0f :
+                std::clamp(transition.reward - boredomPenalty, -1.0f, 1.0f);
 
             EnvironmentObservation nextObservation = transition.next_observation;
             if (!terminal) {
@@ -826,6 +923,10 @@ namespace
             }
             row["environment_stress_after"] = transition.stress_after;
             row["user_satisfaction_after"] = transition.user_satisfaction_after;
+            row["repetition_category"] = repetitionCategory(action);
+            row["repetition_consecutive_count"] = repetitionCount;
+            row["boredom_penalty"] = boredomPenalty;
+            row["meaningful_environment_or_user_response"] = meaningfulResponse;
             row["action"] = action;
             row["encoded_state"] = stateKeyBeforeAction;
             row["q_table_state_present"] = qTableStatePresent;
@@ -859,6 +960,13 @@ namespace
         result["completed"] = metrics.completed;
         result["action_counts"] = metrics.action_counts;
         result["unique_states_visited"] = metrics.visited_states.size();
+        result["unique_state_action_pairs_visited"] = metrics.state_action_visits.size();
+        result["valid_state_action_pairs_available_on_encountered_states"] =
+            metrics.valid_state_action_pairs_available.size();
+        result["valid_state_action_pair_coverage_on_encountered_states"] =
+            metrics.valid_state_action_pairs_available.empty() ? 0.0 :
+            static_cast<double>(metrics.state_action_visits.size()) /
+                metrics.valid_state_action_pairs_available.size();
         result["state_action_visits"] = metrics.state_action_visits;
         result["q_table_supported_decisions"] = metrics.q_table_supported_decisions;
         result["fallback_decisions"] = metrics.fallback_decisions;
@@ -957,8 +1065,24 @@ bool runTrainingExperiment(const std::string &mode,
     summary["simulated_seconds_between_decisions_min"] = kMinSecondsPerTrainingStep;
     summary["simulated_seconds_between_decisions_max"] = kMaxSecondsPerTrainingStep;
     summary["temporal_model"] = "Each non-terminal decision uses a seeded elapsed-time interval sampled uniformly from 0.5 to 5 simulated seconds. Paired agents share intervals. Physical energy receives action effort costs and passive time-based drain (0.0025 per second normally; 0.0008 while resting). The shared energy value is observable to both agents and included in both state representations. Proposed-agent affect decays over the interval before the next state is built for Q-learning.";
-    summary["scenario_pattern"] = {"social", "fetch_near", "fetch_near_follow_up", "disturbance", "rest", "positive_social", "fetch_far", "fetch_far_follow_up", "fetch_far_retry", "food_offer", "play_invitation", "negative_feedback", "ignored_request", "fetch_at_feeding_time"};
-    summary["note"] = "Training uses repeated contextual scenarios, including fetch during feeding time. Rewards combine graded context fit, drive relief, successful task completion, effort, and satisfaction-weighted disappointment; non-compliance alone is not treated as automatically wrong. Stimulus alignment is a synthetic engineering diagnostic, not perceived believability.";
+    summary["scenario_generation"] = {
+        {"method", "seeded shuffled scenario blocks with probabilistic scenario inclusion"},
+        {"requested_steps", steps},
+        {"episode_length_range", {std::max(1, steps * 3 / 4), std::max(1, steps * 5 / 4)}},
+        {"preserved_sequences", {"fetch retries", "three-step ignored request / no-response sequence"}},
+        {"ignored_request_contract", "task_status=1 and user_status=0; INSIST is action-valid during the no-response sequence"},
+        {"random_seed_recorded_per_episode", true}
+    };
+    summary["environment_repetition_constraint"] = {
+        {"enabled", true},
+        {"scope", "shared training environment reward for both agents"},
+        {"category_window", "consecutive action categories within an episode"},
+        {"first_occurrence_penalty", 0.0},
+        {"increment_per_repeat", 0.04},
+        {"maximum_penalty", 0.20},
+        {"recovery", "meaningful user/environment response or change of action category"}
+    };
+    summary["note"] = "Training uses reproducibly shuffled and variably composed scenario blocks. Both agents receive the same schedule and seeded transition noise. Repeated action categories without a meaningful response incur a shared bounded environmental reward penalty. These synthetic rewards and coverage diagnostics are engineering measures, not perceived believability.";
 
     nlohmann::json baselineEpisodes = nlohmann::json::array();
     nlohmann::json proposedEpisodes = nlohmann::json::array();
@@ -968,20 +1092,23 @@ bool runTrainingExperiment(const std::string &mode,
     double proposedStepSum = 0.0;
     int baselineCompletions = 0;
     int proposedCompletions = 0;
+    std::set<std::size_t> baselineGlobalStates, proposedGlobalStates;
+    std::set<std::string> baselineGlobalVisitedPairs, proposedGlobalVisitedPairs;
+    std::set<std::string> baselineGlobalAvailablePairs, proposedGlobalAvailablePairs;
+    std::uniform_int_distribution<int> episodeLengthDist(
+        std::max(1, steps * 3 / 4), std::max(1, steps * 5 / 4));
 
     for (int episode = 0; episode < episodes; ++episode)
     {
-        std::vector<EnvironmentObservation> observations;
+        const int episodeSteps = episodeLengthDist(environmentRng);
+        std::vector<EnvironmentObservation> observations =
+            makeScenarioSchedule(environmentRng, episodeSteps);
         std::vector<float> elapsedIntervals;
-        observations.reserve(static_cast<std::size_t>(steps));
-        elapsedIntervals.reserve(static_cast<std::size_t>(steps));
+        elapsedIntervals.reserve(observations.size());
         std::uniform_real_distribution<float> elapsedDist(
             kMinSecondsPerTrainingStep, kMaxSecondsPerTrainingStep);
-        for (int step = 0; step < steps; ++step)
-        {
-            observations.push_back(makeObservation(environmentRng, step));
+        for (std::size_t step = 0; step < observations.size(); ++step)
             elapsedIntervals.push_back(elapsedDist(environmentRng));
-        }
 
         const float epsilon = trainingMode
                                   ? std::max(0.05f, 0.30f * (1.0f - static_cast<float>(episode) / static_cast<float>(episodes)))
@@ -996,6 +1123,15 @@ bool runTrainingExperiment(const std::string &mode,
             proposed, observations, elapsedIntervals, learning, epsilon, proposedLog, "proposed", episode,
             recordDetailedSteps);
 
+        baselineGlobalStates.insert(baselineMetrics.visited_states.begin(), baselineMetrics.visited_states.end());
+        proposedGlobalStates.insert(proposedMetrics.visited_states.begin(), proposedMetrics.visited_states.end());
+        for (const auto &entry : baselineMetrics.state_action_visits) baselineGlobalVisitedPairs.insert(entry.first);
+        for (const auto &entry : proposedMetrics.state_action_visits) proposedGlobalVisitedPairs.insert(entry.first);
+        baselineGlobalAvailablePairs.insert(baselineMetrics.valid_state_action_pairs_available.begin(),
+                                            baselineMetrics.valid_state_action_pairs_available.end());
+        proposedGlobalAvailablePairs.insert(proposedMetrics.valid_state_action_pairs_available.begin(),
+                                            proposedMetrics.valid_state_action_pairs_available.end());
+
         baselineRewardSum += baselineMetrics.total_reward;
         proposedRewardSum += proposedMetrics.total_reward;
         baselineStepSum += baselineMetrics.steps;
@@ -1005,9 +1141,13 @@ bool runTrainingExperiment(const std::string &mode,
 
         nlohmann::json baselineRow = metricsToJson(baselineMetrics);
         baselineRow["episode"] = episode;
+        baselineRow["scenario_seed"] = environmentSeed;
+        baselineRow["scenario_steps"] = observations.size();
         baselineEpisodes.push_back(baselineRow);
         nlohmann::json proposedRow = metricsToJson(proposedMetrics);
         proposedRow["episode"] = episode;
+        proposedRow["scenario_seed"] = environmentSeed;
+        proposedRow["scenario_steps"] = observations.size();
         proposedEpisodes.push_back(proposedRow);
     }
 
@@ -1077,6 +1217,24 @@ bool runTrainingExperiment(const std::string &mode,
     summary["stimulus_alignment_note"] =
         "Heuristic engineering diagnostic for broad stimulus/action compatibility only; not a validated animal-behaviour model or measure of perceived believability.";
 
+    summary["coverage"] = {
+        {"baseline", {
+            {"globally_unique_states_visited", baselineGlobalStates.size()},
+            {"globally_unique_state_action_pairs_visited", baselineGlobalVisitedPairs.size()},
+            {"valid_state_action_pairs_available_on_encountered_states", baselineGlobalAvailablePairs.size()},
+            {"valid_state_action_pair_coverage_on_encountered_states",
+                baselineGlobalAvailablePairs.empty() ? 0.0 :
+                static_cast<double>(baselineGlobalVisitedPairs.size()) / baselineGlobalAvailablePairs.size()}
+        }},
+        {"proposed", {
+            {"globally_unique_states_visited", proposedGlobalStates.size()},
+            {"globally_unique_state_action_pairs_visited", proposedGlobalVisitedPairs.size()},
+            {"valid_state_action_pairs_available_on_encountered_states", proposedGlobalAvailablePairs.size()},
+            {"valid_state_action_pair_coverage_on_encountered_states",
+                proposedGlobalAvailablePairs.empty() ? 0.0 :
+                static_cast<double>(proposedGlobalVisitedPairs.size()) / proposedGlobalAvailablePairs.size()}
+        }}
+    };
     summary["baseline"]["mean_total_reward_per_episode"] = baselineRewardSum / episodes;
     summary["baseline"]["mean_reward_per_step"] = baselineStepSum > 0.0 ? baselineRewardSum / baselineStepSum : 0.0;
     summary["baseline"]["mean_steps_per_episode"] = baselineStepSum / episodes;
@@ -1494,6 +1652,12 @@ bool runTemporalStimulusDiagnostics(const std::string& policyDirectory,
 
 bool runTrainingSelfTests()
 {
+    const bool scenarioGenerationPassed = testScenarioGenerationAndIgnoredRequest();
+    std::cout << "Seeded scenario randomisation and ignored-request/INSIST eligibility: "
+              << (scenarioGenerationPassed ? "PASS" : "FAIL") << '\\n';
+    const bool repetitionPenaltyPassed = testSharedRepetitionPenalty();
+    std::cout << "Shared bounded repetition/boredom reward penalty: "
+              << (repetitionPenaltyPassed ? "PASS" : "FAIL") << '\\n';
     const bool energyDrainPassed = testPassiveEnergyDrain();
     std::cout << "Shared passive energy drain across elapsed simulation time: "
               << (energyDrainPassed ? "PASS" : "FAIL") << '\n';
@@ -1514,7 +1678,8 @@ bool runTrainingSelfTests()
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    return energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
+    return scenarioGenerationPassed && repetitionPenaltyPassed &&
+           energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
            temporalDecayPassed && transitionsPassed && retryPassed &&
            taskPriorityPassed && completionContextPassed;
 }
