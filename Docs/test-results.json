@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-28T10:07:45Z",
+  "generated_at": "2026-11-06T09:57:51Z",
   "project": "IS-2",
   "status": "PASS",
   "summary": {
     "failed": 0,
-    "passed": 32,
-    "total": 32
+    "passed": 33,
+    "total": 33
   },
   "tests": [
     {
@@ -77,6 +77,12 @@
     {
       "category": "memory",
       "name": "User statements are stored as semantic memory",
+      "passed": true,
+      "status": "PASS"
+    },
+    {
+      "category": "study",
+      "name": "Study reset clears memory/affect without changing the Q-table",
       "passed": true,
       "status": "PASS"
     },
