@@ -1101,8 +1101,23 @@ bool runTrainingExperiment(const std::string &mode,
     for (int episode = 0; episode < episodes; ++episode)
     {
         const int episodeSteps = episodeLengthDist(environmentRng);
+        const unsigned int episodeScenarioSeed =
+            seed ^ (static_cast<unsigned int>(episode + 1) * 2654435761u);
+        std::mt19937 scenarioRng(episodeScenarioSeed);
         std::vector<EnvironmentObservation> observations =
-            makeScenarioSchedule(environmentRng, episodeSteps);
+            makeScenarioSchedule(scenarioRng, episodeSteps);
+        nlohmann::json scenarioComposition = nlohmann::json::array();
+        for (const auto &item : observations) {
+            scenarioComposition.push_back({
+                {"goal_state", item.goal_state},
+                {"target_proximity", item.target_proximity},
+                {"user_status", item.user_status},
+                {"task_status", item.task_status},
+                {"signal_strength", item.signal_strength},
+                {"food_available", item.food_available},
+                {"play_available", item.play_available}
+            });
+        }
         std::vector<float> elapsedIntervals;
         elapsedIntervals.reserve(observations.size());
         std::uniform_real_distribution<float> elapsedDist(
@@ -1141,13 +1156,15 @@ bool runTrainingExperiment(const std::string &mode,
 
         nlohmann::json baselineRow = metricsToJson(baselineMetrics);
         baselineRow["episode"] = episode;
-        baselineRow["scenario_seed"] = environmentSeed;
+        baselineRow["scenario_seed"] = episodeScenarioSeed;
         baselineRow["scenario_steps"] = observations.size();
+        baselineRow["scenario_composition"] = scenarioComposition;
         baselineEpisodes.push_back(baselineRow);
         nlohmann::json proposedRow = metricsToJson(proposedMetrics);
         proposedRow["episode"] = episode;
-        proposedRow["scenario_seed"] = environmentSeed;
+        proposedRow["scenario_seed"] = episodeScenarioSeed;
         proposedRow["scenario_steps"] = observations.size();
+        proposedRow["scenario_composition"] = scenarioComposition;
         proposedEpisodes.push_back(proposedRow);
     }
 
