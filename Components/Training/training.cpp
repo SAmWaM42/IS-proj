@@ -114,7 +114,12 @@ namespace
         std::uniform_real_distribution<float> signalDist(0.38f, 0.96f);
         std::bernoulli_distribution includeScenario(0.88);
 
-        const EnvironmentObservation ignoredRequest{1, 1, 0, 1, 0.82f};
+        EnvironmentObservation ignoredFirst{1, 1, 0, 1, 0.82f};
+        EnvironmentObservation ignoredSecond = ignoredFirst;
+        EnvironmentObservation ignoredThird = ignoredFirst;
+        ignoredFirst.no_response_count = 0;
+        ignoredSecond.no_response_count = 1;
+        ignoredThird.no_response_count = 2;
         std::vector<std::vector<EnvironmentObservation>> blocks = {
             {{0, 1, socialDist(rng), 0, 0.45f}},
             {{1, nearDist(rng), 1, 1, 0.82f},
@@ -130,7 +135,7 @@ namespace
             {{0, 1, 2, 0, 0.45f}},
             // Three consecutive no-response observations let the agent
             // encounter repeated behaviour while INSIST is action-valid.
-            {ignoredRequest, ignoredRequest, ignoredRequest},
+            {ignoredFirst, ignoredSecond, ignoredThird},
             {{1, 1, 1, 1, 0.56f, true, false}}
         };
 
@@ -217,7 +222,8 @@ namespace
         const auto key = [](const EnvironmentObservation &o) {
             return std::to_string(o.goal_state) + "|" + std::to_string(o.target_proximity) +
                 "|" + std::to_string(o.user_status) + "|" + std::to_string(o.task_status) +
-                "|" + std::to_string(o.food_available) + "|" + std::to_string(o.play_available);
+                "|" + std::to_string(o.food_available) + "|" + std::to_string(o.play_available) +
+                "|" + std::to_string(o.no_response_count);
         };
         bool sameSeedMatches = true, differentSeedDiffers = false, ignoredRunFound = false;
         for (std::size_t i = 0; i < first.size(); ++i) {
@@ -225,13 +231,18 @@ namespace
             differentSeedDiffers = differentSeedDiffers || key(first[i]) != key(other[i]);
             if (i + 2 < first.size() &&
                 first[i].goal_state == 1 && first[i].task_status == 1 && first[i].user_status == 0 &&
+                first[i].no_response_count == 0 &&
                 first[i+1].goal_state == 1 && first[i+1].task_status == 1 && first[i+1].user_status == 0 &&
-                first[i+2].goal_state == 1 && first[i+2].task_status == 1 && first[i+2].user_status == 0)
+                first[i+1].no_response_count == 1 &&
+                first[i+2].goal_state == 1 && first[i+2].task_status == 1 && first[i+2].user_status == 0 &&
+                first[i+2].no_response_count == 2)
                 ignoredRunFound = true;
         }
-        const EnvironmentObservation ignored{1, 1, 0, 1, 0.82f};
+        EnvironmentObservation ignored{1, 1, 0, 1, 0.82f};
+        const bool insistInitiallyUnavailable = !isActionValidForObservation("INSIST", ignored);
+        ignored.no_response_count = 2;
         return sameSeedMatches && differentSeedDiffers && ignoredRunFound &&
-               isActionValidForObservation("INSIST", ignored);
+               insistInitiallyUnavailable && isActionValidForObservation("INSIST", ignored);
     }
 
     bool testSharedRepetitionPenalty()
@@ -895,6 +906,7 @@ namespace
             row["signal_strength"] = observation.signal_strength;
             row["food_available"] = observation.food_available;
             row["play_available"] = observation.play_available;
+            row["no_response_count"] = observation.no_response_count;
             row["energy_before"] = energyBefore;
             row["energy_after"] = transition.energy_after;
             row["simulated_elapsed_seconds"] = elapsedSeconds;
@@ -1126,7 +1138,8 @@ bool runTrainingExperiment(const std::string &mode,
                 {"task_status", item.task_status},
                 {"signal_strength", item.signal_strength},
                 {"food_available", item.food_available},
-                {"play_available", item.play_available}
+                {"play_available", item.play_available},
+                {"no_response_count", item.no_response_count}
             });
         }
         std::vector<float> elapsedIntervals;
