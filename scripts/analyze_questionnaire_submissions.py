@@ -47,6 +47,15 @@ DEFAULT_SUBSCALES = {
     "behavioural_consistency": ["c1", "c3"],
     "emotional_expression": ["c11", "c13"],
 }
+CONDITION_REQUIRED_IDS = {
+    "c1", "c3", "c4", "c5", "c11", "c13", "c18", "c21", "summary_believability"
+}
+COMPARISON_REQUIRED_IDS = {
+    "cmp_consistent", "cmp_adapted", "cmp_believable", "cmp_confidence",
+    "cmp_built_differently"
+}
+ACTIVE_SCALE_IDS = CONDITION_REQUIRED_IDS | COMPARISON_REQUIRED_IDS
+
 QUESTION_LABELS = {
     "c1": "Personality felt stable",
     "c3": "Behaviour seemed random or contradictory (reverse-scored)",
@@ -135,17 +144,23 @@ def validate_submission(data: Any, filename: str) -> list[str]:
     if not isinstance(responses, dict) or set(responses) != {"condition_questionnaire", "comparison_questionnaire"}:
         errors.append("responses must contain condition_questionnaire and comparison_questionnaire")
         return errors
-    for key in ("condition_questionnaire",):
-        errors.extend(validate_questionnaire(responses.get(key), key))
+    errors.extend(validate_questionnaire(
+        responses.get("condition_questionnaire"), "condition_questionnaire",
+        required_ids=CONDITION_REQUIRED_IDS
+    ))
     comparison = responses.get("comparison_questionnaire")
     if session == 1 and comparison is not None:
         errors.append("session 1 comparison_questionnaire must be null")
     elif session == 2:
-        errors.extend(validate_questionnaire(comparison, "comparison_questionnaire"))
+        errors.extend(validate_questionnaire(
+            comparison, "comparison_questionnaire",
+            required_ids=COMPARISON_REQUIRED_IDS
+        ))
     return errors
 
 
-def validate_questionnaire(value: Any, label: str) -> list[str]:
+def validate_questionnaire(value: Any, label: str,
+                            required_ids: set[str] | None = None) -> list[str]:
     errors: list[str] = []
     if not isinstance(value, dict) or set(value) != {"answers"} or not isinstance(value.get("answers"), list):
         return [f"{label} must contain an answers array"]
@@ -180,6 +195,13 @@ def validate_questionnaire(value: Any, label: str) -> list[str]:
             valid = isinstance(answer_value, bool)
         if not valid:
             errors.append(f"{prefix}.value does not match {kind}")
+        if qid in ACTIVE_SCALE_IDS and kind in {"likert", "integer"}:
+            if type(answer_value) is not int or not 1 <= answer_value <= 5:
+                errors.append(f"{prefix}.value must be within the active 1–5 scale")
+    if required_ids:
+        missing = sorted(required_ids - seen)
+        if missing:
+            errors.append(f"{label} is missing required question IDs: {', '.join(missing)}")
     return errors
 
 
