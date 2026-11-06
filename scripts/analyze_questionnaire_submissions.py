@@ -292,7 +292,7 @@ def svg_count_chart(path: Path, title: str, counts: dict[str, int]) -> None:
         parts.append(f'<text x="{x+bar_w/2}" y="{y-9}" text-anchor="middle" font-family="sans-serif" font-size="13">{count}</text>')
         parts.append(f'<text x="{x+bar_w/2}" y="{height-45}" text-anchor="middle" font-family="sans-serif" font-size="12">{xml_escape.escape(label)}</text>')
     parts.append('</svg>')
-    path.write_text("\\n".join(parts), encoding="utf-8")
+    path.write_text("\n".join(parts), encoding="utf-8")
 
 
 def svg_bar_chart(path: Path, title: str, labels: list[str], values: list[float | None],
