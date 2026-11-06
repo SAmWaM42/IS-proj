@@ -152,3 +152,106 @@ The current retrieval utility downloads **participant questionnaire submissions 
 The downloader preserves the submitted JSON and does not calculate, redefine, combine, or transform the believability metric. Any adapter that makes questionnaire JSON consumable by an analysis script is a separate analysis-layer task. It must preserve the questionnaire's response values and keep perceived-believability results separate from training and behavioural measures.
 
 The detailed retrieval specification is [22-local-study-data-retrieval.md](22-local-study-data-retrieval.md). Its acceptance criteria remain open until local tests and a live read-only Drive verification have been completed.
+
+## 7. Training experience redesign — planned, not implemented
+
+The training interaction generator is currently a bounded, scripted sequence of 14 observation contexts. Some fields and outcomes are randomised, but this is not equivalent to randomising the order and composition of interactions, and it does not provide a synthetic user that reacts to the companion's behaviour. The current training-coverage plot measures the proportion of decisions with stored valid Q-values; it does not establish broad state-space or state-action coverage.
+
+The next training work is deliberately split into two stages. **Complete and verify Stage A and Stage B before beginning the synthetic-user implementation.** Do not expand the Q-learning architecture or introduce a separate memory selector as a substitute for improving the training experience.
+
+### Stage A — Scenario composition and shared environment constraints
+
+**Status: Planned. No implementation or test is implied by this roadmap entry.**
+
+Retain the existing scenario contexts initially, but replace the single fixed 14-step ordering with configurable episode composition:
+
+- Randomise scenario order rather than relying on a fixed `stepIndex % 14` cycle.
+- Randomise which eligible scenarios appear in an episode and vary episode length within defined bounds.
+- Vary initial environment conditions and scenario parameters within valid ranges, including proximity, social context, energy-related circumstances, and feedback/outcome variation.
+- Include positive, negative, and neutral feedback opportunities, fetch/play/social/rest contexts, ignored requests, and competing needs.
+- Use reproducible random seeds and record the seed plus scenario composition for each episode so runs can be reproduced and compared.
+- Keep training exposure comparable between Baseline and Proposed: both receive the same scenario schedule, initial shared environment conditions, and random outcome stream where practical. Differences in the agents' internal memory/affect must not accidentally give them different scenario opportunities.
+- Record scenario frequencies, episode composition, unique states, unique valid state-action pairs, per-pair visit counts, and Q-table-supported versus fallback decisions. Report global unique-state unions across the run separately from sums of per-episode unique counts. Treat decision coverage, state coverage, and state-action coverage as distinct measures.
+
+#### Repeated behaviour, ignored requests, and INSIST
+
+Add an explicit scenario for repeated agent behaviour when the environment or user provides no intended response:
+
+1. The companion initiates or repeats an interaction/action.
+2. The environment/user supplies no acknowledgement, reward, task progress, or other intended response.
+3. The companion may retry within a defined limit or interval.
+4. Continued non-response makes an `INSIST` response eligible through the shared action-validity/interaction contract.
+5. The scenario ends or changes when a response arrives, the retry limit is reached, or another environment constraint takes priority.
+
+Define precisely what counts as a repeated attempt, what constitutes a response, how long the agent waits before retrying, and when `INSIST` becomes valid. Avoid making `INSIST` an unconditional consequence of any repeated action. Verify the complete path from observation generation through action validity and selection to the visible behaviour in the simulation. Both agents must have the same opportunity to encounter this scenario; their policies may still choose different valid actions.
+
+#### Repetition penalty / environmental boredom constraint
+
+Introduce a shared, environment-owned repetition/boredom signal that reduces the reward for repeatedly performing actions of the same type without meaningful variation or an intervening response.
+
+- Apply the same environmental rule and parameters to Baseline and Proposed. It must not depend on access to the Proposed agent's semantic memory or affective state.
+- Track repetition by a documented action category (for example, repeated social bids or repeated fetch attempts), using a defined recent-history window or consecutive-repeat count.
+- Increase the penalty as repetition continues, subject to a bounded maximum; define how the signal recovers after a different action, a meaningful user/environment response, or elapsed time.
+- Distinguish an action that is repeated because the environment has not responded from a genuinely successful repeated interaction. Do not penalise productive repetition indiscriminately.
+- Keep this penalty in the shared environment/reward calculation, not as a Proposed-only affect or memory reward adjustment. Log the repetition count/signal and penalty contribution so its effect can be inspected.
+- Test that identical action histories under identical environment conditions receive identical repetition penalties for both agents, and that the penalty does not override essential survival/energy constraints or make all repeated actions unrewarding.
+
+This is an environmental constraint intended to model diminishing returns or boredom from repetitive interaction. It is not itself evidence that the agent has developed an internal emotional state.
+
+**Stage A acceptance checks**
+
+- Scenario order and episode composition vary across seeds, while remaining reproducible for a fixed seed.
+- Both agents receive matched scenario opportunities and shared environment conditions.
+- Ignored-request sequences can reach the intended `INSIST` validity/behaviour path, and the path is tested end-to-end.
+- The repetition penalty is shared, bounded, observable in diagnostics, and identical for equivalent histories in both conditions.
+- Coverage reporting distinguishes decisions with Q-values, unique states, and unique valid state-action pairs across the full run.
+- Existing training, transition, reward, and agent tests pass; a controlled run confirms the new scenario distribution and diagnostics.
+
+### Stage B — Synthetic user model
+
+**Status: Planned. Begin only after Stage A is implemented, tested, and its training outputs reviewed.**
+
+Add a small, explicit synthetic user model that reacts to companion behaviour and generates subsequent interaction/feedback. It should be separate from the companion agent and should not expose its hidden profile directly to either policy.
+
+The initial user profile should be deliberately small and interpretable, with configurable characteristics such as:
+
+- Preferred and disliked activities or objects.
+- Positive, negative, and neutral feedback tendencies.
+- Likelihood of responding to social bids or repeated requests.
+- Tolerance for repeated unwanted behaviour.
+- Optional preference changes or conflicting statements, introduced only where the scenario requires them.
+
+The interaction loop should become:
+
+`user profile and current user context → user/environment interaction → companion observation → companion action → synthetic-user response → shared environment update → agent memory/affect update → next observation`
+
+Requirements:
+
+- Both agents interact with the same synthetic user profile, user-response rules, scenario seed, and equivalent opportunity stream.
+- The user model responds to the selected action and relevant context; it must not simply replay a fixed answer sequence.
+- The Proposed agent may store and use semantic preference statements and action-outcome memories. The Baseline must not receive those internal memory/affect features.
+- User preferences should be introduced through explicit, logged interaction events. Include repeated statements and, in a controlled subset of scenarios, changed or conflicting preferences so memory handling can be evaluated.
+- Keep synthetic-user preferences and response state separate from the companion's internal memory and affect. The user model is the source of user-side behaviour; the agent must infer relevant information from observations.
+- Preserve the current reward model initially where possible. If user-response modelling requires reward changes, document and test those changes separately rather than changing the user model, reward model, and agent state representation simultaneously.
+- Define episode reset boundaries explicitly: specify which user-profile properties persist, which user-session properties reset, and whether the companion's memory/affect persists. Avoid accidental persistence mismatches between the user and companion.
+
+**Stage B acceptance checks**
+
+- The same profile, seed, and action history produce reproducible user responses.
+- Different profiles can produce meaningfully different feedback and follow-up interactions.
+- The synthetic user reacts to companion actions rather than following a predetermined interaction list.
+- Both agents receive matched external experiences under equivalent actions and conditions.
+- Preference statements are observable to the agent but hidden profile fields are not directly exposed.
+- Tests cover preference formation, negative preferences, non-response, repeated behaviour, preference changes/conflicts, and episode reset/persistence rules.
+- Training diagnostics demonstrate that the new interaction loop generates varied, multi-step histories and that memory/affect-relevant situations occur at measurable frequencies.
+
+### Implementation order and boundaries
+
+1. Complete Stage A scenario randomisation/composition and reproducible logging.
+2. Implement and verify the ignored-response / repeated-behaviour / `INSIST` scenario.
+3. Implement and verify the shared environmental repetition/boredom reward constraint.
+4. Extend coverage and scenario-distribution reporting; run controlled training comparisons and review the resulting traces.
+5. Only after Stage A acceptance checks pass, implement Stage B synthetic users.
+6. Re-run training and validation for both agents using matched profiles and seeds. Preserve a clear distinction between training reward/behavioural diagnostics and participant-perceived-believability outcomes.
+
+These are researcher-side training changes on `Dev`. Any change affecting agent behaviour, state transitions, reward, action vocabulary, or simulation structure must also be reflected in `deployment/participant-client` and built/tested there under the project's deployment-parity requirement. Do not modify or redeploy the production Vercel project as part of this work without explicit approval. The synthetic-user model is a training tool unless a separate, approved participant-study change is specified.
