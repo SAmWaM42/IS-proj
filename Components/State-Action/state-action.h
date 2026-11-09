@@ -110,6 +110,7 @@ public:
     double getQValue(const state& stateRef, const std::string& action) const;
     bool hasState(const state& stateRef) const;
     bool hasStoredValidActionValue(const state& stateRef, const std::vector<std::string>& validActions) const;
+    bool hasStoredActionValue(const state& stateRef, const std::string& action) const;
 
     void loadQTable(const std::string& path);
     void saveQTable(const std::string& path);
@@ -150,6 +151,8 @@ public:
     const std::string& getLastContextualFallback() const;
     std::vector<std::pair<std::string, double>> getValidActionQValues(
         const EnvironmentObservation& observation) const;
+    std::vector<std::string> getStoredValidActionNames(
+        const EnvironmentObservation& observation) const;
 
 private:
     EnvironmentConfig config;
@@ -173,6 +176,7 @@ struct ActionDecisionTrace {
     bool q_table_has_valid_action_values = false;
     bool rejection_override_applied = false;
     std::vector<std::pair<std::string, double>> valid_action_q_values;
+    std::vector<std::string> stored_valid_action_names;
     std::size_t memory_record_count = 0;
     AffectiveState affect;
 };
