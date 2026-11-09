@@ -1562,10 +1562,10 @@ bool runTrainingExperiment(const std::string &mode,
     }
     std::ofstream manifestFile(outDir / (mode + "_run_manifest.json"));
     if (!manifestFile) {
-        std::cerr << "Unable to write run manifest in " << outDir << '\\n';
+        std::cerr << "Unable to write run manifest in " << outDir << '\n';
         return false;
     }
-    manifestFile << manifest.dump(2) << '\\n';
+    manifestFile << manifest.dump(2) << '\n';
 
     std::cout << mode << " experiment complete (" << episodes << " episodes, seed "
               << seed << ").\n"
@@ -2005,7 +2005,7 @@ bool runTrainingSelfTests()
         std::equal(baselineQValues.begin(), baselineQValues.end(), proposedQValues.begin(),
             [](const auto& lhs, const auto& rhs) { return lhs.first == rhs.first; });
     std::cout << "Comparable baseline/proposed valid-action Q diagnostics: "
-              << (comparableQDiagnostics ? "PASS" : "FAIL") << '\\n';
+              << (comparableQDiagnostics ? "PASS" : "FAIL") << '\n';
     return scenarioGenerationPassed && repetitionPenaltyPassed && comparableQDiagnostics &&
            energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
            temporalDecayPassed && transitionsPassed && retryPassed &&
