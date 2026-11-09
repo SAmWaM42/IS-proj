@@ -4,7 +4,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <chrono>
+#include <ctime>
 #include <filesystem>
+#include <iomanip>
 #include <cstdint>
 #include <system_error>
 #include <fstream>
@@ -13,6 +16,7 @@
 #include <random>
 #include <stdexcept>
 #include <set>
+#include <sstream>
 #include <vector>
 #include <utility>
 #include <type_traits>
@@ -24,46 +28,6 @@ namespace
     constexpr int kDetailedStepLogEpisodes = 2;
     constexpr float kMinSecondsPerTrainingStep = 0.5f;
     constexpr float kMaxSecondsPerTrainingStep = 5.0f;
-
-    // Old verbose per-step logs can grow to tens of megabytes. Since current
-    // runs retain only the final few episodes, discard obsolete oversized step
-    // logs instead of rotating them into another large tracked artifact.
-    void pruneOversizedStepLogs(const std::filesystem::path& outputDirectory)
-    {
-        constexpr std::uintmax_t kMaxRetainedStepLogBytes = 5u * 1024u * 1024u;
-        std::error_code error;
-        for (const auto& entry : std::filesystem::directory_iterator(outputDirectory, error))
-        {
-            if (error)
-                break;
-            if (!entry.is_regular_file(error) || error)
-            {
-                error.clear();
-                continue;
-            }
-            const std::string filename = entry.path().filename().string();
-            const std::string stepLogSuffix = "_steps.jsonl";
-            if (filename.size() < stepLogSuffix.size() ||
-                filename.compare(filename.size() - stepLogSuffix.size(),
-                                 stepLogSuffix.size(), stepLogSuffix) != 0)
-                continue;
-
-            const auto size = entry.file_size(error);
-            if (error)
-            {
-                error.clear();
-                continue;
-            }
-            if (size > kMaxRetainedStepLogBytes)
-            {
-                std::error_code removeError;
-                const bool removed = std::filesystem::remove(entry.path(), removeError);
-                if (removed && !removeError)
-                    std::cout << "Removed obsolete oversized step log: "
-                              << entry.path() << " (" << size << " bytes)\n";
-            }
-        }
-    }
 
     // Keep one previous version of each generated artifact, tagged with compare_.
     // The comparison-mode outputs already begin with compare_, so their backup
@@ -102,6 +66,27 @@ namespace
         std::set<std::string> valid_state_action_pairs_available;
         int q_table_supported_decisions = 0;
         int fallback_decisions = 0;
+
+        int insist_predicate_eligible_decisions = 0;
+        int insist_available_decisions = 0;
+        int insist_eligibility_mask_mismatches = 0;
+        int insist_policy_selections = 0;
+        int insist_final_selections = 0;
+        int insist_execution_attempts = 0;
+        int insist_selected_when_unavailable = 0;
+        int insist_attempts_with_meaningful_response = 0;
+        int insist_attempts_without_meaningful_response = 0;
+
+        int repetition_decisions = 0;
+        int repetition_penalty_trigger_count = 0;
+        int repetition_response_reset_count = 0;
+        int repetition_category_change_count = 0;
+        int repetition_max_consecutive_count = 0;
+        double repetition_penalty_total = 0.0;
+        double repetition_penalty_max = 0.0;
+        std::vector<double> q_value_spreads;
+        std::vector<double> repeated_action_q_gaps;
+        std::vector<double> repetition_penalty_samples;
     };
 
     // Scenario blocks preserve meaningful short sequences (fetch retries and
@@ -781,6 +766,8 @@ namespace
                               bool learning,
                               float epsilon,
                               std::ofstream &stepLog,
+                              std::ofstream &diagnosticLog,
+                              const std::string &mode,
                               const std::string &agentName,
                               int episodeIndex,
                               bool recordDetailedSteps,
@@ -810,26 +797,55 @@ namespace
             const EnvironmentObservation observation = currentObservation;
             const std::string action = agent.selectAction(observation);
             const std::size_t stateKeyBeforeAction = agent.getCurrentState().encode();
+            const auto validActions = validActionsForObservation(observation);
             metrics.visited_states.insert(stateKeyBeforeAction);
             ++metrics.state_action_visits[std::to_string(stateKeyBeforeAction) + "|" + action];
-            for (const auto &validAction : validActionsForObservation(observation))
+            for (const auto &validAction : validActions)
                 metrics.valid_state_action_pairs_available.insert(
                     std::to_string(stateKeyBeforeAction) + "|" + validAction);
             bool hasValidStoredAction = false;
             bool qTableStatePresent = false;
             std::string contextualFallback;
+            std::string policyAction = action;
+            std::string finalAction = action;
+            std::vector<std::pair<std::string, double>> decisionQValues;
             if constexpr (std::is_same_v<Agent, ProposedAgent>) {
                 const auto& trace = agent.getLastDecisionTrace();
                 hasValidStoredAction = trace.q_table_has_valid_action_values;
                 qTableStatePresent = trace.q_table_state_present;
                 contextualFallback = trace.contextual_fallback;
+                policyAction = trace.policy_action;
+                finalAction = trace.final_action;
+                decisionQValues = trace.valid_action_q_values;
             } else {
                 hasValidStoredAction = agent.lastDecisionHadValidQAction();
                 qTableStatePresent = agent.lastDecisionHadQTableState();
                 contextualFallback = agent.getLastContextualFallback();
+                decisionQValues = agent.getValidActionQValues(observation);
             }
             if (hasValidStoredAction) ++metrics.q_table_supported_decisions;
             else ++metrics.fallback_decisions;
+
+            const bool insistPredicateEligible = isActionValidForObservation("INSIST", observation);
+            const bool insistAvailable = std::find(validActions.begin(), validActions.end(), "INSIST") != validActions.end();
+            metrics.insist_predicate_eligible_decisions += insistPredicateEligible ? 1 : 0;
+            metrics.insist_available_decisions += insistAvailable ? 1 : 0;
+            metrics.insist_eligibility_mask_mismatches += insistPredicateEligible != insistAvailable ? 1 : 0;
+            metrics.insist_policy_selections += policyAction == "INSIST" ? 1 : 0;
+            metrics.insist_final_selections += finalAction == "INSIST" ? 1 : 0;
+            metrics.insist_execution_attempts += action == "INSIST" ? 1 : 0;
+            metrics.insist_selected_when_unavailable += action == "INSIST" && !insistAvailable ? 1 : 0;
+
+            double qValueSpread = 0.0;
+            bool hasQValueSpread = false;
+            if (hasValidStoredAction && !decisionQValues.empty()) {
+                const auto bounds = std::minmax_element(
+                    decisionQValues.begin(), decisionQValues.end(),
+                    [](const auto& lhs, const auto& rhs) { return lhs.second < rhs.second; });
+                qValueSpread = bounds.second->second - bounds.first->second;
+                metrics.q_value_spreads.push_back(qValueSpread);
+                hasQValueSpread = true;
+            }
 
             const float energyBefore = environmentEnergy;
             const float stressBefore = environmentStress;
@@ -848,6 +864,12 @@ namespace
             const bool energyDepleted = transition.energy_after <= 0.0f;
             const bool terminal = step + 1 == observations.size() || energyDepleted;
             const bool meaningfulResponse = transition.completed || observation.user_status != 0;
+            const std::string previousRepetitionCategory = repetitionTracker.category;
+            const int previousRepetitionCount = repetitionTracker.consecutive;
+            const std::string currentRepetitionCategory = repetitionCategory(action);
+            const bool repetitionResponseReset = meaningfulResponse && previousRepetitionCount > 0;
+            const bool repetitionCategoryChanged = !meaningfulResponse &&
+                !previousRepetitionCategory.empty() && previousRepetitionCategory != currentRepetitionCategory;
             const float boredomPenalty = repetitionPenalty(
                 action, meaningfulResponse, repetitionTracker, repetitionCount);
             const float transitionReward = energyDepleted ? -1.0f :
@@ -874,6 +896,37 @@ namespace
             outcome.energy_after = transition.energy_after;
 
             agent.applyOutcome(observation, action, outcome, nextObservation, elapsedSeconds);
+
+            if (action == "INSIST") {
+                if (meaningfulResponse) ++metrics.insist_attempts_with_meaningful_response;
+                else ++metrics.insist_attempts_without_meaningful_response;
+            }
+            if (repetitionCount >= 2) ++metrics.repetition_decisions;
+            if (boredomPenalty > 0.0f) {
+                ++metrics.repetition_penalty_trigger_count;
+                metrics.repetition_penalty_total += boredomPenalty;
+                metrics.repetition_penalty_max = std::max(metrics.repetition_penalty_max, static_cast<double>(boredomPenalty));
+                metrics.repetition_penalty_samples.push_back(boredomPenalty);
+            }
+            if (repetitionResponseReset) ++metrics.repetition_response_reset_count;
+            if (repetitionCategoryChanged) ++metrics.repetition_category_change_count;
+            metrics.repetition_max_consecutive_count = std::max(metrics.repetition_max_consecutive_count, repetitionCount);
+
+            double repeatedActionQGap = 0.0;
+            bool hasRepeatedActionQGap = false;
+            if (repetitionCount >= 2 && hasValidStoredAction) {
+                const auto repeatedValue = std::find_if(decisionQValues.begin(), decisionQValues.end(),
+                    [&](const auto& item) { return item.first == action; });
+                double bestAlternative = -std::numeric_limits<double>::infinity();
+                for (const auto& item : decisionQValues) {
+                    if (item.first != action) bestAlternative = std::max(bestAlternative, item.second);
+                }
+                if (repeatedValue != decisionQValues.end() && std::isfinite(bestAlternative)) {
+                    repeatedActionQGap = bestAlternative - repeatedValue->second;
+                    metrics.repeated_action_q_gaps.push_back(repeatedActionQGap);
+                    hasRepeatedActionQGap = true;
+                }
+            }
 
             metrics.total_reward += transitionReward;
             metrics.steps = static_cast<int>(step + 1);
@@ -913,29 +966,20 @@ namespace
                 row["affect_stress_after_transition"] = agent.getAffectiveState().stress;
                 row["affect_engagement_after_transition"] = agent.getAffectiveState().engagement;
                 row["affect_affinity_after_transition"] = agent.getAffectiveState().affinity;
-
-                // Preserve the decision path so surprising actions can be diagnosed
-                // without assuming they are errors from reward alone.
                 const auto& decisionTrace = agent.getLastDecisionTrace();
-                row["policy_action_before_overrides"] = decisionTrace.policy_action;
-                row["final_action_after_overrides"] = decisionTrace.final_action;
                 row["general_preference_override"] = decisionTrace.general_preference_override;
                 row["rejection_override_applied"] = decisionTrace.rejection_override_applied;
-                nlohmann::json validActionQValues = nlohmann::json::array();
-                for (const auto& item : decisionTrace.valid_action_q_values) {
-                    validActionQValues.push_back({
-                        {"action", item.first},
-                        {"q_value", item.second}
-                    });
-                }
-                row["valid_action_q_values"] = validActionQValues;
             } else {
-                row["policy_action_before_overrides"] = action;
-                row["final_action_after_overrides"] = action;
                 row["general_preference_override"] = "";
                 row["rejection_override_applied"] = false;
-                row["valid_action_q_values"] = nlohmann::json::array();
             }
+            row["policy_action_before_overrides"] = policyAction;
+            row["final_action_after_overrides"] = finalAction;
+            nlohmann::json validActionQValues = nlohmann::json::array();
+            for (const auto& item : decisionQValues) {
+                validActionQValues.push_back({{"action", item.first}, {"q_value", item.second}});
+            }
+            row["valid_action_q_values"] = validActionQValues;
             row["environment_stress_after"] = transition.stress_after;
             row["user_satisfaction_after"] = transition.user_satisfaction_after;
             row["repetition_category"] = repetitionCategory(action);
@@ -956,15 +1000,159 @@ namespace
             row["energy_depleted"] = energyDepleted;
             row["completed"] = transition.completed;
             row["fetch_succeeded"] = transition.completed;
+            row["insist_predicate_eligible"] = insistPredicateEligible;
+            row["insist_available"] = insistAvailable;
+            row["insist_policy_selected"] = policyAction == "INSIST";
+            row["insist_final_selected"] = finalAction == "INSIST";
+            row["insist_execution_attempted"] = action == "INSIST";
+            row["repetition_response_reset"] = repetitionResponseReset;
+            row["repetition_category_changed"] = repetitionCategoryChanged;
+            row["q_value_spread"] = hasQValueSpread ? nlohmann::json(qValueSpread) : nlohmann::json(nullptr);
+            row["repeated_action_vs_best_alternative_q_gap"] = hasRepeatedActionQGap
+                ? nlohmann::json(repeatedActionQGap) : nlohmann::json(nullptr);
             // Keep full episode-level metrics in the summary, but retain verbose
             // per-step diagnostics only for the final few episodes to control artifact size.
             if (recordDetailedSteps)
                 stepLog << row.dump() << '\n';
 
+            const bool insistEvent = insistPredicateEligible || insistAvailable ||
+                policyAction == "INSIST" || finalAction == "INSIST" || action == "INSIST";
+            const bool repetitionEvent = boredomPenalty > 0.0f || repetitionResponseReset ||
+                repetitionCategoryChanged;
+            if (insistEvent || repetitionEvent) {
+                nlohmann::json event;
+                event["schema_version"] = 1;
+                event["mode"] = mode;
+                event["agent"] = agentName;
+                event["episode"] = episodeIndex;
+                event["step"] = step;
+                event["event_types"] = nlohmann::json::array();
+                if (insistPredicateEligible) event["event_types"].push_back("insist_eligible");
+                if (insistAvailable) event["event_types"].push_back("insist_available");
+                if (policyAction == "INSIST") event["event_types"].push_back("insist_policy_selected");
+                if (finalAction == "INSIST") event["event_types"].push_back("insist_final_selected");
+                if (action == "INSIST") event["event_types"].push_back("insist_execution_attempt");
+                if (boredomPenalty > 0.0f) event["event_types"].push_back("repetition_penalty_applied");
+                if (repetitionResponseReset) event["event_types"].push_back("repetition_context_reset_by_response");
+                if (repetitionCategoryChanged) event["event_types"].push_back("repetition_category_changed");
+                event["encoded_state"] = stateKeyBeforeAction;
+                event["goal_state"] = observation.goal_state;
+                event["task_status"] = observation.task_status;
+                event["user_status"] = observation.user_status;
+                event["no_response_count"] = observation.no_response_count;
+                event["valid_actions"] = validActions;
+                event["insist_predicate_eligible"] = insistPredicateEligible;
+                event["insist_available"] = insistAvailable;
+                event["insist_policy_action"] = policyAction;
+                event["insist_final_action"] = finalAction;
+                event["selected_action"] = action;
+                event["insist_execution_attempted"] = action == "INSIST";
+                event["insist_selected_when_unavailable"] = action == "INSIST" && !insistAvailable;
+                event["insist_meaningful_response_after_attempt"] = action == "INSIST" && meaningfulResponse;
+                event["q_table_supported_decision"] = hasValidStoredAction;
+                event["q_table_state_present"] = qTableStatePresent;
+                event["valid_action_q_values"] = validActionQValues;
+                event["q_value_spread"] = hasQValueSpread ? nlohmann::json(qValueSpread) : nlohmann::json(nullptr);
+                event["repeated_action_vs_best_alternative_q_gap"] = hasRepeatedActionQGap
+                    ? nlohmann::json(repeatedActionQGap) : nlohmann::json(nullptr);
+                event["repetition_category"] = currentRepetitionCategory;
+                event["repetition_consecutive_count"] = repetitionCount;
+                event["repetition_penalty"] = boredomPenalty;
+                event["meaningful_response"] = meaningfulResponse;
+                event["reward_before_repetition_penalty"] = transition.reward;
+                event["reward_after_repetition_penalty"] = transitionReward;
+                event["terminal"] = terminal;
+                diagnosticLog << event.dump() << '\n';
+            }
+
             currentObservation = nextObservation;
             if (terminal) break;
         }
         return metrics;
+    }
+
+    nlohmann::json distributionSummary(std::vector<double> values)
+    {
+        nlohmann::json result = {{"sample_count", values.size()}};
+        if (values.empty()) return result;
+        std::sort(values.begin(), values.end());
+        const auto quantile = [&](double probability) {
+            const double position = probability * static_cast<double>(values.size() - 1);
+            const std::size_t lower = static_cast<std::size_t>(std::floor(position));
+            const std::size_t upper = static_cast<std::size_t>(std::ceil(position));
+            const double fraction = position - static_cast<double>(lower);
+            return values[lower] + (values[upper] - values[lower]) * fraction;
+        };
+        double sum = 0.0;
+        for (double value : values) sum += value;
+        const double mean = sum / static_cast<double>(values.size());
+        double squaredDeviation = 0.0;
+        for (double value : values) squaredDeviation += (value - mean) * (value - mean);
+        result["mean"] = mean;
+        result["standard_deviation_population"] = std::sqrt(squaredDeviation / static_cast<double>(values.size()));
+        result["min"] = values.front();
+        result["p25"] = quantile(0.25);
+        result["median"] = quantile(0.50);
+        result["p75"] = quantile(0.75);
+        result["p90"] = quantile(0.90);
+        result["max"] = values.back();
+        return result;
+    }
+
+    void accumulateTrainingDiagnostics(EpisodeMetrics& total, const EpisodeMetrics& episode)
+    {
+        total.insist_predicate_eligible_decisions += episode.insist_predicate_eligible_decisions;
+        total.insist_available_decisions += episode.insist_available_decisions;
+        total.insist_eligibility_mask_mismatches += episode.insist_eligibility_mask_mismatches;
+        total.insist_policy_selections += episode.insist_policy_selections;
+        total.insist_final_selections += episode.insist_final_selections;
+        total.insist_execution_attempts += episode.insist_execution_attempts;
+        total.insist_selected_when_unavailable += episode.insist_selected_when_unavailable;
+        total.insist_attempts_with_meaningful_response += episode.insist_attempts_with_meaningful_response;
+        total.insist_attempts_without_meaningful_response += episode.insist_attempts_without_meaningful_response;
+        total.repetition_decisions += episode.repetition_decisions;
+        total.repetition_penalty_trigger_count += episode.repetition_penalty_trigger_count;
+        total.repetition_response_reset_count += episode.repetition_response_reset_count;
+        total.repetition_category_change_count += episode.repetition_category_change_count;
+        total.repetition_max_consecutive_count = std::max(total.repetition_max_consecutive_count,
+                                                          episode.repetition_max_consecutive_count);
+        total.repetition_penalty_total += episode.repetition_penalty_total;
+        total.repetition_penalty_max = std::max(total.repetition_penalty_max, episode.repetition_penalty_max);
+        total.q_value_spreads.insert(total.q_value_spreads.end(), episode.q_value_spreads.begin(), episode.q_value_spreads.end());
+        total.repeated_action_q_gaps.insert(total.repeated_action_q_gaps.end(), episode.repeated_action_q_gaps.begin(), episode.repeated_action_q_gaps.end());
+        total.repetition_penalty_samples.insert(total.repetition_penalty_samples.end(), episode.repetition_penalty_samples.begin(), episode.repetition_penalty_samples.end());
+    }
+
+    nlohmann::json trainingDiagnosticsToJson(const EpisodeMetrics& metrics)
+    {
+        return {
+            {"insist", {
+                {"predicate_eligible_decisions", metrics.insist_predicate_eligible_decisions},
+                {"valid_action_available_decisions", metrics.insist_available_decisions},
+                {"eligibility_vs_valid_action_mask_mismatches", metrics.insist_eligibility_mask_mismatches},
+                {"policy_selections_before_overrides", metrics.insist_policy_selections},
+                {"final_selections_after_overrides", metrics.insist_final_selections},
+                {"environment_execution_attempts", metrics.insist_execution_attempts},
+                {"selected_when_unavailable", metrics.insist_selected_when_unavailable},
+                {"attempts_followed_by_meaningful_response", metrics.insist_attempts_with_meaningful_response},
+                {"attempts_without_meaningful_response", metrics.insist_attempts_without_meaningful_response}
+            }},
+            {"repetition", {
+                {"repeated_category_decisions", metrics.repetition_decisions},
+                {"penalty_trigger_count", metrics.repetition_penalty_trigger_count},
+                {"cumulative_penalty", metrics.repetition_penalty_total},
+                {"maximum_single_step_penalty", metrics.repetition_penalty_max},
+                {"maximum_consecutive_count", metrics.repetition_max_consecutive_count},
+                {"context_resets_after_meaningful_response", metrics.repetition_response_reset_count},
+                {"category_change_events", metrics.repetition_category_change_count},
+                {"penalty_distribution", distributionSummary(metrics.repetition_penalty_samples)}
+            }},
+            {"q_value_analysis", {
+                {"within_state_valid_action_value_spread", distributionSummary(metrics.q_value_spreads)},
+                {"repeated_action_minus_best_alternative_gap_sign_convention", "best_alternative_q_minus_repeated_action_q; positive means the best alternative has higher learned value"},
+                {"repeated_action_vs_best_alternative_gap", distributionSummary(metrics.repeated_action_q_gaps)}
+            }}
+        };
     }
 
     nlohmann::json metricsToJson(const EpisodeMetrics &metrics)
@@ -997,6 +1185,7 @@ namespace
                 : 0.0;
         result["stimulus_checks_by_type"] = metrics.stimulus_checks_by_type;
         result["stimulus_aligned_by_type"] = metrics.stimulus_aligned_by_type;
+        result["training_diagnostics"] = trainingDiagnosticsToJson(metrics);
         return result;
     }
 } // namespace
@@ -1006,7 +1195,8 @@ bool runTrainingExperiment(const std::string &mode,
                            int steps,
                            unsigned int seed,
                            const std::string &outputDirectory,
-                           bool resumeTraining)
+                           bool resumeTraining,
+                           const std::vector<std::string>& commandArguments)
 {
     const bool trainingMode = mode == "train" || mode == "resume-training";
     if (mode != "train" && mode != "resume-training" && mode != "validate" && mode != "compare")
@@ -1023,7 +1213,6 @@ bool runTrainingExperiment(const std::string &mode,
     namespace fs = std::filesystem;
     const fs::path outDir(outputDirectory);
     fs::create_directories(outDir);
-    pruneOversizedStepLogs(outDir);
     const fs::path baselinePolicy = outDir / "baseline.qtable";
     const fs::path proposedPolicy = outDir / "proposed.qtable";
 
@@ -1056,9 +1245,12 @@ bool runTrainingExperiment(const std::string &mode,
     rotateArtifactForComparison(outDir / (mode + "_baseline_steps.jsonl"));
     rotateArtifactForComparison(outDir / (mode + "_proposed_steps.jsonl"));
     rotateArtifactForComparison(outDir / (mode + "_summary.json"));
+    rotateArtifactForComparison(outDir / (mode + "_diagnostic_events.jsonl"));
+    rotateArtifactForComparison(outDir / (mode + "_run_manifest.json"));
     std::ofstream baselineLog(outDir / (mode + "_baseline_steps.jsonl"));
     std::ofstream proposedLog(outDir / (mode + "_proposed_steps.jsonl"));
-    if (!baselineLog || !proposedLog)
+    std::ofstream diagnosticLog(outDir / (mode + "_diagnostic_events.jsonl"));
+    if (!baselineLog || !proposedLog || !diagnosticLog)
     {
         std::cerr << "Unable to open experiment log files in " << outDir << '\n';
         return false;
@@ -1068,6 +1260,7 @@ bool runTrainingExperiment(const std::string &mode,
     std::mt19937 environmentRng(environmentSeed);
     nlohmann::json summary;
     summary["mode"] = mode;
+    summary["command_arguments"] = commandArguments;
     summary["training_initialization"] = mode == "resume-training" ? "loaded_existing_qtables" :
                                          mode == "train" ? "fresh_qtables" : "loaded_evaluation_checkpoint";
     summary["resume_training_requested"] = resumeTraining || mode == "resume-training";
@@ -1110,6 +1303,8 @@ bool runTrainingExperiment(const std::string &mode,
     std::set<std::size_t> baselineGlobalStates, proposedGlobalStates;
     std::set<std::string> baselineGlobalVisitedPairs, proposedGlobalVisitedPairs;
     std::set<std::string> baselineGlobalAvailablePairs, proposedGlobalAvailablePairs;
+    EpisodeMetrics baselineDiagnosticAggregate;
+    EpisodeMetrics proposedDiagnosticAggregate;
     std::uniform_int_distribution<int> episodeLengthDist(
         std::max(1, steps * 3 / 4), std::max(1, steps * 5 / 4));
 
@@ -1154,11 +1349,13 @@ bool runTrainingExperiment(const std::string &mode,
 
         const bool recordDetailedSteps = episode >= std::max(0, episodes - kDetailedStepLogEpisodes);
         const EpisodeMetrics baselineMetrics = runEpisode(
-            baseline, observations, elapsedIntervals, learning, epsilon, baselineLog, "baseline", episode,
+            baseline, observations, elapsedIntervals, learning, epsilon, baselineLog, diagnosticLog, mode, "baseline", episode,
             recordDetailedSteps, environmentSeed, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction);
         const EpisodeMetrics proposedMetrics = runEpisode(
-            proposed, observations, elapsedIntervals, learning, epsilon, proposedLog, "proposed", episode,
+            proposed, observations, elapsedIntervals, learning, epsilon, proposedLog, diagnosticLog, mode, "proposed", episode,
             recordDetailedSteps, environmentSeed, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction);
+        accumulateTrainingDiagnostics(baselineDiagnosticAggregate, baselineMetrics);
+        accumulateTrainingDiagnostics(proposedDiagnosticAggregate, proposedMetrics);
 
         baselineGlobalStates.insert(baselineMetrics.visited_states.begin(), baselineMetrics.visited_states.end());
         proposedGlobalStates.insert(proposedMetrics.visited_states.begin(), proposedMetrics.visited_states.end());
@@ -1202,6 +1399,7 @@ bool runTrainingExperiment(const std::string &mode,
 
     baselineLog.close();
     proposedLog.close();
+    diagnosticLog.close();
 
     if (trainingMode)
     {
@@ -1296,6 +1494,27 @@ bool runTrainingExperiment(const std::string &mode,
     summary["proposed"]["mean_reward"] = proposedRewardSum / episodes; // Backwards-compatible alias.
     summary["proposed"]["completion_rate"] = static_cast<double>(proposedCompletions) / episodes;
     summary["proposed"]["episodes"] = proposedEpisodes;
+    summary["training_diagnostics"] = {
+        {"aggregation_level", "all decisions across all completed episodes in this run"},
+        {"baseline", trainingDiagnosticsToJson(baselineDiagnosticAggregate)},
+        {"proposed", trainingDiagnosticsToJson(proposedDiagnosticAggregate)},
+        {"metric_definitions", {
+            {"insist_predicate_eligible_decisions", "Count of observations for which isActionValidForObservation(INSIST, observation) is true."},
+            {"insist_valid_action_available_decisions", "Count of observations where INSIST appears in validActionsForObservation."},
+            {"insist_policy_selections_before_overrides", "Count where the policy action before proposed-agent overrides is INSIST."},
+            {"insist_final_selections_after_overrides", "Count where the final selected action is INSIST."},
+            {"insist_environment_execution_attempts", "Count of INSIST actions passed into applyEnvironmentAction; this is an attempt, not proof of acceptance."},
+            {"repetition_penalty_trigger_count", "Count of decisions where the shared repetition penalty is greater than zero."},
+            {"within_state_valid_action_value_spread", "Maximum minus minimum Q estimate across valid actions for a decision with at least one stored valid action value; unvisited action entries may have the QTable default value."},
+            {"repeated_action_vs_best_alternative_gap", "Best alternative valid-action Q estimate minus the repeated action Q estimate, sampled on repeated-category decisions with Q-table support; positive means the alternative has higher Q."}
+        }}
+    };
+    summary["diagnostic_artifacts"] = {
+        {"event_log", mode + "_diagnostic_events.jsonl"},
+        {"run_manifest", mode + "_run_manifest.json"},
+        {"baseline_step_log", mode + "_baseline_steps.jsonl"},
+        {"proposed_step_log", mode + "_proposed_steps.jsonl"}
+    };
 
     std::ofstream summaryFile(outDir / (mode + "_summary.json"));
     if (!summaryFile)
@@ -1304,12 +1523,55 @@ bool runTrainingExperiment(const std::string &mode,
         return false;
     }
     summaryFile << summary.dump(2) << '\n';
+    summaryFile.close();
+
+    nlohmann::json manifest;
+    manifest["schema_version"] = 1;
+    manifest["run_id"] = mode + "-seed-" + std::to_string(seed) + "-" +
+        std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count());
+    manifest["started_at_utc"] = "recorded_in_summary_run_start";
+    manifest["completed_at_utc"] = utcTimestampNow();
+    manifest["mode"] = mode;
+    manifest["seed"] = seed;
+    manifest["environment_seed"] = environmentSeed;
+    manifest["episodes_requested"] = episodes;
+    manifest["max_steps_per_episode"] = steps;
+    manifest["command_arguments"] = commandArguments;
+    manifest["output_directory"] = outDir.string();
+    manifest["build"] = buildProvenanceJson();
+    manifest["artifacts"] = {
+        {"summary", (outDir / (mode + "_summary.json")).string()},
+        {"event_log", (outDir / (mode + "_diagnostic_events.jsonl")).string()},
+        {"baseline_step_log", (outDir / (mode + "_baseline_steps.jsonl")).string()},
+        {"proposed_step_log", (outDir / (mode + "_proposed_steps.jsonl")).string()}
+    };
+    if (fs::exists(baselinePolicy)) {
+        manifest["policy_files"]["baseline"] = {
+            {"path", baselinePolicy.string()},
+            {"fnv1a64", fnv1a64FileHash(baselinePolicy)}
+        };
+    }
+    if (fs::exists(proposedPolicy)) {
+        manifest["policy_files"]["proposed"] = {
+            {"path", proposedPolicy.string()},
+            {"fnv1a64", fnv1a64FileHash(proposedPolicy)}
+        };
+    }
+    std::ofstream manifestFile(outDir / (mode + "_run_manifest.json"));
+    if (!manifestFile) {
+        std::cerr << "Unable to write run manifest in " << outDir << '\\n';
+        return false;
+    }
+    manifestFile << manifest.dump(2) << '\\n';
 
     std::cout << mode << " experiment complete (" << episodes << " episodes, seed "
               << seed << ").\n"
               << "Baseline mean reward per step: " << summary["baseline"]["mean_reward_per_step"] << '\n'
               << "Proposed mean reward per step: " << summary["proposed"]["mean_reward_per_step"] << '\n'
-              << "Results: " << (outDir / (mode + "_summary.json")) << '\n';
+              << "Results: " << (outDir / (mode + "_summary.json")) << '\n'
+              << "Diagnostic events: " << (outDir / (mode + "_diagnostic_events.jsonl")) << '\n'
+              << "Run manifest: " << (outDir / (mode + "_run_manifest.json")) << '\n';
 
     return true;
 }
@@ -1727,7 +1989,22 @@ bool runTrainingSelfTests()
     std::cout << "Persistent fetch retry and completion credit: " << (retryPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Task priority over unproductive sniffing: " << (taskPriorityPassed ? "PASS" : "FAIL") << '\n';
     std::cout << "Successful fetch advances to post-completion context: " << (completionContextPassed ? "PASS" : "FAIL") << '\n';
-    return scenarioGenerationPassed && repetitionPenaltyPassed &&
+    const EnvironmentObservation diagnosticObservation{1, 1, 0, 1, 0.82f};
+    BaselineAgent diagnosticBaseline;
+    ProposedAgent diagnosticProposed;
+    diagnosticBaseline.setLearningEnabled(false);
+    diagnosticProposed.setLearningEnabled(false);
+    diagnosticBaseline.selectAction(diagnosticObservation);
+    diagnosticProposed.selectAction(diagnosticObservation);
+    const auto baselineQValues = diagnosticBaseline.getValidActionQValues(diagnosticObservation);
+    const auto proposedQValues = diagnosticProposed.getLastDecisionTrace().valid_action_q_values;
+    const bool comparableQDiagnostics = baselineQValues.size() == proposedQValues.size() &&
+        !baselineQValues.empty() &&
+        std::equal(baselineQValues.begin(), baselineQValues.end(), proposedQValues.begin(),
+            [](const auto& lhs, const auto& rhs) { return lhs.first == rhs.first; });
+    std::cout << "Comparable baseline/proposed valid-action Q diagnostics: "
+              << (comparableQDiagnostics ? "PASS" : "FAIL") << '\\n';
+    return scenarioGenerationPassed && repetitionPenaltyPassed && comparableQDiagnostics &&
            energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
            temporalDecayPassed && transitionsPassed && retryPassed &&
            taskPriorityPassed && completionContextPassed;

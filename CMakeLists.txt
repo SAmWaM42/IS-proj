@@ -16,7 +16,7 @@ find_package(Threads REQUIRED)
 
 file(TO_CMAKE_PATH "${CMAKE_SOURCE_DIR}" IS2_SOURCE_DIR_NORMALIZED)
 execute_process(
-   COMMAND git rev-parse --short HEAD
+   COMMAND git rev-parse HEAD
    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
    OUTPUT_VARIABLE IS2_GIT_REVISION
    OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -24,6 +24,23 @@ execute_process(
 )
 if(NOT IS2_GIT_REVISION)
    set(IS2_GIT_REVISION "unknown")
+endif()
+execute_process(
+   COMMAND git status --porcelain
+   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+   OUTPUT_VARIABLE IS2_GIT_STATUS
+   OUTPUT_STRIP_TRAILING_WHITESPACE
+   ERROR_QUIET
+)
+if(IS2_GIT_STATUS)
+   set(IS2_GIT_DIRTY "true")
+else()
+   set(IS2_GIT_DIRTY "false")
+endif()
+if(NOT CMAKE_BUILD_TYPE)
+   set(IS2_BUILD_TYPE "unspecified")
+else()
+   set(IS2_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
 endif()
 
 # These sources are required by both builds: the companion runtime, participant
@@ -66,6 +83,10 @@ endif()
 target_compile_definitions(IS-2 PRIVATE
    IS2_SOURCE_DIR="${IS2_SOURCE_DIR_NORMALIZED}"
    IS2_GIT_REVISION="${IS2_GIT_REVISION}"
+   IS2_GIT_DIRTY="${IS2_GIT_DIRTY}"
+   IS2_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}"
+   IS2_COMPILER_VERSION="${CMAKE_CXX_COMPILER_VERSION}"
+   IS2_BUILD_TYPE="${IS2_BUILD_TYPE}"
 )
 if(ANIMAL_AGENT_PARTICIPANT_BUILD)
    target_compile_definitions(IS-2 PRIVATE IS2_PARTICIPANT_BUILD=1)

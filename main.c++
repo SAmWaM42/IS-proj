@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "Components/State-Action/state-action.h"
 #ifndef IS2_PARTICIPANT_BUILD
@@ -321,8 +322,13 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    std::vector<std::string> commandArguments;
+    commandArguments.reserve(static_cast<std::size_t>(argc));
+    for (int argumentIndex = 0; argumentIndex < argc; ++argumentIndex)
+        commandArguments.emplace_back(argv[argumentIndex]);
+
     if (!runTrainingExperiment(mode, episodes, steps, static_cast<unsigned int>(seed), outputDirectory,
-                               mode == "resume-training"))
+                               mode == "resume-training", commandArguments))
     {
         return 1;
     }

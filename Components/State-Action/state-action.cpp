@@ -1544,6 +1544,17 @@ const std::string& BaselineAgent::getLastContextualFallback() const {
     return last_contextual_fallback;
 }
 
+std::vector<std::pair<std::string, double>> BaselineAgent::getValidActionQValues(
+    const EnvironmentObservation& observation) const {
+    std::vector<std::pair<std::string, double>> values;
+    const auto validActions = validActionsForObservation(observation);
+    values.reserve(validActions.size());
+    for (const auto& action : validActions) {
+        values.emplace_back(action, q_policy.getQValue(current_state, action));
+    }
+    return values;
+}
+
 ProposedAgent::ProposedAgent(const EnvironmentConfig& configValue)
     : config(configValue), q_policy(0.25f, 0.8f, 0.15f, static_cast<unsigned int>(configValue.seed)), affective_state{} {
     q_policy.setActions(config.actions);

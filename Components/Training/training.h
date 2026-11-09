@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 bool runTrainingSelfTests();
 
@@ -17,4 +18,5 @@ bool runTrainingExperiment(const std::string& mode,
                           int steps,
                           unsigned int seed,
                           const std::string& outputDirectory,
-                          bool resumeTraining = false);
+                          bool resumeTraining = false,
+                          const std::vector<std::string>& commandArguments = {});

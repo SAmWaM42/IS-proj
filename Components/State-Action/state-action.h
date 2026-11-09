@@ -148,6 +148,8 @@ public:
     bool lastDecisionHadQTableState() const;
     bool lastDecisionHadValidQAction() const;
     const std::string& getLastContextualFallback() const;
+    std::vector<std::pair<std::string, double>> getValidActionQValues(
+        const EnvironmentObservation& observation) const;
 
 private:
     EnvironmentConfig config;
