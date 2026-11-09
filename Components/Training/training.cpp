@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <set>
 #include <sstream>
+#include <limits>
 #include <vector>
 #include <utility>
 #include <type_traits>
@@ -1198,6 +1199,7 @@ bool runTrainingExperiment(const std::string &mode,
                            bool resumeTraining,
                            const std::vector<std::string>& commandArguments)
 {
+    const std::string runStartedAtUtc = utcTimestampNow();
     const bool trainingMode = mode == "train" || mode == "resume-training";
     if (mode != "train" && mode != "resume-training" && mode != "validate" && mode != "compare")
     {
@@ -1530,7 +1532,7 @@ bool runTrainingExperiment(const std::string &mode,
     manifest["run_id"] = mode + "-seed-" + std::to_string(seed) + "-" +
         std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count());
-    manifest["started_at_utc"] = "recorded_in_summary_run_start";
+    manifest["started_at_utc"] = runStartedAtUtc;
     manifest["completed_at_utc"] = utcTimestampNow();
     manifest["mode"] = mode;
     manifest["seed"] = seed;
