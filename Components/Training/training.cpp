@@ -810,6 +810,7 @@ namespace
             std::string policyAction = action;
             std::string finalAction = action;
             std::vector<std::pair<std::string, double>> decisionQValues;
+            std::vector<std::string> storedValidActionNames;
             if constexpr (std::is_same_v<Agent, ProposedAgent>) {
                 const auto& trace = agent.getLastDecisionTrace();
                 hasValidStoredAction = trace.q_table_has_valid_action_values;
@@ -818,11 +819,13 @@ namespace
                 policyAction = trace.policy_action;
                 finalAction = trace.final_action;
                 decisionQValues = trace.valid_action_q_values;
+                storedValidActionNames = trace.stored_valid_action_names;
             } else {
                 hasValidStoredAction = agent.lastDecisionHadValidQAction();
                 qTableStatePresent = agent.lastDecisionHadQTableState();
                 contextualFallback = agent.getLastContextualFallback();
                 decisionQValues = agent.getValidActionQValues(observation);
+                storedValidActionNames = agent.getStoredValidActionNames(observation);
             }
             if (hasValidStoredAction) ++metrics.q_table_supported_decisions;
             else ++metrics.fallback_decisions;
@@ -837,11 +840,16 @@ namespace
             metrics.insist_execution_attempts += action == "INSIST" ? 1 : 0;
             metrics.insist_selected_when_unavailable += action == "INSIST" && !insistAvailable ? 1 : 0;
 
+            std::vector<std::pair<std::string, double>> storedDecisionQValues;
+            for (const auto& item : decisionQValues) {
+                if (std::find(storedValidActionNames.begin(), storedValidActionNames.end(), item.first) != storedValidActionNames.end())
+                    storedDecisionQValues.push_back(item);
+            }
             double qValueSpread = 0.0;
             bool hasQValueSpread = false;
-            if (hasValidStoredAction && !decisionQValues.empty()) {
+            if (storedDecisionQValues.size() >= 2) {
                 const auto bounds = std::minmax_element(
-                    decisionQValues.begin(), decisionQValues.end(),
+                    storedDecisionQValues.begin(), storedDecisionQValues.end(),
                     [](const auto& lhs, const auto& rhs) { return lhs.second < rhs.second; });
                 qValueSpread = bounds.second->second - bounds.first->second;
                 metrics.q_value_spreads.push_back(qValueSpread);
@@ -915,14 +923,15 @@ namespace
 
             double repeatedActionQGap = 0.0;
             bool hasRepeatedActionQGap = false;
-            if (repetitionCount >= 2 && hasValidStoredAction) {
-                const auto repeatedValue = std::find_if(decisionQValues.begin(), decisionQValues.end(),
+            if (repetitionCount >= 2 &&
+                std::find(storedValidActionNames.begin(), storedValidActionNames.end(), action) != storedValidActionNames.end()) {
+                const auto repeatedValue = std::find_if(storedDecisionQValues.begin(), storedDecisionQValues.end(),
                     [&](const auto& item) { return item.first == action; });
                 double bestAlternative = -std::numeric_limits<double>::infinity();
-                for (const auto& item : decisionQValues) {
+                for (const auto& item : storedDecisionQValues) {
                     if (item.first != action) bestAlternative = std::max(bestAlternative, item.second);
                 }
-                if (repeatedValue != decisionQValues.end() && std::isfinite(bestAlternative)) {
+                if (repeatedValue != storedDecisionQValues.end() && std::isfinite(bestAlternative)) {
                     repeatedActionQGap = bestAlternative - repeatedValue->second;
                     metrics.repeated_action_q_gaps.push_back(repeatedActionQGap);
                     hasRepeatedActionQGap = true;
@@ -981,6 +990,7 @@ namespace
                 validActionQValues.push_back({{"action", item.first}, {"q_value", item.second}});
             }
             row["valid_action_q_values"] = validActionQValues;
+            row["stored_valid_action_names"] = storedValidActionNames;
             row["environment_stress_after"] = transition.stress_after;
             row["user_satisfaction_after"] = transition.user_satisfaction_after;
             row["repetition_category"] = repetitionCategory(action);
@@ -1053,6 +1063,10 @@ namespace
                 event["q_table_supported_decision"] = hasValidStoredAction;
                 event["q_table_state_present"] = qTableStatePresent;
                 event["valid_action_q_values"] = validActionQValues;
+                event["stored_valid_action_names"] = storedValidActionNames;
+                event["stored_valid_action_q_values"] = nlohmann::json::array();
+                for (const auto& item : storedDecisionQValues)
+                    event["stored_valid_action_q_values"].push_back({{"action", item.first}, {"q_value", item.second}});
                 event["q_value_spread"] = hasQValueSpread ? nlohmann::json(qValueSpread) : nlohmann::json(nullptr);
                 event["repeated_action_vs_best_alternative_q_gap"] = hasRepeatedActionQGap
                     ? nlohmann::json(repeatedActionQGap) : nlohmann::json(nullptr);
