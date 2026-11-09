@@ -988,6 +988,11 @@ bool QLearning::hasStoredValidActionValue(const state& stateRef,
     return false;
 }
 
+bool QLearning::hasStoredActionValue(const state& stateRef, const std::string& action) const {
+    const auto stateIt = q_table.table.find(stateRef.encode());
+    return stateIt != q_table.table.end() && stateIt->second.find(action) != stateIt->second.end();
+}
+
 void QLearning::loadQTable(const std::string& path) {
     q_table.load(path);
 }
@@ -1555,6 +1560,15 @@ std::vector<std::pair<std::string, double>> BaselineAgent::getValidActionQValues
     return values;
 }
 
+std::vector<std::string> BaselineAgent::getStoredValidActionNames(
+    const EnvironmentObservation& observation) const {
+    std::vector<std::string> stored;
+    for (const auto& action : validActionsForObservation(observation)) {
+        if (q_policy.hasStoredActionValue(current_state, action)) stored.push_back(action);
+    }
+    return stored;
+}
+
 ProposedAgent::ProposedAgent(const EnvironmentConfig& configValue)
     : config(configValue), q_policy(0.25f, 0.8f, 0.15f, static_cast<unsigned int>(configValue.seed)), affective_state{} {
     q_policy.setActions(config.actions);
@@ -1639,6 +1653,8 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     last_decision_trace.affect = affective_state;
     for (const auto& action : validActions) {
         last_decision_trace.valid_action_q_values.emplace_back(action, q_policy.getQValue(current_state, action));
+        if (q_policy.hasStoredActionValue(current_state, action))
+            last_decision_trace.stored_valid_action_names.push_back(action);
     }
     // General semantic preferences influence only matching contexts. More
     // specific action preferences below take precedence when both apply.
