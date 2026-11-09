@@ -3,6 +3,20 @@
 **Branch:** `Dev`  
 **Scope:** Diagnostics and provenance only. No reward, state, action-selection, exploration, or deployment behaviour is changed.
 
+## Build and test
+
+From the repository root on `Dev`, reconfigure so the executable embeds the current revision and build metadata, then build and run the existing test suite:
+
+```bash
+git pull origin Dev
+cmake -S . -B build -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=ON
+cmake --build build -j"$(nproc)"
+./build/AnimalAgent --self-test
+ctest --test-dir build --output-on-failure
+```
+
+The instrumentation does not change reward values, state encoding, exploration, action selection, or Q-learning update rules. A successful local build and test run is still required before treating this commit as verified.
+
 ## Outputs
 
 For each `--train`, `--resume-training`, `--validate`, or `--compare` run, the selected output directory receives:
@@ -34,13 +48,13 @@ cp "$RUN_DIR/baseline.qtable" "$RUN_DIR/proposed.qtable" "$VALIDATE_DIR/"
 - **INSIST available:** `INSIST` appears in `validActionsForObservation(observation)`. A mismatch between these counts is separately recorded.
 - **Policy selection:** proposed agent's action before memory/preference overrides; baseline's selected policy action.
 - **Final selection:** action after any proposed-agent overrides.
-- **Execution attempt:** final `INSIST` action is passed into the environment transition function. This is not a claim that an insist was accepted or produced a meaningful response.
+- **Execution attempt:** final `INSIST` action is passed into the environment transition function. This is not a claim that an insist was accepted or produced a meaningful response; the current environment transition does not expose a separate accepted/rejected INSIST result.
 - **Penalty trigger:** repetition penalty is greater than zero on that decision.
 - **Within-state Q spread:** maximum minus minimum Q estimate across at least two valid actions with explicitly stored Q-table entries. Default-zero values for unvisited actions are excluded.
 - **Repeated-action Q gap:** best alternative Q estimate among explicitly stored valid actions minus the repeated action's Q estimate. Both the repeated action and at least one alternative must have stored entries. Positive means the alternative has a higher learned value.
 - **All valid-action Q estimates:** the step/event records retain estimates for every valid action, including default-zero estimates where no Q entry exists. `stored_valid_action_names` identifies which estimates were actually learned/stored.
 
-Run-wide distributions include sample count, mean, population standard deviation, minimum, p25, median, p75, p90 and maximum. Per-episode diagnostic aggregates are also embedded in each agent's episode entry.
+Run-wide distributions include sample count, mean, population standard deviation, minimum, p25, median, p75, p90 and maximum. The summary includes the total number of observed decisions, cumulative penalty, mean penalty per decision and mean penalty per penalty-triggering decision. Per-episode diagnostic aggregates are also embedded in each agent's episode entry.
 
 ## Interpretation boundaries
 
