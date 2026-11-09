@@ -1191,6 +1191,88 @@ namespace
     }
 } // namespace
 
+
+namespace {
+#ifndef IS2_GIT_REVISION
+#define IS2_GIT_REVISION "unknown"
+#endif
+#ifndef IS2_GIT_DIRTY
+#define IS2_GIT_DIRTY "unknown"
+#endif
+#ifndef IS2_COMPILER_ID
+#define IS2_COMPILER_ID "unknown"
+#endif
+#ifndef IS2_COMPILER_VERSION
+#define IS2_COMPILER_VERSION "unknown"
+#endif
+#ifndef IS2_BUILD_TYPE
+#define IS2_BUILD_TYPE "unknown"
+#endif
+
+std::string utcTimestampNow()
+{
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t raw = std::chrono::system_clock::to_time_t(now);
+    std::tm utc{};
+#if defined(_WIN32)
+    gmtime_s(&utc, &raw);
+#else
+    gmtime_r(&raw, &utc);
+#endif
+    std::ostringstream output;
+    output << std::put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
+    return output.str();
+}
+
+std::string fnv1a64FileHash(const std::filesystem::path& path)
+{
+    std::ifstream input(path, std::ios::binary);
+    if (!input) return "unavailable";
+    std::uint64_t hash = 14695981039346656037ull;
+    char buffer[8192];
+    while (input) {
+        input.read(buffer, sizeof(buffer));
+        const std::streamsize count = input.gcount();
+        for (std::streamsize index = 0; index < count; ++index) {
+            hash ^= static_cast<unsigned char>(buffer[index]);
+            hash *= 1099511628211ull;
+        }
+    }
+    std::ostringstream output;
+    output << std::hex << std::setfill('0') << std::setw(16) << hash;
+    return output.str();
+}
+
+nlohmann::json buildProvenanceJson()
+{
+    nlohmann::json build = {
+        {"git_revision", IS2_GIT_REVISION},
+        {"git_worktree_dirty_at_configure", IS2_GIT_DIRTY},
+        {"compiler_id", IS2_COMPILER_ID},
+        {"compiler_version", IS2_COMPILER_VERSION},
+        {"build_type", IS2_BUILD_TYPE},
+        {"cxx_standard", 17},
+        {"compiled_at", std::string(__DATE__) + " " + __TIME__}
+    };
+    std::error_code error;
+    const auto executablePath = std::filesystem::canonical("/proc/self/exe", error);
+    if (!error) {
+        build["executable_path"] = executablePath.string();
+        build["executable_fnv1a64"] = fnv1a64FileHash(executablePath);
+        const auto size = std::filesystem::file_size(executablePath, error);
+        if (!error) build["executable_size_bytes"] = size;
+        error.clear();
+        const auto modified = std::filesystem::last_write_time(executablePath, error);
+        if (!error) build["executable_mtime_clock_ticks"] = modified.time_since_epoch().count();
+    } else {
+        build["executable_path"] = "unavailable";
+        build["executable_fnv1a64"] = "unavailable";
+    }
+    build["executable_hash_note"] = "FNV-1a-64 is a non-cryptographic identity checksum, not a security hash.";
+    return build;
+}
+} // namespace
+
 bool runTrainingExperiment(const std::string &mode,
                            int episodes,
                            int steps,
