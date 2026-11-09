@@ -1648,6 +1648,22 @@ bool runTrainingExperiment(const std::string &mode,
         {"baseline_step_log", (outDir / (mode + "_baseline_steps.jsonl")).string()},
         {"proposed_step_log", (outDir / (mode + "_proposed_steps.jsonl")).string()}
     };
+    for (const auto& artifactName : {
+            mode + "_summary.json",
+            mode + "_diagnostic_events.jsonl",
+            mode + "_baseline_steps.jsonl",
+            mode + "_proposed_steps.jsonl"}) {
+        const fs::path artifactPath = outDir / artifactName;
+        if (!fs::exists(artifactPath)) continue;
+        std::error_code artifactError;
+        const auto artifactSize = fs::file_size(artifactPath, artifactError);
+        manifest["artifact_files"][artifactName] = {
+            {"path", artifactPath.string()},
+            {"fnv1a64", fnv1a64FileHash(artifactPath)}
+        };
+        if (!artifactError)
+            manifest["artifact_files"][artifactName]["size_bytes"] = artifactSize;
+    }
     if (fs::exists(baselinePolicy)) {
         manifest["policy_files"]["baseline"] = {
             {"path", baselinePolicy.string()},
