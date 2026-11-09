@@ -877,7 +877,7 @@ namespace
             const int previousRepetitionCount = repetitionTracker.consecutive;
             const std::string currentRepetitionCategory = repetitionCategory(action);
             const bool repetitionResponseReset = meaningfulResponse && previousRepetitionCount > 0;
-            const bool repetitionCategoryChanged = !meaningfulResponse &&
+            const bool repetitionCategoryChanged = !meaningfulResponse && previousRepetitionCount >= 2 &&
                 !previousRepetitionCategory.empty() && previousRepetitionCategory != currentRepetitionCategory;
             const float boredomPenalty = repetitionPenalty(
                 action, meaningfulResponse, repetitionTracker, repetitionCount);
@@ -1116,6 +1116,7 @@ namespace
 
     void accumulateTrainingDiagnostics(EpisodeMetrics& total, const EpisodeMetrics& episode)
     {
+        total.steps += episode.steps;
         total.insist_predicate_eligible_decisions += episode.insist_predicate_eligible_decisions;
         total.insist_available_decisions += episode.insist_available_decisions;
         total.insist_eligibility_mask_mismatches += episode.insist_eligibility_mask_mismatches;
@@ -1141,6 +1142,7 @@ namespace
     nlohmann::json trainingDiagnosticsToJson(const EpisodeMetrics& metrics)
     {
         return {
+            {"decisions_observed", metrics.steps},
             {"insist", {
                 {"predicate_eligible_decisions", metrics.insist_predicate_eligible_decisions},
                 {"valid_action_available_decisions", metrics.insist_available_decisions},
@@ -1156,6 +1158,8 @@ namespace
                 {"repeated_category_decisions", metrics.repetition_decisions},
                 {"penalty_trigger_count", metrics.repetition_penalty_trigger_count},
                 {"cumulative_penalty", metrics.repetition_penalty_total},
+                {"mean_penalty_per_decision", metrics.steps > 0 ? metrics.repetition_penalty_total / metrics.steps : 0.0},
+                {"mean_penalty_per_trigger", metrics.repetition_penalty_trigger_count > 0 ? metrics.repetition_penalty_total / metrics.repetition_penalty_trigger_count : 0.0},
                 {"maximum_single_step_penalty", metrics.repetition_penalty_max},
                 {"maximum_consecutive_count", metrics.repetition_max_consecutive_count},
                 {"context_resets_after_meaningful_response", metrics.repetition_response_reset_count},
