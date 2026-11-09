@@ -1,0 +1,58 @@
+[
+  {
+    "confidence": 1.0,
+    "current_context": "USER_SPECIFIC",
+    "generalization_factor": 0.5,
+    "last_updated": "2026-11-09T06:35:06Z",
+    "object": "positive",
+    "observation_count": 2,
+    "recency": 1.0,
+    "relation": "response_to_action",
+    "relevance": 0.7560014724731445,
+    "relevant_users": [],
+    "source": 1,
+    "subject": "EAT"
+  },
+  {
+    "confidence": 1.0,
+    "current_context": "USER_SPECIFIC",
+    "generalization_factor": 0.5,
+    "last_updated": "2026-11-09T06:35:06Z",
+    "object": "positive",
+    "observation_count": 1,
+    "recency": 1.0,
+    "relation": "response_to_action",
+    "relevance": 0.7752559781074524,
+    "relevant_users": [],
+    "source": 1,
+    "subject": "PLAY"
+  },
+  {
+    "confidence": 1.0,
+    "current_context": "USER_SPECIFIC",
+    "generalization_factor": 0.5,
+    "last_updated": "2026-11-09T06:35:06Z",
+    "object": "positive",
+    "observation_count": 2,
+    "recency": 1.0,
+    "relation": "response_to_action",
+    "relevance": 0.9319313168525696,
+    "relevant_users": [],
+    "source": 1,
+    "subject": "FETCH"
+  },
+  {
+    "confidence": 1.0,
+    "current_context": "USER_SPECIFIC",
+    "generalization_factor": 0.5,
+    "last_updated": "2026-11-09T06:35:06Z",
+    "object": "positive",
+    "observation_count": 2,
+    "recency": 1.0,
+    "relation": "response_to_action",
+    "relevance": 0.9568566083908081,
+    "relevant_users": [],
+    "source": 1,
+    "subject": "GREETING"
+  }
+]

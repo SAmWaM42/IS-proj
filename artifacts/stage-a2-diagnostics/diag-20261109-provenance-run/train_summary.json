@@ -1,0 +1,463 @@
+{
+  "affect_decay_during_training": true,
+  "baseline": {
+    "completion_rate": 1.0,
+    "episodes": [
+      {
+        "action_counts": {
+          "EAT": 1,
+          "FETCH": 1,
+          "GREETING": 1,
+          "PLAY": 1
+        },
+        "completed": true,
+        "episode": 0,
+        "fallback_decision_rate": 1.0,
+        "fallback_decisions": 4,
+        "initial_environment": {
+          "energy": 0.8482714891433716,
+          "stress": 0.5278214812278748,
+          "user_satisfaction": 0.42337390780448914
+        },
+        "q_table_supported_decision_rate": 0.0,
+        "q_table_supported_decisions": 0,
+        "scenario_composition": [
+          {
+            "food_available": true,
+            "goal_state": 2,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.30000001192092896,
+            "target_proximity": 0,
+            "task_status": 0,
+            "user_status": 1
+          },
+          {
+            "food_available": false,
+            "goal_state": 0,
+            "no_response_count": 0,
+            "play_available": true,
+            "signal_strength": 0.699999988079071,
+            "target_proximity": 1,
+            "task_status": 0,
+            "user_status": 1
+          },
+          {
+            "food_available": false,
+            "goal_state": 1,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.8199999928474426,
+            "target_proximity": 1,
+            "task_status": 1,
+            "user_status": 1
+          },
+          {
+            "food_available": false,
+            "goal_state": 1,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.8199999928474426,
+            "target_proximity": 1,
+            "task_status": 1,
+            "user_status": 1
+          }
+        ],
+        "scenario_seed": 2654435739,
+        "scenario_steps": 4,
+        "state_action_visits": {
+          "1351066830|EAT": 1,
+          "20810976|GREETING": 1,
+          "222364899|PLAY": 1,
+          "867337476|FETCH": 1
+        },
+        "steps": 4,
+        "stimulus_aligned_actions": 4,
+        "stimulus_aligned_by_type": {
+          "fetch_near": 1,
+          "food_offer": 1,
+          "play_invitation": 1,
+          "social_contact": 1
+        },
+        "stimulus_checks": 4,
+        "stimulus_checks_by_type": {
+          "fetch_near": 1,
+          "food_offer": 1,
+          "play_invitation": 1,
+          "social_contact": 1
+        },
+        "stimulus_response_alignment_rate": 1.0,
+        "total_reward": 3.5881006717681885,
+        "unique_state_action_pairs_visited": 4,
+        "unique_states_visited": 4,
+        "valid_state_action_pair_coverage_on_encountered_states": 0.15384615384615385,
+        "valid_state_action_pairs_available_on_encountered_states": 26
+      },
+      {
+        "action_counts": {
+          "EAT": 1,
+          "FETCH": 1,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 1,
+        "fallback_decision_rate": 1.0,
+        "fallback_decisions": 3,
+        "initial_environment": {
+          "energy": 0.6729163527488708,
+          "stress": 0.17019754648208618,
+          "user_satisfaction": 0.389989972114563
+        },
+        "q_table_supported_decision_rate": 0.0,
+        "q_table_supported_decisions": 0,
+        "scenario_composition": [
+          {
+            "food_available": false,
+            "goal_state": 1,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.8199999928474426,
+            "target_proximity": 0,
+            "task_status": 1,
+            "user_status": 1
+          },
+          {
+            "food_available": false,
+            "goal_state": 1,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.8199999928474426,
+            "target_proximity": 1,
+            "task_status": 1,
+            "user_status": 1
+          },
+          {
+            "food_available": true,
+            "goal_state": 1,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.5600000023841858,
+            "target_proximity": 1,
+            "task_status": 1,
+            "user_status": 1
+          }
+        ],
+        "scenario_seed": 1013904200,
+        "scenario_steps": 3,
+        "state_action_visits": {
+          "10733280|GREETING": 1,
+          "706094340|FETCH": 1,
+          "857259774|EAT": 1
+        },
+        "steps": 3,
+        "stimulus_aligned_actions": 3,
+        "stimulus_aligned_by_type": {
+          "fetch_near": 1,
+          "fetch_with_food": 1,
+          "social_contact": 1
+        },
+        "stimulus_checks": 3,
+        "stimulus_checks_by_type": {
+          "fetch_near": 1,
+          "fetch_with_food": 1,
+          "social_contact": 1
+        },
+        "stimulus_response_alignment_rate": 1.0,
+        "total_reward": 2.476734161376953,
+        "unique_state_action_pairs_visited": 3,
+        "unique_states_visited": 3,
+        "valid_state_action_pair_coverage_on_encountered_states": 0.15,
+        "valid_state_action_pairs_available_on_encountered_states": 20
+      }
+    ],
+    "mean_reward": 3.032417416572571,
+    "mean_reward_per_step": 0.8664049761635917,
+    "mean_steps_per_episode": 3.5,
+    "mean_total_reward_per_episode": 3.032417416572571,
+    "stimulus_aligned_actions": 7,
+    "stimulus_checks": 7,
+    "stimulus_response_alignment_rate": 1.0,
+    "stimulus_response_audit_by_type": {
+      "fetch_near": {
+        "aligned": 2,
+        "alignment_rate": 1.0,
+        "checks": 2
+      },
+      "fetch_with_food": {
+        "aligned": 1,
+        "alignment_rate": 1.0,
+        "checks": 1
+      },
+      "food_offer": {
+        "aligned": 1,
+        "alignment_rate": 1.0,
+        "checks": 1
+      },
+      "play_invitation": {
+        "aligned": 1,
+        "alignment_rate": 1.0,
+        "checks": 1
+      },
+      "social_contact": {
+        "aligned": 2,
+        "alignment_rate": 1.0,
+        "checks": 2
+      }
+    }
+  },
+  "coverage": {
+    "baseline": {
+      "globally_unique_state_action_pairs_visited": 7,
+      "globally_unique_states_visited": 7,
+      "valid_state_action_pair_coverage_on_encountered_states": 0.15217391304347827,
+      "valid_state_action_pairs_available_on_encountered_states": 46
+    },
+    "proposed": {
+      "globally_unique_state_action_pairs_visited": 7,
+      "globally_unique_states_visited": 7,
+      "valid_state_action_pair_coverage_on_encountered_states": 0.15217391304347827,
+      "valid_state_action_pairs_available_on_encountered_states": 46
+    }
+  },
+  "environment_repetition_constraint": {
+    "category_window": "consecutive action categories within an episode",
+    "enabled": true,
+    "first_occurrence_penalty": 0.0,
+    "increment_per_repeat": 0.04,
+    "maximum_penalty": 0.2,
+    "recovery": "meaningful user/environment response or change of action category",
+    "scope": "shared training environment reward for both agents"
+  },
+  "environment_seed": 42,
+  "episodes": 2,
+  "max_steps_per_episode": 5,
+  "mode": "train",
+  "note": "Training uses reproducibly shuffled and variably composed scenario blocks. Both agents receive the same schedule and seeded transition noise. Repeated action categories without a meaningful response incur a shared bounded environmental reward penalty. These synthetic rewards and coverage diagnostics are engineering measures, not perceived believability.",
+  "proposed": {
+    "completion_rate": 1.0,
+    "episodes": [
+      {
+        "action_counts": {
+          "EAT": 1,
+          "FETCH": 1,
+          "GREETING": 1,
+          "PLAY": 1
+        },
+        "completed": true,
+        "episode": 0,
+        "fallback_decision_rate": 1.0,
+        "fallback_decisions": 4,
+        "initial_environment": {
+          "energy": 0.8482714891433716,
+          "stress": 0.5278214812278748,
+          "user_satisfaction": 0.42337390780448914
+        },
+        "q_table_supported_decision_rate": 0.0,
+        "q_table_supported_decisions": 0,
+        "scenario_composition": [
+          {
+            "food_available": true,
+            "goal_state": 2,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.30000001192092896,
+            "target_proximity": 0,
+            "task_status": 0,
+            "user_status": 1
+          },
+          {
+            "food_available": false,
+            "goal_state": 0,
+            "no_response_count": 0,
+            "play_available": true,
+            "signal_strength": 0.699999988079071,
+            "target_proximity": 1,
+            "task_status": 0,
+            "user_status": 1
+          },
+          {
+            "food_available": false,
+            "goal_state": 1,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.8199999928474426,
+            "target_proximity": 1,
+            "task_status": 1,
+            "user_status": 1
+          },
+          {
+            "food_available": false,
+            "goal_state": 1,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.8199999928474426,
+            "target_proximity": 1,
+            "task_status": 1,
+            "user_status": 1
+          }
+        ],
+        "scenario_seed": 2654435739,
+        "scenario_steps": 4,
+        "state_action_visits": {
+          "1351084326|EAT": 1,
+          "20884272|GREETING": 1,
+          "222436251|PLAY": 1,
+          "867410772|FETCH": 1
+        },
+        "steps": 4,
+        "stimulus_aligned_actions": 4,
+        "stimulus_aligned_by_type": {
+          "fetch_near": 1,
+          "food_offer": 1,
+          "play_invitation": 1,
+          "social_contact": 1
+        },
+        "stimulus_checks": 4,
+        "stimulus_checks_by_type": {
+          "fetch_near": 1,
+          "food_offer": 1,
+          "play_invitation": 1,
+          "social_contact": 1
+        },
+        "stimulus_response_alignment_rate": 1.0,
+        "total_reward": 3.5881006717681885,
+        "unique_state_action_pairs_visited": 4,
+        "unique_states_visited": 4,
+        "valid_state_action_pair_coverage_on_encountered_states": 0.15384615384615385,
+        "valid_state_action_pairs_available_on_encountered_states": 26
+      },
+      {
+        "action_counts": {
+          "EAT": 1,
+          "FETCH": 1,
+          "GREETING": 1
+        },
+        "completed": true,
+        "episode": 1,
+        "fallback_decision_rate": 1.0,
+        "fallback_decisions": 3,
+        "initial_environment": {
+          "energy": 0.6729163527488708,
+          "stress": 0.17019754648208618,
+          "user_satisfaction": 0.389989972114563
+        },
+        "q_table_supported_decision_rate": 0.0,
+        "q_table_supported_decisions": 0,
+        "scenario_composition": [
+          {
+            "food_available": false,
+            "goal_state": 1,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.8199999928474426,
+            "target_proximity": 0,
+            "task_status": 1,
+            "user_status": 1
+          },
+          {
+            "food_available": false,
+            "goal_state": 1,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.8199999928474426,
+            "target_proximity": 1,
+            "task_status": 1,
+            "user_status": 1
+          },
+          {
+            "food_available": true,
+            "goal_state": 1,
+            "no_response_count": 0,
+            "play_available": false,
+            "signal_strength": 0.5600000023841858,
+            "target_proximity": 1,
+            "task_status": 1,
+            "user_status": 1
+          }
+        ],
+        "scenario_seed": 1013904200,
+        "scenario_steps": 3,
+        "state_action_visits": {
+          "10789080|GREETING": 1,
+          "706167636|FETCH": 1,
+          "857315574|EAT": 1
+        },
+        "steps": 3,
+        "stimulus_aligned_actions": 3,
+        "stimulus_aligned_by_type": {
+          "fetch_near": 1,
+          "fetch_with_food": 1,
+          "social_contact": 1
+        },
+        "stimulus_checks": 3,
+        "stimulus_checks_by_type": {
+          "fetch_near": 1,
+          "fetch_with_food": 1,
+          "social_contact": 1
+        },
+        "stimulus_response_alignment_rate": 1.0,
+        "total_reward": 2.476734161376953,
+        "unique_state_action_pairs_visited": 3,
+        "unique_states_visited": 3,
+        "valid_state_action_pair_coverage_on_encountered_states": 0.15,
+        "valid_state_action_pairs_available_on_encountered_states": 20
+      }
+    ],
+    "mean_reward": 3.032417416572571,
+    "mean_reward_per_step": 0.8664049761635917,
+    "mean_steps_per_episode": 3.5,
+    "mean_total_reward_per_episode": 3.032417416572571,
+    "stimulus_aligned_actions": 7,
+    "stimulus_checks": 7,
+    "stimulus_response_alignment_rate": 1.0,
+    "stimulus_response_audit_by_type": {
+      "fetch_near": {
+        "aligned": 2,
+        "alignment_rate": 1.0,
+        "checks": 2
+      },
+      "fetch_with_food": {
+        "aligned": 1,
+        "alignment_rate": 1.0,
+        "checks": 1
+      },
+      "food_offer": {
+        "aligned": 1,
+        "alignment_rate": 1.0,
+        "checks": 1
+      },
+      "play_invitation": {
+        "aligned": 1,
+        "alignment_rate": 1.0,
+        "checks": 1
+      },
+      "social_contact": {
+        "aligned": 2,
+        "alignment_rate": 1.0,
+        "checks": 2
+      }
+    }
+  },
+  "resume_training_requested": false,
+  "reward_model": "synthetic_v4_graded_context_fit",
+  "scenario_generation": {
+    "episode_length_range": [
+      3,
+      6
+    ],
+    "ignored_request_contract": "task_status=1 and user_status=0; INSIST becomes action-valid only after no_response_count reaches 2",
+    "method": "seeded shuffled scenario blocks with probabilistic scenario inclusion",
+    "preserved_sequences": [
+      "fetch retries",
+      "three-step ignored request / no-response sequence"
+    ],
+    "random_seed_recorded_per_episode": true,
+    "requested_steps": 5
+  },
+  "seed": 42,
+  "simulated_seconds_between_decisions_max": 5.0,
+  "simulated_seconds_between_decisions_min": 0.5,
+  "stimulus_alignment_note": "Heuristic engineering diagnostic for broad stimulus/action compatibility only; not a validated animal-behaviour model or measure of perceived believability.",
+  "temporal_model": "Each non-terminal decision uses a seeded elapsed-time interval sampled uniformly from 0.5 to 5 simulated seconds. Paired agents share intervals. Physical energy receives action effort costs and passive time-based drain (0.0025 per second normally; 0.0008 while resting). The shared energy value is observable to both agents and included in both state representations. Proposed-agent affect decays over the interval before the next state is built for Q-learning.",
+  "training_initialization": "fresh_qtables"
+}
