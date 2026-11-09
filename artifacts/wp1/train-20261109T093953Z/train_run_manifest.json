@@ -1,0 +1,76 @@
+{
+  "artifact_files": {
+    "train_baseline_steps.jsonl": {
+      "fnv1a64": "54a7915f8a24cb3c",
+      "path": "artifacts/wp1/train-20261109T093953Z/train_baseline_steps.jsonl",
+      "size_bytes": 143239
+    },
+    "train_diagnostic_events.jsonl": {
+      "fnv1a64": "d058dcecbd8736e0",
+      "path": "artifacts/wp1/train-20261109T093953Z/train_diagnostic_events.jsonl",
+      "size_bytes": 7120228
+    },
+    "train_proposed_steps.jsonl": {
+      "fnv1a64": "166396d8d5384cee",
+      "path": "artifacts/wp1/train-20261109T093953Z/train_proposed_steps.jsonl",
+      "size_bytes": 154827
+    },
+    "train_summary.json": {
+      "fnv1a64": "f34b8582a4832970",
+      "path": "artifacts/wp1/train-20261109T093953Z/train_summary.json",
+      "size_bytes": 7029564
+    }
+  },
+  "artifacts": {
+    "baseline_step_log": "artifacts/wp1/train-20261109T093953Z/train_baseline_steps.jsonl",
+    "event_log": "artifacts/wp1/train-20261109T093953Z/train_diagnostic_events.jsonl",
+    "proposed_step_log": "artifacts/wp1/train-20261109T093953Z/train_proposed_steps.jsonl",
+    "summary": "artifacts/wp1/train-20261109T093953Z/train_summary.json"
+  },
+  "build": {
+    "build_type": "Release",
+    "compiled_at": "Nov  9 2026 12:38:44",
+    "compiler_id": "GNU",
+    "compiler_version": "15.2.0",
+    "cxx_standard": 17,
+    "executable_fnv1a64": "04c0dca26afeb7a9",
+    "executable_hash_note": "FNV-1a-64 is a non-cryptographic identity checksum, not a security hash.",
+    "executable_mtime_clock_ticks": -4643446859664534239,
+    "executable_path": "/home/samuel/Documents/School/4.2/IS-2/build/AnimalAgent",
+    "executable_size_bytes": 1762080,
+    "git_revision": "8f904f5c9fb81d255ac61c0aaf853342c2d3bada",
+    "git_worktree_dirty_at_configure": "false"
+  },
+  "command_arguments": [
+    "./build/AnimalAgent",
+    "--train",
+    "--episodes",
+    "200",
+    "--steps",
+    "40",
+    "--seed",
+    "42",
+    "--out",
+    "artifacts/wp1/train-20261109T093953Z"
+  ],
+  "completed_at_utc": "2026-11-09T09:39:54Z",
+  "environment_seed": 42,
+  "episodes_requested": 200,
+  "max_steps_per_episode": 40,
+  "mode": "train",
+  "output_directory": "artifacts/wp1/train-20261109T093953Z",
+  "policy_files": {
+    "baseline": {
+      "fnv1a64": "8183302ffd968067",
+      "path": "artifacts/wp1/train-20261109T093953Z/baseline.qtable"
+    },
+    "proposed": {
+      "fnv1a64": "dde92550141ef260",
+      "path": "artifacts/wp1/train-20261109T093953Z/proposed.qtable"
+    }
+  },
+  "run_id": "train-seed-42-1794217194148",
+  "schema_version": 1,
+  "seed": 42,
+  "started_at_utc": "2026-11-09T09:39:53Z"
+}
