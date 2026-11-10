@@ -57,6 +57,12 @@ namespace
         float total_reward = 0.0f;
         int steps = 0;
         bool completed = false;
+        int synthetic_positive_responses = 0;
+        int synthetic_negative_responses = 0;
+        int synthetic_no_responses = 0;
+        int synthetic_requests_observed = 0;
+        int synthetic_requests_acknowledged = 0;
+        int synthetic_requests_pending_at_end = 0;
         int stimulus_checks = 0;
         int stimulus_aligned_actions = 0;
         std::map<std::string, int> stimulus_checks_by_type;
@@ -89,6 +95,83 @@ namespace
         std::vector<double> repeated_action_q_gaps;
         std::vector<double> repetition_penalty_samples;
     };
+
+    struct SyntheticUserProfile { float responsiveness=0.75f; int patience=3; float social_openness=0.70f; };
+    struct SyntheticUserResponse {
+        int status=0; int no_response_count=0; bool request_pending=false;
+        bool request_acknowledged=false; std::string category="silence";
+    };
+    SyntheticUserProfile makeSyntheticUserProfile(unsigned int seed) {
+        std::mt19937 rng(seed ^ 0x9e3779b9u);
+        std::uniform_real_distribution<float> response(0.58f,0.92f), openness(0.48f,0.94f);
+        std::uniform_int_distribution<int> patience(2,4);
+        return {response(rng),patience(rng),openness(rng)};
+    }
+    SyntheticUserResponse simulateSyntheticUserResponse(
+        const EnvironmentObservation& observation,const std::string& action,
+        const EnvironmentStep& transition,const SyntheticUserProfile& profile,float draw) {
+        SyntheticUserResponse r;
+        const bool pending=observation.goal_state==1 && observation.task_status==1;
+        r.request_pending=pending;
+        if(pending) {
+            r.no_response_count=std::min(3,observation.no_response_count+1);
+            if(transition.completed && action=="FETCH") {
+                r.status=1; r.no_response_count=0; r.request_pending=false;
+                r.request_acknowledged=true; r.category="fetch_completed";
+            } else if(action=="INSIST") {
+                const float threshold=std::clamp(profile.responsiveness*(0.72f-0.06f*float(profile.patience-2)),0.20f,0.70f);
+                if(draw<threshold) { r.status=1; r.no_response_count=0; r.request_acknowledged=true; r.category="request_acknowledged"; }
+                else if(draw>0.94f) { r.status=2; r.no_response_count=0; r.category="request_rejected"; }
+                else r.category="request_silence";
+            } else if(action=="APPROACH_FOLLOW" &&
+                      transition.next_observation.target_proximity<observation.target_proximity &&
+                      draw<profile.responsiveness*0.42f) {
+                r.status=1; r.no_response_count=0; r.category="approach_acknowledged";
+            } else if(draw>0.975f) {
+                r.status=2; r.no_response_count=0; r.category="request_rejected";
+            } else r.category="request_silence";
+            return r;
+        }
+        if((action=="GREETING"||action=="NUZZLE"||action=="PLAY") && observation.goal_state==0) {
+            const float threshold=std::clamp(profile.responsiveness*profile.social_openness,0.15f,0.88f);
+            if(draw<threshold) { r.status=1; r.category="social_acknowledgement"; }
+            else if(draw>0.96f) { r.status=2; r.category="social_rejection"; }
+            else r.category="social_silence";
+        } else if(action=="EAT" && observation.food_available) {
+            if(draw<profile.responsiveness*0.80f) { r.status=1; r.category="food_acknowledgement"; }
+        } else if(action=="SLEEP_LAY" && (observation.goal_state==2||observation.energy<0.35f)) {
+            if(draw<profile.responsiveness*0.62f) { r.status=1; r.category="rest_acknowledgement"; }
+        } else if(observation.goal_state==2 && observation.signal_strength>=0.80f &&
+                  (action=="BARK"||action=="HIDE_AVOID"||action=="ACT_CONFUSED"||action=="WHINE")) {
+            if(draw<profile.responsiveness*0.55f) { r.status=1; r.category="disturbance_response"; }
+        }
+        if(r.status==0 && r.category=="silence") r.category="no_contextual_response";
+        return r;
+    }
+    std::vector<float> makeSyntheticUserDraws(unsigned int seed,std::size_t count) {
+        std::mt19937 rng(seed ^ 0x85ebca6bu);
+        std::uniform_real_distribution<float> dist(0.0f,1.0f);
+        std::vector<float> values; values.reserve(count);
+        for(std::size_t i=0;i<count;++i) values.push_back(dist(rng));
+        return values;
+    }
+    bool testSyntheticUserDeterminismAndLifecycle() {
+        const auto a=makeSyntheticUserProfile(9123u), b=makeSyntheticUserProfile(9123u), c=makeSyntheticUserProfile(9124u);
+        if(a.responsiveness!=b.responsiveness||a.patience!=b.patience||a.social_openness!=b.social_openness) return false;
+        if(a.responsiveness==c.responsiveness&&a.patience==c.patience&&a.social_openness==c.social_openness) return false;
+        EnvironmentObservation request{1,0,0,1,0.82f}; request.no_response_count=1;
+        EnvironmentStep failed; failed.next_observation=request;
+        const auto silence=simulateSyntheticUserResponse(request,"FETCH",failed,a,0.5f);
+        if(silence.status!=0||silence.no_response_count!=2||!silence.request_pending) return false;
+        EnvironmentStep success=failed; success.completed=true; success.next_observation.task_status=0;
+        const auto ack=simulateSyntheticUserResponse(request,"FETCH",success,a,0.5f);
+        if(ack.status!=1||ack.no_response_count!=0||ack.request_pending||!ack.request_acknowledged) return false;
+        const auto draws1=makeSyntheticUserDraws(777u,12), draws2=makeSyntheticUserDraws(777u,12);
+        if(draws1!=draws2) return false;
+        const auto r1=simulateSyntheticUserResponse(request,"INSIST",failed,a,draws1[0]);
+        const auto r2=simulateSyntheticUserResponse(request,"INSIST",failed,b,draws2[0]);
+        return r1.status==r2.status&&r1.no_response_count==r2.no_response_count&&r1.category==r2.category;
+    }
 
     // Scenario blocks preserve meaningful short sequences (fetch retries and
     // ignored requests) while their order and inclusion vary between episodes.
@@ -775,7 +858,10 @@ namespace
                               unsigned int transitionSeed,
                               float initialEnergy,
                               float initialStress,
-                              float initialSatisfaction)
+                              float initialSatisfaction,
+                              const std::string& userModel,
+                              const SyntheticUserProfile& syntheticProfile,
+                              const std::vector<float>& syntheticUserDraws)
     {
         agent.reset();
         agent.setLearningEnabled(learning);
@@ -788,11 +874,20 @@ namespace
         RepetitionTracker repetitionTracker;
         int repetitionCount = 0;
         EnvironmentObservation currentObservation = observations.front();
+        if(userModel=="synthetic") { currentObservation.user_status=0; currentObservation.no_response_count=0; }
         for (std::size_t step = 0; step < observations.size(); ++step)
         {
             if (step > 0) {
+                const bool wasPending=currentObservation.goal_state==1&&currentObservation.task_status==1;
+                const int previousStatus=currentObservation.user_status;
+                const int previousNoResponse=currentObservation.no_response_count;
                 currentObservation = mergeTaskTransition(
                     observations[step - 1], currentObservation, observations[step]);
+                if(userModel=="synthetic") {
+                    const bool continuing=wasPending&&currentObservation.goal_state==1&&currentObservation.task_status==1;
+                    currentObservation.user_status=continuing?previousStatus:0;
+                    currentObservation.no_response_count=continuing?previousNoResponse:0;
+                }
             }
             currentObservation.energy = environmentEnergy;
             const EnvironmentObservation observation = currentObservation;
@@ -872,7 +967,19 @@ namespace
             userSatisfaction = transition.user_satisfaction_after;
             const bool energyDepleted = transition.energy_after <= 0.0f;
             const bool terminal = step + 1 == observations.size() || energyDepleted;
-            const bool meaningfulResponse = transition.completed || observation.user_status != 0;
+            SyntheticUserResponse syntheticResponse;
+            if(userModel=="synthetic") {
+                const float draw=step<syntheticUserDraws.size()?syntheticUserDraws[step]:0.5f;
+                syntheticResponse=simulateSyntheticUserResponse(observation,action,transition,syntheticProfile,draw);
+                if(syntheticResponse.status==1) ++metrics.synthetic_positive_responses;
+                else if(syntheticResponse.status==2) ++metrics.synthetic_negative_responses;
+                else ++metrics.synthetic_no_responses;
+                if(observation.goal_state==1&&observation.task_status==1) ++metrics.synthetic_requests_observed;
+                if(syntheticResponse.request_acknowledged) ++metrics.synthetic_requests_acknowledged;
+            }
+            const bool meaningfulResponse = userModel=="synthetic"
+                ? (syntheticResponse.status!=0||transition.completed)
+                : (transition.completed||observation.user_status!=0);
             const std::string previousRepetitionCategory = repetitionTracker.category;
             const int previousRepetitionCount = repetitionTracker.consecutive;
             const std::string currentRepetitionCategory = repetitionCategory(action);
@@ -888,6 +995,11 @@ namespace
             if (!terminal) {
                 nextObservation = mergeTaskTransition(
                     observation, transition.next_observation, observations[step + 1]);
+            }
+            if(userModel=="synthetic") {
+                nextObservation.user_status=syntheticResponse.status;
+                nextObservation.no_response_count=syntheticResponse.no_response_count;
+                if(transition.completed) { nextObservation.task_status=0; nextObservation.goal_state=0; }
             }
             // Scenario merging may replace observation fields, but physical energy
             // is environment-owned and must survive every merge.
@@ -997,6 +1109,11 @@ namespace
             row["repetition_consecutive_count"] = repetitionCount;
             row["boredom_penalty"] = boredomPenalty;
             row["meaningful_environment_or_user_response"] = meaningfulResponse;
+            row["user_model"] = userModel;
+            row["synthetic_user_response_status"] = userModel=="synthetic"?nlohmann::json(syntheticResponse.status):nlohmann::json(nullptr);
+            row["synthetic_user_response_category"] = userModel=="synthetic"?nlohmann::json(syntheticResponse.category):nlohmann::json(nullptr);
+            row["synthetic_user_no_response_count_after"] = userModel=="synthetic"?nlohmann::json(syntheticResponse.no_response_count):nlohmann::json(nullptr);
+            row["synthetic_user_request_pending_after"] = userModel=="synthetic"?nlohmann::json(syntheticResponse.request_pending):nlohmann::json(nullptr);
             row["action"] = action;
             row["encoded_state"] = stateKeyBeforeAction;
             row["q_table_state_present"] = qTableStatePresent;
@@ -1083,6 +1200,8 @@ namespace
             currentObservation = nextObservation;
             if (terminal) break;
         }
+        if(userModel=="synthetic"&&currentObservation.goal_state==1&&currentObservation.task_status==1)
+            metrics.synthetic_requests_pending_at_end=1;
         return metrics;
     }
 
@@ -1117,6 +1236,12 @@ namespace
     void accumulateTrainingDiagnostics(EpisodeMetrics& total, const EpisodeMetrics& episode)
     {
         total.steps += episode.steps;
+        total.synthetic_positive_responses += episode.synthetic_positive_responses;
+        total.synthetic_negative_responses += episode.synthetic_negative_responses;
+        total.synthetic_no_responses += episode.synthetic_no_responses;
+        total.synthetic_requests_observed += episode.synthetic_requests_observed;
+        total.synthetic_requests_acknowledged += episode.synthetic_requests_acknowledged;
+        total.synthetic_requests_pending_at_end += episode.synthetic_requests_pending_at_end;
         total.insist_predicate_eligible_decisions += episode.insist_predicate_eligible_decisions;
         total.insist_available_decisions += episode.insist_available_decisions;
         total.insist_eligibility_mask_mismatches += episode.insist_eligibility_mask_mismatches;
@@ -1180,6 +1305,14 @@ namespace
         result["total_reward"] = metrics.total_reward;
         result["steps"] = metrics.steps;
         result["completed"] = metrics.completed;
+        result["synthetic_user"] = {
+            {"positive_responses",metrics.synthetic_positive_responses},
+            {"negative_responses",metrics.synthetic_negative_responses},
+            {"no_responses",metrics.synthetic_no_responses},
+            {"requests_observed",metrics.synthetic_requests_observed},
+            {"requests_acknowledged",metrics.synthetic_requests_acknowledged},
+            {"requests_pending_at_end",metrics.synthetic_requests_pending_at_end}
+        };
         result["action_counts"] = metrics.action_counts;
         result["unique_states_visited"] = metrics.visited_states.size();
         result["unique_state_action_pairs_visited"] = metrics.state_action_visits.size();
@@ -1297,13 +1430,18 @@ bool runTrainingExperiment(const std::string &mode,
                            unsigned int seed,
                            const std::string &outputDirectory,
                            bool resumeTraining,
-                           const std::vector<std::string>& commandArguments)
+                           const std::vector<std::string>& commandArguments,
+                           const std::string& userModel)
 {
     const std::string runStartedAtUtc = utcTimestampNow();
     const bool trainingMode = mode == "train" || mode == "resume-training";
     if (mode != "train" && mode != "resume-training" && mode != "validate" && mode != "compare")
     {
         std::cerr << "Unsupported experiment mode: " << mode << '\n';
+        return false;
+    }
+    if(userModel!="scripted"&&userModel!="synthetic") {
+        std::cerr << "Unsupported user model '" << userModel << "'. Choose scripted or synthetic.\n";
         return false;
     }
     if (episodes < 1 || steps < 1)
@@ -1371,12 +1509,20 @@ bool runTrainingExperiment(const std::string &mode,
     summary["episodes"] = episodes;
     summary["max_steps_per_episode"] = steps;
     summary["reward_model"] = "synthetic_v4_graded_context_fit";
+    summary["user_model"] = userModel;
+    summary["synthetic_user_model"] = userModel=="synthetic"?nlohmann::json({
+        {"profile_ranges",{{"responsiveness",{0.58,0.92}},{"patience_turns",{2,4}},{"social_openness",{0.48,0.94}}}},
+        {"response_status_convention","0=silence, 1=positive, 2=negative"},
+        {"response_randomness","episode/step seeded draws shared between paired agents"},
+        {"policy_independence","Uses public context and action/outcome only; never reads agent identity, Q-values, memory, or affect."}
+    }):nlohmann::json(nullptr);
     summary["affect_decay_during_training"] = true;
     summary["simulated_seconds_between_decisions_min"] = kMinSecondsPerTrainingStep;
     summary["simulated_seconds_between_decisions_max"] = kMaxSecondsPerTrainingStep;
     summary["temporal_model"] = "Each non-terminal decision uses a seeded elapsed-time interval sampled uniformly from 0.5 to 5 simulated seconds. Paired agents share intervals. Physical energy receives action effort costs and passive time-based drain (0.0025 per second normally; 0.0008 while resting). The shared energy value is observable to both agents and included in both state representations. Proposed-agent affect decays over the interval before the next state is built for Q-learning.";
     summary["scenario_generation"] = {
         {"method", "seeded shuffled scenario blocks with probabilistic scenario inclusion"},
+        {"user_response_mode",userModel},
         {"requested_steps", steps},
         {"episode_length_range", {std::max(1, steps * 3 / 4), std::max(1, steps * 5 / 4)}},
         {"preserved_sequences", {"fetch retries", "three-step ignored request / no-response sequence"}},
@@ -1424,6 +1570,9 @@ bool runTrainingExperiment(const std::string &mode,
         std::mt19937 scenarioRng(episodeScenarioSeed);
         std::vector<EnvironmentObservation> observations =
             makeScenarioSchedule(scenarioRng, episodeSteps);
+        if(userModel=="synthetic") for(auto& o:observations) { o.user_status=0; o.no_response_count=0; }
+        const SyntheticUserProfile episodeSyntheticProfile=makeSyntheticUserProfile(episodeScenarioSeed);
+        const std::vector<float> syntheticUserDraws=makeSyntheticUserDraws(episodeScenarioSeed,observations.size());
         nlohmann::json scenarioComposition = nlohmann::json::array();
         for (const auto &item : observations) {
             scenarioComposition.push_back({
@@ -1452,10 +1601,12 @@ bool runTrainingExperiment(const std::string &mode,
         const bool recordDetailedSteps = episode >= std::max(0, episodes - kDetailedStepLogEpisodes);
         const EpisodeMetrics baselineMetrics = runEpisode(
             baseline, observations, elapsedIntervals, learning, epsilon, baselineLog, diagnosticLog, mode, "baseline", episode,
-            recordDetailedSteps, environmentSeed, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction);
+            recordDetailedSteps, environmentSeed, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction,
+            userModel, episodeSyntheticProfile, syntheticUserDraws);
         const EpisodeMetrics proposedMetrics = runEpisode(
             proposed, observations, elapsedIntervals, learning, epsilon, proposedLog, diagnosticLog, mode, "proposed", episode,
-            recordDetailedSteps, environmentSeed, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction);
+            recordDetailedSteps, environmentSeed, episodeInitialEnergy, episodeInitialStress, episodeInitialSatisfaction,
+            userModel, episodeSyntheticProfile, syntheticUserDraws);
         accumulateTrainingDiagnostics(baselineDiagnosticAggregate, baselineMetrics);
         accumulateTrainingDiagnostics(proposedDiagnosticAggregate, proposedMetrics);
 
@@ -1478,6 +1629,10 @@ bool runTrainingExperiment(const std::string &mode,
         nlohmann::json baselineRow = metricsToJson(baselineMetrics);
         baselineRow["episode"] = episode;
         baselineRow["scenario_seed"] = episodeScenarioSeed;
+        baselineRow["user_model"] = userModel;
+        baselineRow["synthetic_user_profile"] = userModel=="synthetic"?nlohmann::json({
+            {"responsiveness",episodeSyntheticProfile.responsiveness},{"patience",episodeSyntheticProfile.patience},
+            {"social_openness",episodeSyntheticProfile.social_openness}}):nlohmann::json(nullptr);
         baselineRow["scenario_steps"] = observations.size();
         baselineRow["initial_environment"] = {
             {"energy", episodeInitialEnergy},
@@ -1489,6 +1644,10 @@ bool runTrainingExperiment(const std::string &mode,
         nlohmann::json proposedRow = metricsToJson(proposedMetrics);
         proposedRow["episode"] = episode;
         proposedRow["scenario_seed"] = episodeScenarioSeed;
+        proposedRow["user_model"] = userModel;
+        proposedRow["synthetic_user_profile"] = userModel=="synthetic"?nlohmann::json({
+            {"responsiveness",episodeSyntheticProfile.responsiveness},{"patience",episodeSyntheticProfile.patience},
+            {"social_openness",episodeSyntheticProfile.social_openness}}):nlohmann::json(nullptr);
         proposedRow["scenario_steps"] = observations.size();
         proposedRow["initial_environment"] = {
             {"energy", episodeInitialEnergy},
@@ -1596,6 +1755,22 @@ bool runTrainingExperiment(const std::string &mode,
     summary["proposed"]["mean_reward"] = proposedRewardSum / episodes; // Backwards-compatible alias.
     summary["proposed"]["completion_rate"] = static_cast<double>(proposedCompletions) / episodes;
     summary["proposed"]["episodes"] = proposedEpisodes;
+    summary["synthetic_user_diagnostics"] = {
+        {"user_model",userModel},
+        {"baseline",{{"positive_responses",baselineDiagnosticAggregate.synthetic_positive_responses},
+                     {"negative_responses",baselineDiagnosticAggregate.synthetic_negative_responses},
+                     {"no_responses",baselineDiagnosticAggregate.synthetic_no_responses},
+                     {"requests_observed",baselineDiagnosticAggregate.synthetic_requests_observed},
+                     {"requests_acknowledged",baselineDiagnosticAggregate.synthetic_requests_acknowledged},
+                     {"requests_pending_at_episode_end",baselineDiagnosticAggregate.synthetic_requests_pending_at_end}}},
+        {"proposed",{{"positive_responses",proposedDiagnosticAggregate.synthetic_positive_responses},
+                     {"negative_responses",proposedDiagnosticAggregate.synthetic_negative_responses},
+                     {"no_responses",proposedDiagnosticAggregate.synthetic_no_responses},
+                     {"requests_observed",proposedDiagnosticAggregate.synthetic_requests_observed},
+                     {"requests_acknowledged",proposedDiagnosticAggregate.synthetic_requests_acknowledged},
+                     {"requests_pending_at_episode_end",proposedDiagnosticAggregate.synthetic_requests_pending_at_end}}},
+        {"note","Counts follow each agent's realised actions. Profiles and exogenous per-step draws are paired, but responses may diverge after actions differ."}
+    };
     summary["training_diagnostics"] = {
         {"aggregation_level", "all decisions across all completed episodes in this run"},
         {"baseline", trainingDiagnosticsToJson(baselineDiagnosticAggregate)},
@@ -1635,6 +1810,7 @@ bool runTrainingExperiment(const std::string &mode,
     manifest["started_at_utc"] = runStartedAtUtc;
     manifest["completed_at_utc"] = utcTimestampNow();
     manifest["mode"] = mode;
+    manifest["user_model"] = userModel;
     manifest["seed"] = seed;
     manifest["environment_seed"] = environmentSeed;
     manifest["episodes_requested"] = episodes;
@@ -2084,6 +2260,9 @@ bool runTrainingSelfTests()
     const bool scenarioGenerationPassed = testScenarioGenerationAndIgnoredRequest();
     std::cout << "Seeded scenario randomisation and ignored-request/INSIST eligibility: "
               << (scenarioGenerationPassed ? "PASS" : "FAIL") << '\n';
+    const bool syntheticUserPassed = testSyntheticUserDeterminismAndLifecycle();
+    std::cout << "Synthetic-user deterministic profile, paired draws, and request lifecycle: "
+              << (syntheticUserPassed ? "PASS" : "FAIL") << '\n';
     const bool repetitionPenaltyPassed = testSharedRepetitionPenalty();
     std::cout << "Shared bounded repetition/boredom reward penalty: "
               << (repetitionPenaltyPassed ? "PASS" : "FAIL") << '\n';
@@ -2122,7 +2301,7 @@ bool runTrainingSelfTests()
             [](const auto& lhs, const auto& rhs) { return lhs.first == rhs.first; });
     std::cout << "Comparable baseline/proposed valid-action Q diagnostics: "
               << (comparableQDiagnostics ? "PASS" : "FAIL") << '\n';
-    return scenarioGenerationPassed && repetitionPenaltyPassed && comparableQDiagnostics &&
+    return scenarioGenerationPassed && syntheticUserPassed && repetitionPenaltyPassed && comparableQDiagnostics &&
            energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
            temporalDecayPassed && transitionsPassed && retryPassed &&
            taskPriorityPassed && completionContextPassed;
