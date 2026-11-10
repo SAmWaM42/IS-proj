@@ -96,6 +96,16 @@ namespace
         std::vector<double> repetition_penalty_samples;
     };
 
+    struct EnvironmentStep
+    {
+        EnvironmentObservation next_observation;
+        float reward = 0.0f;
+        float energy_after = 0.8f;
+        float stress_after = 0.2f;
+        float user_satisfaction_after = 0.5f;
+        bool completed = false;
+    };
+
     struct SyntheticUserProfile { float responsiveness=0.75f; int patience=3; float social_openness=0.70f; };
     struct SyntheticUserResponse {
         int status=0; int no_response_count=0; bool request_pending=false;
@@ -325,16 +335,6 @@ namespace
                std::abs(third - 0.08f) < 1e-6f && reset == 0.0f &&
                afterReset == 0.0f && count == 1;
     }
-
-    struct EnvironmentStep
-    {
-        EnvironmentObservation next_observation;
-        float reward = 0.0f;
-        float energy_after = 0.8f;
-        float stress_after = 0.2f;
-        float user_satisfaction_after = 0.5f;
-        bool completed = false;
-    };
 
     struct ActionProfile
     {
