@@ -19,4 +19,5 @@ bool runTrainingExperiment(const std::string& mode,
                           unsigned int seed,
                           const std::string& outputDirectory,
                           bool resumeTraining = false,
-                          const std::vector<std::string>& commandArguments = {});
+                          const std::vector<std::string>& commandArguments = {},
+                          const std::string& userModel = "scripted");
