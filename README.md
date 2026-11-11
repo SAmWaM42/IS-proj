@@ -105,3 +105,8 @@ Runtime changes affecting participant behaviour must be deliberately ported to t
 - Send questionnaire responses only; do not send raw interaction text, memory/affect traces, Q-tables or training diagnostics to the collection API.
 - Keep synthetic reward and engineering diagnostics separate from human believability outcomes.
 - Do not collect real participant data until the protocol, questionnaire, endpoint, packaging and end-to-end recovery path are approved and verified.
+
+
+## Documentation index
+
+The [current implementation map](Docs/00-current-implementation-map.md) explains branch ownership. The [specification status register](Docs/99-specification-status-register.md) classifies every numbered specification and the unnumbered study documents as implemented, superseded, experimental, proposed or mixed. Older documents are retained for design history; use the register to identify the current operational source of truth.
