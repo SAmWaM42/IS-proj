@@ -182,3 +182,8 @@ Never store these values in the desktop application, Git repository or public do
 ## Current readiness caveat
 
 This README is a project-level map, not a release sign-off. The questionnaire/submission path and Windows package pipeline have remaining verification gates. PR #29 has not yet produced a verified successful run/artifact in the last recorded check. Real Windows desktop GUI/participant-flow validation is still required after CI succeeds. Do not recruit participants or distribute an unverified build.
+
+
+## Specification history
+
+The researcher-side repository includes historical numbered specifications from the initial prototype through the participant study. Their current disposition is recorded in [the Dev specification status register](https://github.com/SAmWaM42/IS-proj/blob/Dev/Docs/99-specification-status-register.md). This preserves original design rationale while identifying superseded drafts, experimental work and outstanding proposals. The current branch-specific README/specification remains authoritative for each component.
