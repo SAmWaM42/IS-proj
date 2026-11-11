@@ -5,23 +5,9 @@ on:
   pull_request:
     branches:
       - deployment/participant-client
-    paths:
-      - "**.cpp"
-      - "**.c++"
-      - "**.h"
-      - "CMakeLists.txt"
-      - "Deployment/**"
-      - ".github/workflows/windows-build.yml"
   push:
     branches:
       - feature/windows-github-actions
-    paths:
-      - "**.cpp"
-      - "**.c++"
-      - "**.h"
-      - "CMakeLists.txt"
-      - "Deployment/**"
-      - ".github/workflows/windows-build.yml"
 
 permissions:
   contents: read
