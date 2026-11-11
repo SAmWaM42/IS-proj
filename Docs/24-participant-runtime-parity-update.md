@@ -88,3 +88,14 @@ Then complete the guided study walkthrough and confirm:
 6. NLP smoke and classification tests pass with the local Python environment, including the spaCy path when \`en_core_web_sm\` is installed.
 
 Do not treat the participant branch as release-ready until the local build, CTest suite, and guided interaction walkthrough pass.
+
+
+---
+
+## Current status clarification — 11 November 2026
+
+This parity note records the selected runtime behaviour ported to the participant branch. It is not a claim that the latest full participant application has passed build, test, interactive or collection validation. The current participant README and [deployment specification](23-participant-client-deployment-spec.md) are the branch-specific operational references; the cross-branch implementation map is maintained on `Dev`.
+
+The participant CMake configuration currently registers NLP smoke/classification, backyard environment, participant configuration, questionnaire submission and questionnaire content tests when `ANIMAL_AGENT_BUILD_TESTS=ON`. The questionnaire/submission integration is present in source but still needs a complete build/CTest run, guided study walkthrough, restart/offline queue test, clean-machine package test and synthetic API-to-Drive verification.
+
+The Windows vcpkg/static-SFML candidate is separate on `feature/windows-github-actions` via PR #29. It has not yet been verified by a successful Actions run and uploaded ZIP artifact. Do not infer Windows GUI validation from CI success.

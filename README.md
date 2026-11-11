@@ -1,22 +1,40 @@
-# Animal Agent — Participant Application
+# Animal Agent — Participant Client
 
-This branch contains the participant-facing desktop application only. Researcher training, evaluation, analysis and diagnostic workflows are maintained on the `Dev` branch.
+This branch (`deployment/participant-client`) contains the participant-facing desktop application and release packaging configuration. It is intentionally narrower than `Dev`: it excludes researcher training orchestration, synthetic-user experiments, training dashboards and questionnaire analysis utilities.
 
-## Application modes
+The researcher/development implementation is maintained on [`Dev`](https://github.com/SAmWaM42/IS-proj/tree/Dev). The collection API and download redirect service are maintained in [`SAmWaM42/IS-proj-web`](https://github.com/SAmWaM42/IS-proj-web). The root `main` branch is the project-wide README and integration overview, not the active participant implementation.
 
-- **General Interaction:** interact with the simulated companion. Memory and affective state are stored in the user's application-data directory.
-- **Believability Study:** complete the guided two-condition study and questionnaire. Responses are queued locally and uploaded to the configured HTTPS collection endpoint. Failed uploads remain pending and are retried at the next launch.
+## Participant application
 
-The participant application loads fixed, trained baseline and proposed policies. It does not train or modify those policy files.
+The single CMake executable is named `AnimalAgent`. It starts at a participant menu with two modes:
 
-## Build from source
+- **General Interaction** — ordinary interaction with the simulated companion. Mutable companion state is kept in the platform's user-data location.
+- **Believability Study** — guided two-condition study with participant assignment, consent, scripted interactions, in-app questionnaires and a final comparison form.
 
-Build-machine requirements:
+The study uses baseline and proposed conditions with counterbalanced A/B order. Participant number is loaded from a researcher-issued `credentials.json`; it must not be generated locally. The participant-facing UI should not reveal condition labels or internal model details.
 
-- CMake 3.16+
-- C++17 compiler
-- SFML 3.0 development libraries
-- Python runtime containing spaCy and `en_core_web_sm` for typed NLP interaction
+The proposed condition can retain supported semantic preferences and use them to bias fetch-object selection. The guided preference demonstration offers ball, stick and rope; a supported rope preference should influence the proposed agent's FETCH object selection. The baseline does not receive or consult that preference memory and retains its neutral ball default. This is an object-selection bias, not a new Q-learning action.
+
+The participant branch also contains the NLP intent adapter (greeting, request, disturbance, rest, negative feedback, praise, preference and unknown), C++ preference-to-memory handoff, and bounded no-response/INSIST state support. The current guided script does not create repeated ignored requests, so `no_response_count` remains zero and INSIST is not eligible in that protocol.
+
+## Runtime and study data
+
+- The participant app loads fixed trained baseline/proposed Q-tables; it does not run researcher training.
+- Participant credentials are supplied separately and are never included in the common ZIP.
+- Questionnaire responses are saved to a local durable queue and submitted to the configured HTTPS collection endpoint.
+- Failed or ambiguous submissions remain pending for retry; the uploader sends the participant token as a Bearer header and excludes it from the response JSON body.
+- The web API stores questionnaire JSON in Google Drive. It should receive questionnaire response data only, not raw interaction text, memory/affect traces, Q-tables or diagnostics.
+- Mutable application data belongs in the platform's user-data directory, not the extracted installation folder.
+
+The participant questionnaire and submission integration exists in source, but the latest integration has not yet been fully built, interactively walked through, or end-to-end verified. Do not use this branch for real participant collection until the study milestone tracker and validation gates are complete.
+
+## Build requirements
+
+- CMake 3.16 or newer.
+- C++17 compiler.
+- SFML 3.0 development libraries.
+- Python runtime with spaCy and `en_core_web_sm` for the NLP service.
+- Platform-specific compiler/linker and runtime libraries.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -24,20 +42,35 @@ cmake --build build --parallel
 ./build/AnimalAgent
 ```
 
-Participant-runtime tests can be enabled with `-DANIMAL_AGENT_BUILD_TESTS=ON`.
+Enable participant tests with `-DANIMAL_AGENT_BUILD_TESTS=ON`, then run CTest. On Windows with a multi-configuration Visual Studio generator, build with `--config Release` and launch the executable from the generated Release directory.
 
-## Create participant ZIPs
+## Packaging
 
-Read [Deployment/README.md](Deployment/README.md) before packaging. Build each package on its target operating system:
+Read [Deployment packaging notes](Deployment/README.md) before creating a release package.
 
 - Linux: `bash Deployment/package-linux.sh`
 - Windows: `powershell -ExecutionPolicy Bypass -File Deployment/package-windows.ps1`
 
-The scripts create explicit allow-list packages under `dist/`; they do not package this repository.
+The scripts create allow-list ZIPs under `dist/`. The current Linux script expects a Python environment containing spaCy/model and an SFML 3 shared-library directory; an ordinary copied virtualenv is not guaranteed to be portable to a clean machine. The current Windows script expects a standalone Python runtime, an SFML DLL directory and a redistributable font. A packaging-script exit alone is not proof that the package runs on a clean target machine.
+
+### Windows CI status
+
+A Windows GitHub Actions workflow is being developed on the separate feature branch `feature/windows-github-actions`, proposed through [PR #29](https://github.com/SAmWaM42/IS-proj/pull/29). It is not yet part of this branch. At the last recorded check, no CI run or artifact had been observed. Do not describe the Windows package as CI-verified until the workflow builds, tests, packages `AnimalAgent-Windows.zip`, and the uploaded artifact is present. Even then, a real Windows desktop GUI and participant-flow test remains necessary.
+
+## Branch boundaries
+
+| Location | Responsibility |
+|---|---|
+| `deployment/participant-client` | Participant app, participant protocol, runtime dependencies, local queue and platform packages. |
+| `Dev` | Researcher-side agent development, training, controlled evaluation and analysis. |
+| `IS-proj-web` | Authentication, questionnaire submission API, Google Drive persistence and download redirects. |
+| `main` | Overall architecture, build/pipeline/tooling summary. |
+
+Any change to participant-visible behaviour or runtime semantics must be checked against the corresponding Dev implementation and deliberately ported where appropriate. Researcher-only training schedules, synthetic-user profiles, diagnostics and analysis scripts must not leak into the participant package.
 
 ## Participant credentials
 
-The common ZIP deliberately does **not** contain participant credentials. For the Believability Study, the researcher supplies a separate `credentials.json` file. Place it beside the executable (beside `AnimalAgent.exe` on Windows).
+The common ZIP deliberately excludes credentials. Each participant receives an individual `credentials.json` beside the executable:
 
 ```json
 {
@@ -46,21 +79,11 @@ The common ZIP deliberately does **not** contain participant credentials. For th
 }
 ```
 
-Each participant receives their own token. Do not commit or include real credentials in the common ZIP. The uploader sends the token only as an HTTPS Bearer token; it removes the token from the questionnaire JSON body.
+Treat this file as secret. Never commit it, share it between participants or include it in a common ZIP.
 
-## Runtime data
+## Related documentation
 
-Mutable application data is stored outside the installation directory:
-
-- Linux: `$XDG_DATA_HOME/animal-agent/` when configured, otherwise `~/.local/share/animal-agent/`
-- Windows: `%LOCALAPPDATA%/AnimalAgent/`
-
-Do not delete pending questionnaire files while uploads are outstanding.
-
-## Collection backend
-
-The participant app sends questionnaire submissions to the HTTPS endpoint in `Data/Study/upload-config.json`. The collection API and its Google Drive credentials are deployed separately. Never put Google OAuth credentials or participant-token mappings in this client repository or ZIP.
-
-## Scope boundary
-
-This branch excludes researcher CLI modes, model training, headless evaluation, analysis scripts, visualisation outputs, researcher diagnostic datasets and backend deployment source. Those remain in their appropriate development/backend repositories.
+- [Deployment packaging details](Deployment/README.md)
+- [Participant runtime parity update](Docs/24-participant-runtime-parity-update.md)
+- [Current implementation map on Dev](https://github.com/SAmWaM42/IS-proj/blob/Dev/Docs/00-current-implementation-map.md)
+- [Researcher-side status tracker](https://github.com/SAmWaM42/IS-proj/blob/Dev/Docs/07-implementation-status-and-roadmap.md)

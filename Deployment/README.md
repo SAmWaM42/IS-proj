@@ -77,3 +77,14 @@ A successful ZIP creation is not release validation. Before distribution, extrac
 The HTTPS collection function is deployed separately from this client. Its Vercel environment contains Google OAuth credentials, Drive destination settings and participant-token mappings. The client contains only the public HTTPS endpoint URL. The uploader sends the participant token as an HTTPS Bearer token and removes it from the questionnaire JSON body. Pending local responses retain the token to support offline retry.
 
 The backend uses idempotency to make ordinary retries safe; simultaneous duplicate requests are not guaranteed to be transactionally deduplicated.
+
+
+---
+
+## Current branch and CI status (11 November 2026)
+
+This packaging guide applies to the current `deployment/participant-client` branch scripts. The participant CMake project builds C++17 against SFML 3.0 Graphics/Window/System and Threads. The Windows packager currently expects `ANIMAL_AGENT_PYTHON_RUNTIME`, `ANIMAL_AGENT_SFML_DLL_DIR`, a configured HTTPS upload endpoint, both trained Q-table files and `ANIMAL_AGENT_FONT_FILE`. The Linux packager expects a Python environment containing spaCy/model, `ANIMAL_AGENT_SFML_RUNTIME`, configured endpoint, policy files and a redistributable font. Review the scripts themselves for exact checks and output paths.
+
+The newer vcpkg/static-SFML Windows workflow and corresponding packaging changes are on `feature/windows-github-actions`, proposed by [PR #29](https://github.com/SAmWaM42/IS-proj/pull/29). They are not yet merged into this branch. At the last recorded check, no Actions run, status check or ZIP artifact had been observed. Do not treat the candidate workflow as a successful build until the run succeeds and the artifact is available.
+
+A package-script exit or successful CI artifact does not prove portability on a clean Windows installation. The Windows executable still requires real desktop GUI, menu, consent, condition sequence, questionnaire, local queue and upload-flow validation. Linux and Windows packages must be tested on their respective target operating systems.
