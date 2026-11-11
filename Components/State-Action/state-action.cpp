@@ -815,8 +815,11 @@ std::size_t state::encode() const {
     const std::size_t withSignal =
         (base * 2u + static_cast<std::size_t>(boundedTask)) * 3u +
         static_cast<std::size_t>(boundedSignal);
-    return (withSignal * 2u + static_cast<std::size_t>(food_available)) * 2u +
-           static_cast<std::size_t>(play_available);
+    const std::size_t withAffordances =
+        (withSignal * 2u + static_cast<std::size_t>(food_available)) * 2u +
+        static_cast<std::size_t>(play_available);
+    return withAffordances * 3u +
+           static_cast<std::size_t>(std::clamp(no_response_count, 0, 2));
 }
 
 QTable::QTable(double learningRate, double discountFactor)
@@ -1107,7 +1110,15 @@ bool testActionMaskUsesOnlyObservableAvailability() {
         return false;
     }
 
-    const EnvironmentObservation noResponse{1, 1, 0, 1, 0.82f};
+    EnvironmentObservation noResponse{1, 1, 0, 1, 0.82f};
+    const auto firstNoResponseActions = validActionsForObservation(noResponse);
+    if (std::find(firstNoResponseActions.begin(), firstNoResponseActions.end(), "INSIST") != firstNoResponseActions.end())
+        return false;
+    noResponse.no_response_count = 1;
+    const auto secondNoResponseActions = validActionsForObservation(noResponse);
+    if (std::find(secondNoResponseActions.begin(), secondNoResponseActions.end(), "INSIST") != secondNoResponseActions.end())
+        return false;
+    noResponse.no_response_count = 2;
     const auto noResponseActions = validActionsForObservation(noResponse);
     if (std::find(noResponseActions.begin(), noResponseActions.end(), "INSIST") == noResponseActions.end())
         return false;
@@ -1432,6 +1443,7 @@ std::string BaselineAgent::selectAction(const EnvironmentObservation& observatio
         observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
     observedState.food_available = observation.food_available;
     observedState.play_available = observation.play_available;
+    observedState.no_response_count = std::clamp(observation.no_response_count, 0, 2);
     current_state = observedState;
     last_contextual_fallback = contextualAction(observation);
     const auto validActions = validActionsForObservation(observation);
@@ -1475,6 +1487,7 @@ void BaselineAgent::applyOutcome(const EnvironmentObservation& observation,
         nextObservation.signal_strength < 0.33f ? 0 : (nextObservation.signal_strength < 0.67f ? 1 : 2);
     next_state.food_available = nextObservation.food_available;
     next_state.play_available = nextObservation.play_available;
+    next_state.no_response_count = std::clamp(nextObservation.no_response_count, 0, 2);
 
     if (learning_enabled) {
         q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal, validActionsForObservation(nextObservation));
@@ -1593,6 +1606,7 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
         observation.signal_strength < 0.33f ? 0 : (observation.signal_strength < 0.67f ? 1 : 2);
     current_state.food_available = observation.food_available;
     current_state.play_available = observation.play_available;
+    current_state.no_response_count = std::clamp(observation.no_response_count, 0, 2);
 
     session_context.current_intent = observation.goal_state;
     session_context.target_proximity = observation.target_proximity;
@@ -1778,6 +1792,7 @@ void ProposedAgent::applyOutcome(const EnvironmentObservation& observation,
         nextObservation.signal_strength < 0.33f ? 0 : (nextObservation.signal_strength < 0.67f ? 1 : 2);
     next_state.food_available = nextObservation.food_available;
     next_state.play_available = nextObservation.play_available;
+    next_state.no_response_count = std::clamp(nextObservation.no_response_count, 0, 2);
     if (learning_enabled) {
         q_policy.update(current_state, action, outcome.reward, next_state, outcome.terminal,
                          validActionsForObservation(nextObservation));
@@ -1953,6 +1968,25 @@ void ProposedAgent::recordUserStatement(const std::string& relation, const std::
     memory_records.push_back(statement);
 }
 
+
+std::string ProposedAgent::getPreferredFetchObject() const {
+    const std::vector<std::string> choices = {"ball", "stick", "rope"};
+    const record* bestLiked = nullptr;
+    const record* bestDisliked = nullptr;
+    auto score = [](const record& item) {
+        return calculateMemoryRecordWeight(item) * static_cast<float>(std::max(1, item.observation_count));
+    };
+    for (const auto& item : memory_records) {
+        if (item.raw_fact.subject != "user" ||
+            std::find(choices.begin(), choices.end(), item.raw_fact.object) == choices.end() ||
+            item.confidence < 0.4f) continue;
+        if (item.raw_fact.relation == "likes" && (!bestLiked || score(item) > score(*bestLiked))) bestLiked = &item;
+        if (item.raw_fact.relation == "dislikes" && (!bestDisliked || score(item) > score(*bestDisliked))) bestDisliked = &item;
+    }
+    if (bestLiked) return bestLiked->raw_fact.object;
+    if (!bestDisliked || bestDisliked->raw_fact.object != "ball") return "ball";
+    return "stick";
+}
 
 bool testStudyResetClearsMemoryAndAffectWithoutChangingQTable() {
     const std::filesystem::path dir = std::filesystem::temp_directory_path() / "is2_study_reset_test";
