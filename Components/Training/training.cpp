@@ -2273,7 +2273,10 @@ bool testFetchObjectPreferenceBias() {
     if (ropeAgent.getPreferredFetchObject() != "rope") return false;
     ProposedAgent stickAgent;
     stickAgent.recordUserStatement("likes", "stick");
-    return stickAgent.getPreferredFetchObject() == "stick";
+    if (stickAgent.getPreferredFetchObject() != "stick") return false;
+    ProposedAgent dislikeAgent;
+    dislikeAgent.recordUserStatement("dislikes", "ball");
+    return dislikeAgent.getPreferredFetchObject() == "stick";
 }
 
 bool runTrainingSelfTests()

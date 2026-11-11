@@ -754,7 +754,7 @@ void CompanionUI::writeStudyManifest() {
     if (!guidedStudyMode) return;
     nlohmann::json manifest = {
         {"schema_version", 1},
-        {"protocol_id", "companion-believability-v0.1"},
+        {"protocol_id", "companion-believability-v0.2"},
         {"participant_code", studyParticipantCode},
         {"run_id", runId},
         {"session_index", studySessionIndex},
@@ -772,7 +772,7 @@ void CompanionUI::writeStudyManifest() {
         {"policy_updates_enabled", false},
         {"exploration_rate", 0.0},
         {"memory_initialisation", "clean proposed memory per participant; no cross-participant memory"},
-        {"guided_script_version", 1},
+        {"guided_script_version", 2},
         {"guided_step_count", 12}
     };
     const auto manifestPath = std::filesystem::path(outputDirectory) /
