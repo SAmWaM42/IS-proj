@@ -79,7 +79,7 @@ td,th{padding:7px 8px;border-bottom:1px solid #dce2e7;text-align:left;white-spac
 <section class="panel"><h2>Stimulus alignment by scenario</h2><svg id="stimulus" viewBox="0 0 700 260"></svg><p>Heuristic compatibility only; not validated animal behaviour.</p></section></div>
 <section class="panel"><h2>Episode decision inspector</h2><p id="meta"></p><div class="tablewrap"><table><thead><tr><th>Step</th><th>Context</th><th>Action</th><th>Valid actions</th><th>Q support</th><th>Q spread</th><th>Reward</th><th>Energy</th><th>Affect</th><th>Memory</th><th>Penalty</th><th>Terminal</th></tr></thead><tbody id="trace"></tbody></table></div><details><summary>Raw selected records</summary><pre id="raw"></pre></details></section>
 </main><script>
-var DATA=__DATA__,AGENTS=["baseline","proposed"],COL={baseline:"#356fa8",proposed:"#c47a35",green:"#39866a",grey:"#84919b"};
+var DATA=__DATA__,AGENTS=["baseline","proposed"],COL={baseline:"#356fa8",proposed:"#c47a35",green:"#39866a",grey:"#84919b",orange:"#c47a35",blue:"#356fa8"};
 function el(id){return document.getElementById(id)}function num(v){return Number.isFinite(Number(v))?Number(v):0}
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function summary(){return DATA.modes[el("mode").value].summary}function eps(a){return summary()[a].episodes||[]}function logs(a){return DATA.modes[el("mode").value].steps[a]||[]}
@@ -96,17 +96,17 @@ function updateEpisodes(){var old=el("episode").value,ids=Array.from(new Set(log
 el("episode").innerHTML=ids.map(function(i){return '<option value="'+i+'">'+(i+1)+'</option>'}).join("");if(ids.indexOf(Number(old))>=0)el("episode").value=old}
 function renderTrace(){var rows=selected(),filter=el("filter").value;var shown=rows.filter(function(r){
 if(filter==="insist")return r.insist_predicate_eligible||r.insist_available||r.insist_execution_attempted;
-if(filter==="memory")return num(r.memory_record_count_after_transition)>0;
-if(filter==="affect")return r.affect_stress_after_transition!=null;
+if(filter==="memory")return num(r.memory_record_count_at_decision)>0;
+if(filter==="affect")return r.affect_stress_at_decision!=null;
 if(filter==="energy")return num(r.energy_before)<=.20;
 if(filter==="override")return r.policy_action_before_overrides!==r.final_action_after_overrides;
 return true});
 el("meta").textContent=el("mode").value+" / "+el("agent").value+" / episode "+(Number(el("episode").value)+1)+" / "+shown.length+" of "+rows.length+" decisions";
-el("trace").innerHTML=shown.map(function(r){return '<tr><td>'+(num(r.step)+1)+'</td><td>goal '+esc(r.goal_state)+' / prox '+esc(r.target_proximity)+'</td><td>'+esc(r.action)+'</td><td>'+esc((r.valid_actions||[]).join(", "))+'</td><td>'+(r.q_table_has_valid_action_values?"stored":"fallback")+'</td><td>'+(r.q_value_spread==null?"—":num(r.q_value_spread).toFixed(3))+'</td><td>'+num(r.reward).toFixed(3)+'</td><td>'+num(r.energy_before).toFixed(2)+' → '+num(r.energy_after).toFixed(2)+'</td><td>'+(r.affect_stress_after_transition==null?"—":"stress "+num(r.affect_stress_after_transition).toFixed(2)+" / arousal "+num(r.affect_arousal_after_transition).toFixed(2))+'</td><td>'+(r.memory_record_count_after_transition==null?"—":num(r.memory_record_count_after_transition)+" / "+num(r.memory_signal_after_transition).toFixed(2))+'</td><td>'+num(r.boredom_penalty).toFixed(2)+'</td><td>'+esc(r.terminal_reason||"")+'</td></tr>'}).join("");
+el("trace").innerHTML=shown.map(function(r){return '<tr><td>'+(num(r.step)+1)+'</td><td>goal '+esc(r.goal_state)+' / prox '+esc(r.target_proximity)+'</td><td>'+esc(r.action)+'</td><td>'+esc((r.valid_actions||[]).join(", "))+'</td><td>'+(r.q_table_has_valid_action_values?"stored":"fallback")+'</td><td>'+(r.q_value_spread==null?"—":num(r.q_value_spread).toFixed(3))+'</td><td>'+num(r.reward).toFixed(3)+'</td><td>'+num(r.energy_before).toFixed(2)+' → '+num(r.energy_after).toFixed(2)+'</td><td>'+(r.affect_stress_at_decision==null?"—":"stress "+num(r.affect_stress_at_decision).toFixed(2)+" / arousal "+num(r.affect_arousal_at_decision).toFixed(2))+'</td><td>'+(r.memory_record_count_at_decision==null?"—":num(r.memory_record_count_at_decision)+" / "+num(r.memory_signal_at_decision).toFixed(2))+'</td><td>'+num(r.boredom_penalty).toFixed(2)+'</td><td>'+esc(r.terminal_reason||"")+'</td></tr>'}).join("");
 el("raw").textContent=JSON.stringify(shown,null,2);
 line("energy",[{color:COL.proposed,values:rows.map(function(r){return {v:r.energy_before}})},{color:COL.green,values:rows.map(function(r){return {v:r.energy_after}})}],"v");
 var pr=logs("proposed").filter(function(r){return Number(r.episode)===Number(el("episode").value)});
-line("affect",[{color:COL.orange,values:pr.map(function(r){return {v:r.affect_stress_after_transition}})},{color:COL.baseline,values:pr.map(function(r){return {v:r.affect_arousal_after_transition}})},{color:COL.green,values:pr.map(function(r){return {v:r.memory_signal_after_transition}})}],"v")}
+line("affect",[{color:COL.orange,values:pr.map(function(r){return {v:r.affect_stress_at_decision}})},{color:COL.baseline,values:pr.map(function(r){return {v:r.affect_arousal_at_decision}})},{color:COL.green,values:pr.map(function(r){return {v:r.memory_signal_at_decision}})}],"v")}
 function render(){var s=summary(),b=s.baseline||{},p=s.proposed||{},bc=s.coverage?.baseline||{},pc=s.coverage?.proposed||{};
 var cards=[["Baseline reward/decision",num(b.mean_reward_per_step).toFixed(3)],["Proposed reward/decision",num(p.mean_reward_per_step).toFixed(3)],["Baseline decisions/episode",num(b.mean_steps_per_episode).toFixed(1)],["Proposed decisions/episode",num(p.mean_steps_per_episode).toFixed(1)],["Baseline completion",(100*num(b.completion_rate)).toFixed(1)+"%"],["Proposed completion",(100*num(p.completion_rate)).toFixed(1)+"%"],["Baseline coverage",(100*num(bc.valid_state_action_pair_coverage_on_encountered_states)).toFixed(1)+"%"],["Proposed coverage",(100*num(pc.valid_state_action_pair_coverage_on_encountered_states)).toFixed(1)+"%"]];
 el("kpis").innerHTML=cards.map(function(x){return '<div class="kpi"><small>'+esc(x[0])+'</small><strong>'+esc(x[1])+'</strong></div>'}).join("");
@@ -119,7 +119,17 @@ bars("coverage",[{label:"Baseline unique states",value:bc.globally_unique_states
 var d=s.training_diagnostics||{},bd=d.baseline||{},pd=d.proposed||{};
 bars("insist",[{label:"Eligible",value:pd.insist_predicate_eligible_decisions,color:COL.baseline},{label:"Available",value:pd.insist_available_decisions,color:COL.green},{label:"Policy selected",value:pd.insist_policy_selections,color:COL.orange},{label:"Final selected",value:pd.insist_final_selections,color:COL.proposed},{label:"Execution attempts",value:pd.insist_execution_attempts,color:COL.grey},{label:"Meaningful responses",value:pd.insist_attempts_with_meaningful_response,color:COL.green}]);
 bars("qtable",[{label:"Baseline Q-supported",value:bd.q_table_supported_decisions,color:COL.baseline},{label:"Proposed Q-supported",value:pd.q_table_supported_decisions,color:COL.proposed},{label:"Baseline fallback",value:bd.fallback_decisions,color:COL.baseline},{label:"Proposed fallback",value:pd.fallback_decisions,color:COL.orange},{label:"Repetition penalty triggers",value:pd.repetition_penalty_trigger_count,color:COL.green}]);
-var endItems=[];AGENTS.forEach(function(a){var reasons={};eps(a).forEach(function(e){var k=e.terminal_reason||"not recorded";reasons[k]=(reasons[k]||0)+1});Object.keys(reasons).forEach(function(k){endItems.push({label:a+" "+k,value:reasons[k],color:COL[a]})})});
+var endItems=[];AGENTS.forEach(function(a){
+ var rows=logs(a),counts={neutral:0,positive:0,rejection:0,energy_depleted:0,step_limit:0};
+ rows.forEach(function(r){
+  if(Number(r.user_status)===1)counts.positive++;
+  else if(Number(r.user_status)===2)counts.rejection++;
+  else counts.neutral++;
+  if(r.terminal_reason==="energy_depleted")counts.energy_depleted++;
+  if(r.terminal_reason==="step_limit")counts.step_limit++;
+ });
+ Object.keys(counts).forEach(function(k){endItems.push({label:a+" "+k.replace("_"," "),value:counts[k],color:COL[a]})});
+});
 bars("interaction",endItems);
 var stim=[];AGENTS.forEach(function(a){var audit=s[a]?.stimulus_response_audit_by_type||{};Object.keys(audit).forEach(function(k){stim.push({label:a+" "+k,value:100*num(audit[k].alignment_rate),color:COL[a]})})});
 bars("stimulus",stim);updateEpisodes();renderTrace()}
