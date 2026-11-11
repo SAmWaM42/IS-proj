@@ -130,6 +130,7 @@ private:
         float minX = 0, maxX = 0, minY = 0, maxY = 0;     // walkable area for feet
         float bedX = 0, bedY = 0, bowlX = 0, bowlY = 0;
         float ballHomeX = 0, ballHomeY = 0;
+        float stickHomeX = 0, stickHomeY = 0, ropeHomeX = 0, ropeHomeY = 0;
         float treeX = 0, houseX = 0;                      // left edges of backdrop sprites
     };
     struct SceneObject {
@@ -159,6 +160,9 @@ private:
     float ballHeight = 0.0f;
     float ballFlightTime = 0.0f;
     bool ballCarried = false;
+    bool toyCarried = false;
+    std::string activeFetchToy = "ball";
+    float stickX = 0.0f, stickY = 0.0f, ropeX = 0.0f, ropeY = 0.0f;
     bool ballFlying = false;
     float throwTimer = 0.0f;
     bool foodPresent = false;
