@@ -33,13 +33,18 @@ for utterance, expected in CASES.items():
     if actual != expected:
         raise SystemExit(f"{utterance!r}: expected {expected}, got {actual}")
 
-for intent, expected_status in (
-    ("negative_feedback", 2),
-    ("praise", 1),
-    ("preference", 0),
-):
+EXPECTED_MAPPINGS = {
+    "negative_feedback": (0, 1, 2, 0.45, -1.0),
+    "praise": (0, 0, 0, 0.75, 1.0),
+    "preference": (0, 0, 0, 0.50, 0.60),
+}
+for intent, expected in EXPECTED_MAPPINGS.items():
     response = MODULE._response(intent, "unit-test", 1.0)
-    if response["user_status"] if "user_status" in response else expected_status != expected_status:
-        raise SystemExit(f"Unexpected response mapping for {intent}: {response}")
+    actual = (
+        response["goal_state"], response["target_proximity"],
+        response["task_status"], response["signal_strength"], response["reward"],
+    )
+    if actual != expected:
+        raise SystemExit(f"Unexpected response mapping for {intent}: {actual}")
 
 print(f"NLP intent classification tests: PASS ({len(CASES)} cases)")
