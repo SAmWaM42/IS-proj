@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
 project(AnimalAgentParticipant LANGUAGES CXX)
 
+# Match the static MSVC runtime used by the x64-windows-static vcpkg
+# dependencies. Set this before creating any application or test targets.
+if(MSVC)
+   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(ANIMAL_AGENT_BUILD_TESTS "Build participant-runtime tests" OFF)
@@ -48,9 +54,6 @@ if(UNIX AND NOT APPLE)
    set_target_properties(AnimalAgent PROPERTIES
       BUILD_RPATH "$ORIGIN/lib"
       INSTALL_RPATH "$ORIGIN/lib")
-elseif(MSVC)
-   set_property(TARGET AnimalAgent PROPERTY
-      MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 target_compile_definitions(AnimalAgent PRIVATE
