@@ -59,6 +59,7 @@ struct state
     int signal_strength_bucket = 1;
     bool food_available = false;
     bool play_available = false;
+    int no_response_count = 0;
 
     std::size_t encode() const;
 };
@@ -213,6 +214,7 @@ public:
     void clearMemory();
     void recordUserPreference(const std::string& action, bool likes);
     void recordUserStatement(const std::string& relation, const std::string& object);
+    std::string getPreferredFetchObject() const;
 
 private:
     EnvironmentConfig config;
