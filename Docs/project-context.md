@@ -1085,3 +1085,49 @@ ctest --test-dir build -R 'questionnaire_(submission|content)_test' --output-on-
 ~~~
 
 Then run a complete synthetic participant session with credentials, inspect the pending queue JSON, test an offline upload followed by startup retry, and verify an actual POST against an approved participant-accessible deployment. Do not recruit participants until questionnaire/consent approval, server-side validation, packaging, and the technical pilot are complete.
+
+
+---
+
+## Current cross-repository implementation hand-off — 11 November 2026
+
+> This update supersedes the 5 November status section above wherever it conflicts with the current source layout or later implementation. The document remains the architectural hand-off; [`Docs/00-current-implementation-map.md`](00-current-implementation-map.md) is the concise cross-branch status index and [`Docs/07-implementation-status-and-roadmap.md`](07-implementation-status-and-roadmap.md) is the researcher-side status tracker.
+
+### Repository and branch ownership
+
+- **`IS-proj/Dev`:** researcher-side agent and simulation development, baseline/proposed Q-learning, memory/affect experiments, randomized scripted training, evaluation, training diagnostics/dashboard, researcher-side questionnaire retrieval and analysis.
+- **`IS-proj/deployment/participant-client`:** participant executable, General Interaction and Believability Study modes, participant credentials, guided study/questionnaires, local submission queue/uploader, runtime assets and Linux/Windows package scripts.
+- **`IS-proj-web`:** Vercel TypeScript API, HMAC-backed participant-token authentication, questionnaire envelope checks, Google Drive JSON storage, and GitHub Release download redirects.
+- **`IS-proj/main`:** project-wide overview of the architecture, pipeline, build configuration, tools and branch boundaries.
+- **`feature/windows-github-actions` / PR #29:** proposed Windows vcpkg/static-SFML CI build and package workflow. It is not yet merged into the participant branch and the last recorded check found no workflow run or artifact.
+
+### Current researcher-side implementation
+
+The active Dev training path uses randomized scripted scenarios and paired baseline/proposed evaluation. Researcher diagnostics include per-decision JSONL traces and an offline dashboard generator at `scripts/visualize_training_dashboard.py`. Researcher-side scripts retrieve questionnaire JSON from the collection store and analyse/pair questionnaire submissions. These researcher tools are not shipped in the participant ZIP.
+
+### Current participant runtime implementation
+
+The participant branch contains the single `AnimalAgent` executable, participant menu, General Interaction and Believability Study paths, credentials parser, guided study and in-app questionnaire content/UI. Questionnaire completion is adapted to the versioned submission envelope and connected to the local submission manager: session 1 follows the first condition questionnaire; session 2 follows the second condition questionnaire and final comparison. Pending submissions are retried at application startup.
+
+Selected runtime behaviour ported from Dev includes NLP intent classification, proposed-agent preference memory and fetch-object preference bias (ball/stick/rope), with baseline retaining its neutral ball default. The guided protocol does not create repeated ignored requests, so its no-response count remains zero and INSIST is not eligible in that participant sequence.
+
+These capabilities are **present in source**, but a complete current participant build/CTest, interactive guided-flow walkthrough, local queue restart/offline test, clean-machine package test and authenticated synthetic API-to-Drive end-to-end test remain required. Do not collect real participant data until the study protocol and technical gates are approved and verified.
+
+### Current web service boundary
+
+The web API accepts questionnaire response envelopes and checks schema version, deterministic submission ID, participant number, session index, odd/even A/B condition mapping, idempotency header and HMAC-backed participant token. It stores the JSON response in Google Drive using server-side OAuth credentials. It does not yet validate every active questionnaire question ID, answer type, required field, allowed option, numeric bound or questionnaire version. Drive lookup-before-create supports ordinary retries but is not an atomic uniqueness guarantee under concurrent duplicate requests.
+
+The download redirect looks for published GitHub Release assets named `AnimalAgent-Linux.zip` or `AnimalAgent-Windows.zip`. A GitHub Actions workflow artifact is not automatically a GitHub Release asset.
+
+### Verification vocabulary
+
+Record the evidence level explicitly:
+1. implemented in source;
+2. compiled/built;
+3. automated tests passed;
+4. package created and artifact present;
+5. extracted/launched on a clean target OS;
+6. interactive participant flow validated;
+7. authenticated questionnaire submission and Drive persistence verified.
+
+These are separate gates. In particular, successful Windows CI packaging will not establish real Windows desktop GUI or participant-flow validation.
