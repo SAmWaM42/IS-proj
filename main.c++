@@ -45,10 +45,10 @@ namespace
         std::cout
             << "Usage:\n"
             << "  " << executable << " --self-test\n"
-            << "  " << executable << " --train [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
-            << "  " << executable << " --resume-training [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
-            << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
-            << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
+            << "  " << executable << " --train [--episodes N] [--steps N] [--seed N] [--user-model synthetic|randomized_scripted] [--out DIR]\n"
+            << "  " << executable << " --resume-training [--episodes N] [--steps N] [--seed N] [--user-model synthetic|randomized_scripted] [--out DIR]\n"
+            << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--user-model synthetic|randomized_scripted] [--out DIR]\n"
+            << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--user-model synthetic|randomized_scripted] [--out DIR]\n"
             << "  " << executable << " --diagnose-idle [--policy-dir DIR] [--out DIR] [--seed N]\n"
             << "  " << executable << " --diagnose-temporal [--policy-dir DIR] [--out DIR] [--seed N]\n"
             << "  " << executable << " --study [--policy-dir DIR] [--study-out DIR]\n"
@@ -152,6 +152,7 @@ int main(int argc, char **argv)
     std::string mode;
     std::string outputDirectory = (userDataRoot / "training").string();
     std::string studyOutputDirectory = (userDataRoot / "study-linkage").string();
+    std::string userModel = "randomized_scripted";
     const auto packagedPolicies = appRoot / "Policies";
     std::string policyDirectory = (std::filesystem::exists(packagedPolicies) ? packagedPolicies : appRoot / "artifacts" / "training").string();
     const std::string runtimeStatePath = (userDataRoot / "companion-state").string();
@@ -193,6 +194,23 @@ int main(int argc, char **argv)
                 return 2;
             }
             mode = arg == "--self-test" ? "self-test" : arg.substr(2);
+            continue;
+        }
+        if (arg == "--user-model")
+        {
+            if (i + 1 >= argc)
+            {
+                std::cerr << arg << " requires a value.\n";
+                printUsage(argv[0]);
+                return 2;
+            }
+            const std::string value = argv[++i];
+            if (value != "synthetic" && value != "randomized_scripted")
+            {
+                std::cerr << "--user-model must be either synthetic or randomized_scripted.\n";
+                return 2;
+            }
+            userModel = value;
             continue;
         }
         if (arg == "--episodes" || arg == "--steps" || arg == "--seed" || arg == "--out" || arg == "--study-out" || arg == "--policy-dir")
@@ -328,7 +346,7 @@ int main(int argc, char **argv)
         commandArguments.emplace_back(argv[argumentIndex]);
 
     if (!runTrainingExperiment(mode, episodes, steps, static_cast<unsigned int>(seed), outputDirectory,
-                               mode == "resume-training", commandArguments))
+                               userModel, mode == "resume-training", commandArguments))
     {
         return 1;
     }

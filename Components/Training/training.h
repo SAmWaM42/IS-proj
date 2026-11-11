@@ -18,5 +18,6 @@ bool runTrainingExperiment(const std::string& mode,
                           int steps,
                           unsigned int seed,
                           const std::string& outputDirectory,
+                          const std::string& userModel = "randomized_scripted",
                           bool resumeTraining = false,
                           const std::vector<std::string>& commandArguments = {});

@@ -24,3 +24,21 @@ stage-a1*
 .DS_Store
 # Participant study data is local research data; do not commit it.
 artifacts/study/
+
+# Generated training and comparison artifacts are local diagnostics and can be
+# very large. Keep them untracked to avoid GitHub push rejection for oversized
+# files and large JSONL dumps.
+artifacts/**/*.json
+artifacts/**/*.jsonl
+artifacts/**/*.qtable*
+artifacts/**/*.html
+artifacts/**/*.png
+artifacts/**/*.svg
+artifacts/**/*.log
+artifacts/targeted-train-check/
+artifacts/wp1/
+artifacts/randomized-scripted/
+artifacts/synthetic/
+artifacts/training/*.jsonl
+artifacts/training/*.json
+artifacts/training/*.qtable*

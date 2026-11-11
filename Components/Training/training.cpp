@@ -111,10 +111,27 @@ namespace
         int status=0; int no_response_count=0; bool request_pending=false;
         bool request_acknowledged=false; std::string category="silence";
     };
+    float computeTrainingEpsilon(int episode, int totalEpisodes)
+    {
+        if (totalEpisodes <= 0)
+            return 0.0f;
+        constexpr float kPi = 3.14159265358979323846f;
+        const float e = static_cast<float>(std::clamp(episode, 0, totalEpisodes - 1));
+        const float epsilonMax = 0.50f;
+        const float epsilonMin = 0.05f;
+        return epsilonMin + 0.5f * (epsilonMax - epsilonMin) *
+               (1.0f + std::cos((e * kPi) / static_cast<float>(totalEpisodes)));
+    }
+
+    float computeIntrinsicBonus(int visitCount, float eta = 0.02f)
+    {
+        return eta / std::sqrt(static_cast<float>(visitCount) + 1.0f);
+    }
+
     SyntheticUserProfile makeSyntheticUserProfile(unsigned int seed) {
         std::mt19937 rng(seed ^ 0x9e3779b9u);
-        std::uniform_real_distribution<float> response(0.58f,0.92f), openness(0.48f,0.94f);
-        std::uniform_int_distribution<int> patience(2,4);
+        std::uniform_real_distribution<float> response(0.50f,0.95f), openness(0.40f,0.95f);
+        std::uniform_int_distribution<int> patience(2,5);
         return {response(rng),patience(rng),openness(rng)};
     }
     SyntheticUserResponse simulateSyntheticUserResponse(
@@ -894,8 +911,11 @@ namespace
             const std::string action = agent.selectAction(observation);
             const std::size_t stateKeyBeforeAction = agent.getCurrentState().encode();
             const auto validActions = validActionsForObservation(observation);
+            const std::string stateActionKey = std::to_string(stateKeyBeforeAction) + "|" + action;
+            const int priorVisitCount = metrics.state_action_visits[stateActionKey];
+            const float intrinsicBonus = learning ? computeIntrinsicBonus(priorVisitCount) : 0.0f;
             metrics.visited_states.insert(stateKeyBeforeAction);
-            ++metrics.state_action_visits[std::to_string(stateKeyBeforeAction) + "|" + action];
+            ++metrics.state_action_visits[stateActionKey];
             for (const auto &validAction : validActions)
                 metrics.valid_state_action_pairs_available.insert(
                     std::to_string(stateKeyBeforeAction) + "|" + validAction);
@@ -989,7 +1009,7 @@ namespace
             const float boredomPenalty = repetitionPenalty(
                 action, meaningfulResponse, repetitionTracker, repetitionCount);
             const float transitionReward = energyDepleted ? -1.0f :
-                std::clamp(transition.reward - boredomPenalty, -1.0f, 1.0f);
+                std::clamp(transition.reward - boredomPenalty + intrinsicBonus, -1.0f, 1.0f);
 
             EnvironmentObservation nextObservation = transition.next_observation;
             if (!terminal) {
@@ -1456,10 +1476,10 @@ bool runTrainingExperiment(const std::string &mode,
                            int steps,
                            unsigned int seed,
                            const std::string &outputDirectory,
+                           const std::string& userModel,
                            bool resumeTraining,
                            const std::vector<std::string>& commandArguments)
 {
-    const std::string userModel = "randomized_scripted";
     const std::string runStartedAtUtc = utcTimestampNow();
     const bool trainingMode = mode == "train" || mode == "resume-training";
     if (mode != "train" && mode != "resume-training" && mode != "validate" && mode != "compare")
@@ -1534,7 +1554,7 @@ bool runTrainingExperiment(const std::string &mode,
     summary["reward_model"] = "synthetic_v4_graded_context_fit";
     summary["user_model"] = userModel;
     summary["synthetic_user_model"] = userModel=="synthetic"?nlohmann::json({
-        {"profile_ranges",{{"responsiveness",{0.58,0.92}},{"patience_turns",{2,4}},{"social_openness",{0.48,0.94}}}},
+        {"profile_ranges",{{"responsiveness",{0.50,0.95}},{"patience_turns",{2,5}},{"social_openness",{0.40,0.95}}}},
         {"response_status_convention","0=silence, 1=positive, 2=negative"},
         {"response_randomness","episode/step seeded draws shared between paired agents"},
         {"policy_independence","Uses public context and action/outcome only; never reads agent identity, Q-values, memory, or affect."}
@@ -1617,7 +1637,7 @@ bool runTrainingExperiment(const std::string &mode,
             elapsedIntervals.push_back(elapsedDist(environmentRng));
 
         const float epsilon = trainingMode
-                                  ? std::max(0.05f, 0.30f * (1.0f - static_cast<float>(episode) / static_cast<float>(episodes)))
+                                  ? computeTrainingEpsilon(episode, episodes)
                                   : 0.0f;
         const bool learning = trainingMode;
 
@@ -2291,8 +2311,34 @@ bool testFetchObjectPreferenceBias() {
     return dislikeAgent.getPreferredFetchObject() == "stick";
 }
 
+bool testTrainingEpsilonDecay()
+{
+    const float early = computeTrainingEpsilon(0, 100);
+    const float mid = computeTrainingEpsilon(50, 100);
+    const float late = computeTrainingEpsilon(99, 100);
+    return early >= 0.495f && early <= 0.505f &&
+              mid >= 0.05f && mid <= 0.50f &&
+              late >= 0.049f && late <= 0.051f;
+}
+
+bool testIntrinsicBonusCalculationParity()
+{
+    const float first = computeIntrinsicBonus(0);
+    const float second = computeIntrinsicBonus(1);
+    const float third = computeIntrinsicBonus(3);
+    return std::abs(first - 0.02f) < 1e-6f &&
+              std::abs(second - 0.02f / std::sqrt(2.0f)) < 1e-6f &&
+              std::abs(third - 0.02f / std::sqrt(4.0f)) < 1e-6f;
+}
+
 bool runTrainingSelfTests()
 {
+    const bool epsilonPassed = testTrainingEpsilonDecay();
+    std::cout << "Cosine epsilon decay remains within [0.05, 0.50]: "
+              << (epsilonPassed ? "PASS" : "FAIL") << '\n';
+    const bool intrinsicPassed = testIntrinsicBonusCalculationParity();
+    std::cout << "Intrinsic exploration bonus computes with the specified eta and visit count: "
+              << (intrinsicPassed ? "PASS" : "FAIL") << '\n';
     const bool fetchChoicePassed = testFetchObjectPreferenceBias();
     std::cout << "Remembered fetch-object preference biases object selection: "
               << (fetchChoicePassed ? "PASS" : "FAIL") << '\n';
@@ -2335,13 +2381,14 @@ bool runTrainingSelfTests()
     const auto baselineQValues = diagnosticBaseline.getValidActionQValues(diagnosticObservation);
     const auto proposedQValues = diagnosticProposed.getLastDecisionTrace().valid_action_q_values;
     const bool comparableQDiagnostics = baselineQValues.size() == proposedQValues.size() &&
-        !baselineQValues.empty() &&
-        std::equal(baselineQValues.begin(), baselineQValues.end(), proposedQValues.begin(),
+           !baselineQValues.empty() &&
+           std::equal(baselineQValues.begin(), baselineQValues.end(), proposedQValues.begin(),
             [](const auto& lhs, const auto& rhs) { return lhs.first == rhs.first; });
     std::cout << "Comparable baseline/proposed valid-action Q diagnostics: "
               << (comparableQDiagnostics ? "PASS" : "FAIL") << '\n';
-    return fetchChoicePassed && scenarioGenerationPassed && syntheticUserPassed && repetitionPenaltyPassed && comparableQDiagnostics &&
-           energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
-           temporalDecayPassed && transitionsPassed && retryPassed &&
-           taskPriorityPassed && completionContextPassed;
+    return epsilonPassed && intrinsicPassed && fetchChoicePassed && scenarioGenerationPassed &&
+              syntheticUserPassed && repetitionPenaltyPassed && comparableQDiagnostics &&
+              energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
+              temporalDecayPassed && transitionsPassed && retryPassed &&
+              taskPriorityPassed && completionContextPassed;
 }

@@ -183,3 +183,29 @@ Acceptance:
 - Memory/affect values are traced through retrieval, state construction, and action selection where the code exposes them.
 - No behavioural or participant-facing changes occur.
 - Report exact changed files, tests, commands, and any instrumentation gaps.
+
+
+---
+
+## Implementation status (2026-11-11)
+
+Implemented on `Dev`:
+
+- The training runner retains randomized scripted scenario composition and no longer exposes a synthetic-user model selector.
+- Detailed per-decision JSONL logging is enabled for every episode, rather than only the final two episodes.
+- Step records include valid actions, Q-values and stored-action support, energy before/after, reward and repetition penalty, INSIST eligibility/availability/selection/execution, terminal reason, decision-time memory count/signal, and decision-time affect values.
+- Baseline memory/affect diagnostic fields are explicitly null.
+- `scripts/visualize_training_dashboard.py` creates a self-contained offline HTML dashboard from train/validate/compare summaries and per-agent step logs.
+- The setup comparison and selected-model rationale are saved under `artifacts/visualizations/training_setup_selection.html` and `training_setup_selection.json`.
+
+Generate the dashboard after a training/validation run:
+
+```bash
+python3 scripts/visualize_training_dashboard.py \
+  --input-dir artifacts/training \
+  --output artifacts/visualizations/training_dashboard.html
+```
+
+The dashboard supports mode, agent, and episode selection, plus filters for INSIST opportunities, memory presence, affect data, low energy, and action overrides. It plots reward, episode length, action availability/selection, state/action coverage, energy, affect/memory, INSIST, Q-table support, repetition, interaction status, and stimulus alignment.
+
+**Verification status:** Repository edits are committed. A C++ build, CTest run, browser rendering check, and fresh training/validation run have not been executed in this remote editing session. The dashboard generator therefore still requires local execution against the user's run artifacts before the resulting HTML can be treated as runtime-verified.
