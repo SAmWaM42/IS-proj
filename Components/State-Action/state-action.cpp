@@ -1650,6 +1650,7 @@ std::string ProposedAgent::selectAction(const EnvironmentObservation& observatio
     last_decision_trace.q_table_has_valid_action_values =
         q_policy.hasStoredValidActionValue(current_state, validActions);
     last_decision_trace.memory_record_count = memory_records.size();
+    last_decision_trace.memory_signal = current_state.memory;
     last_decision_trace.affect = affective_state;
     for (const auto& action : validActions) {
         last_decision_trace.valid_action_q_values.emplace_back(action, q_policy.getQValue(current_state, action));

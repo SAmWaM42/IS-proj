@@ -1090,10 +1090,16 @@ namespace
                 row["affect_affinity_after_transition"] = agent.getAffectiveState().affinity;
                 row["affect_energy_after_transition"] = static_cast<int>(agent.getAffectiveState().energy);
                 row["affect_valence_after_transition"] = static_cast<int>(agent.getAffectiveState().valence);
+                const auto& decisionTrace = agent.getLastDecisionTrace();
+                row["memory_record_count_at_decision"] = decisionTrace.memory_record_count;
+                row["memory_signal_at_decision"] = decisionTrace.memory_signal;
+                row["affect_arousal_at_decision"] = decisionTrace.affect.arousal;
+                row["affect_stress_at_decision"] = decisionTrace.affect.stress;
+                row["affect_engagement_at_decision"] = decisionTrace.affect.engagement;
+                row["affect_affinity_at_decision"] = decisionTrace.affect.affinity;
                 row["memory_record_count_after_transition"] = agent.getMemoryRecords().size();
                 row["memory_signal_after_transition"] = summarizeMemorySignal(agent.getMemoryRecords());
                 row["preferred_fetch_object"] = agent.getPreferredFetchObject();
-                const auto& decisionTrace = agent.getLastDecisionTrace();
                 row["general_preference_override"] = decisionTrace.general_preference_override;
                 row["rejection_override_applied"] = decisionTrace.rejection_override_applied;
             } else {
@@ -1105,6 +1111,12 @@ namespace
                 row["affect_affinity_after_transition"] = nullptr;
                 row["affect_energy_after_transition"] = nullptr;
                 row["affect_valence_after_transition"] = nullptr;
+                row["memory_record_count_at_decision"] = nullptr;
+                row["memory_signal_at_decision"] = nullptr;
+                row["affect_arousal_at_decision"] = nullptr;
+                row["affect_stress_at_decision"] = nullptr;
+                row["affect_engagement_at_decision"] = nullptr;
+                row["affect_affinity_at_decision"] = nullptr;
                 row["memory_record_count_after_transition"] = nullptr;
                 row["memory_signal_after_transition"] = nullptr;
                 row["preferred_fetch_object"] = nullptr;

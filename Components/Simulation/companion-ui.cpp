@@ -785,7 +785,7 @@ void CompanionUI::writeStudyManifest() {
 void CompanionUI::logStudyPhaseEvent(const std::string& eventType, const std::string& phase) {
     if (!guidedStudyMode) return;
     nlohmann::json row = {
-        {"schema_version", 1}, {"protocol_id", "companion-believability-v0.1"},
+        {"schema_version", 1}, {"protocol_id", "companion-believability-v0.2"},
         {"event_type", eventType}, {"run_id", runId},
         {"participant_code", studyParticipantCode}, {"session_index", studySessionIndex},
         {"condition_code", std::string(1, selectedAgentCode)},
@@ -802,7 +802,7 @@ void CompanionUI::completeStudyStep(const std::string& interaction) {
     if (!guidedStudyMode || studyPhase != "guided" || studyStepIndex >= 12) return;
     nlohmann::json row = {
         {"schema_version", 1},
-        {"protocol_id", "companion-believability-v0.1"},
+        {"protocol_id", "companion-believability-v0.2"},
         {"run_id", runId},
         {"participant_code", studyParticipantCode},
         {"session_index", studySessionIndex},
@@ -1457,7 +1457,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
             startBehaviour(selectedAction, "");
             if (guidedStudyMode) {
                 nlohmann::json row = {
-                    {"schema_version", 1}, {"protocol_id", "companion-believability-v0.1"},
+                    {"schema_version", 1}, {"protocol_id", "companion-believability-v0.2"},
                     {"run_id", runId}, {"participant_code", studyParticipantCode},
                     {"session_index", studySessionIndex}, {"condition_code", std::string(1, selectedAgentCode)},
                     {"condition", selectedAgentIsProposed ? "proposed" : "baseline"},

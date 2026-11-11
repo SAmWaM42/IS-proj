@@ -178,6 +178,7 @@ struct ActionDecisionTrace {
     std::vector<std::pair<std::string, double>> valid_action_q_values;
     std::vector<std::string> stored_valid_action_names;
     std::size_t memory_record_count = 0;
+    float memory_signal = 0.0f;
     AffectiveState affect;
 };
 
