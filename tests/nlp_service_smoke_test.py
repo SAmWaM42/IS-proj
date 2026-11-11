@@ -11,6 +11,10 @@ requests = [
     {"text": "Please fetch the ball"},
     {"text": "Stop, you are annoying"},
     {"text": "hello"},
+    {"text": "I prefer the rope toy"},
+    {"text": "My favourite toy is the stick"},
+    {"text": "I don't like the ball"},
+    {"text": "Good dog, well done"},
 ]
 payload = "".join(json.dumps(item) + "\n" for item in requests)
 completed = subprocess.run(
@@ -38,7 +42,10 @@ for line in lines:
     if response["method"] not in {"spacy", "keyword-fallback", "service-error"}:
         raise SystemExit(f"Unexpected NLP method: {response['method']!r}")
     responses.append(response)
-expected = ["request", "negative_feedback", "greeting"]
+expected = [
+    "request", "negative_feedback", "greeting", "preference",
+    "preference", "negative_feedback", "praise",
+]
 actual = [item["intent"] for item in responses]
 if actual != expected:
     raise SystemExit(f"Unexpected intents: expected {expected}, got {actual}; stderr={completed.stderr!r}")
