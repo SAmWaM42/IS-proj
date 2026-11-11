@@ -10,6 +10,7 @@ This branch produces a desktop participant application, not a server deployment.
 - A Python runtime containing spaCy and `en_core_web_sm`.
 - `ANIMAL_AGENT_PYTHON_RUNTIME`: directory containing `bin/python` or `bin/python3`. If omitted, the script checks `wordTokenizer/`, `.venv/` and `venv/`.
 - `ANIMAL_AGENT_SFML_RUNTIME`: directory containing SFML 3 shared libraries and non-system dependencies required by them.
+- If `AnimalAgent` depends on `libstb.so.0`, the packager bundles it automatically when it can resolve it through `ldd`/`ldconfig`. Set `ANIMAL_AGENT_STB_LIBRARY` to the exact library file when automatic detection is unavailable.
 - `ANIMAL_AGENT_FONT_FILE`: path to a redistributable TTF font. The script defaults to the system DejaVu Sans font path if available.
 
 ### Windows

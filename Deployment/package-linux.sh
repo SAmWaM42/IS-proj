@@ -55,6 +55,26 @@ STAGED_PYTHON="$STAGE/runtime/python/bin/python"
 LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" "$STAGED_PYTHON" -c 'import spacy; spacy.load("en_core_web_sm")'
 find "$ANIMAL_AGENT_SFML_RUNTIME" -maxdepth 1 \( -type f -o -type l \) -name '*.so*' -exec cp -L {} "$STAGE/lib/" \;
 
+# Bundle stb when it is a direct or transitive runtime dependency.
+STB_LDD="$(LD_LIBRARY_PATH="$STAGE/lib:$STAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}" ldd "$STAGE/AnimalAgent")"
+if grep -qE '^[[:space:]]*libstb\.so\.0[[:space:]]*=>' <<< "$STB_LDD"; then
+  STB_SOURCE="${ANIMAL_AGENT_STB_LIBRARY:-}"
+  if [[ -z "$STB_SOURCE" ]]; then
+    STB_SOURCE="$(awk '$1 == "libstb.so.0" && $3 ~ /^\// { print $3; exit }' <<< "$STB_LDD")"
+  fi
+  if [[ -z "$STB_SOURCE" ]] && command -v ldconfig >/dev/null 2>&1; then
+    STB_SOURCE="$(ldconfig -p 2>/dev/null | awk '$1 == "libstb.so.0" { print $NF; exit }')"
+  fi
+  if [[ -n "$STB_SOURCE" && -f "$STB_SOURCE" ]]; then
+    cp -L "$STB_SOURCE" "$STAGE/lib/libstb.so.0"
+    echo "Bundled libstb.so.0 from $STB_SOURCE"
+  elif [[ ! -s "$STAGE/lib/libstb.so.0" ]]; then
+    echo "AnimalAgent requires libstb.so.0, but it could not be located." >&2
+    echo "Install the runtime library on the build machine or set ANIMAL_AGENT_STB_LIBRARY=/path/to/libstb.so.0." >&2
+    exit 1
+  fi
+fi
+
 cat > "$STAGE/run-animal-agent.sh" <<'LAUNCH'
 #!/usr/bin/env bash
 set -euo pipefail
