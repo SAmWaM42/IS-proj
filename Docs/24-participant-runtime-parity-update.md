@@ -31,7 +31,7 @@ The participant runtime now carries the bounded \`no_response_count\` field in \
 
 The action mask makes \`INSIST\` eligible only when a task remains pending, the user status is non-responsive, and at least two no-response observations have accumulated. Critical-energy recovery restrictions remain in place.
 
-The participant UI currently supplies this field from its interaction observations. It does not implement a separate simulated-user response generator; that remains a training-only mechanism.
+The guided participant UI does not currently model repeated ignored requests, so its observations leave this counter at the default value of zero. Consequently, `INSIST` is not eligible in the current guided interaction protocol. This matches the guided runtime on `Dev`; the staged no-response progression is part of the randomized training scenario generator, not the participant's user-driven interaction sequence.
 
 ### 2.3 NLP classification and preference wording
 
