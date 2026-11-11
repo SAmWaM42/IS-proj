@@ -45,7 +45,7 @@ namespace
         std::cout
             << "Usage:\n"
             << "  " << executable << " --self-test\n"
-            << "  " << executable << " --train [--episodes N] [--steps N] [--seed N] [--out DIR] [--user-model scripted|synthetic]\n"
+            << "  " << executable << " --train [--episodes N] [--steps N] [--seed N] [--out DIR]\n"
             << "  " << executable << " --resume-training [--episodes N] [--steps N] [--seed N] [--out DIR] [--user-model scripted|synthetic]\n"
             << "  " << executable << " --validate [--episodes N] [--steps N] [--seed N] [--out DIR] [--user-model scripted|synthetic]\n"
             << "  " << executable << " --compare [--episodes N] [--steps N] [--seed N] [--out DIR] [--user-model scripted|synthetic]\n"
@@ -159,7 +159,6 @@ int main(int argc, char **argv)
     int steps = 40;
     int seed = 42;
     bool explicitEpisodes = false;
-    std::string userModel = "scripted";
 
     for (int i = 1; i < argc; ++i)
     {
@@ -194,14 +193,6 @@ int main(int argc, char **argv)
                 return 2;
             }
             mode = arg == "--self-test" ? "self-test" : arg.substr(2);
-            continue;
-        }
-        if(arg=="--user-model") {
-            if(i+1>=argc) { std::cerr<<"--user-model requires scripted or synthetic.\n"; return 2; }
-            userModel=argv[++i];
-            if(userModel!="scripted"&&userModel!="synthetic") {
-                std::cerr<<"--user-model must be scripted or synthetic.\n"; return 2;
-            }
             continue;
         }
         if (arg == "--episodes" || arg == "--steps" || arg == "--seed" || arg == "--out" || arg == "--study-out" || arg == "--policy-dir")
@@ -337,7 +328,7 @@ int main(int argc, char **argv)
         commandArguments.emplace_back(argv[argumentIndex]);
 
     if (!runTrainingExperiment(mode, episodes, steps, static_cast<unsigned int>(seed), outputDirectory,
-                               mode == "resume-training", commandArguments, userModel))
+                               mode == "resume-training", commandArguments))
     {
         return 1;
     }

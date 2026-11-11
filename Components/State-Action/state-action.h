@@ -220,6 +220,7 @@ public:
     void clearMemory();
     void recordUserPreference(const std::string& action, bool likes);
     void recordUserStatement(const std::string& relation, const std::string& object);
+    std::string getPreferredFetchObject() const;
 
 private:
     EnvironmentConfig config;

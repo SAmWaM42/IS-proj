@@ -1999,6 +1999,25 @@ void ProposedAgent::recordUserStatement(const std::string& relation, const std::
 }
 
 
+std::string ProposedAgent::getPreferredFetchObject() const {
+    const std::vector<std::string> choices = {"ball", "stick", "rope"};
+    const record* bestLiked = nullptr;
+    const record* bestDisliked = nullptr;
+    auto score = [](const record& item) {
+        return calculateMemoryRecordWeight(item) * static_cast<float>(std::max(1, item.observation_count));
+    };
+    for (const auto& item : memory_records) {
+        if (item.raw_fact.subject != "user" ||
+            std::find(choices.begin(), choices.end(), item.raw_fact.object) == choices.end() ||
+            item.confidence < 0.4f) continue;
+        if (item.raw_fact.relation == "likes" && (!bestLiked || score(item) > score(*bestLiked))) bestLiked = &item;
+        if (item.raw_fact.relation == "dislikes" && (!bestDisliked || score(item) > score(*bestDisliked))) bestDisliked = &item;
+    }
+    if (bestLiked) return bestLiked->raw_fact.object;
+    if (!bestDisliked || bestDisliked->raw_fact.object != "ball") return "ball";
+    return "stick";
+}
+
 bool testStudyResetClearsMemoryAndAffectWithoutChangingQTable() {
     const std::filesystem::path dir = std::filesystem::temp_directory_path() / "is2_study_reset_test";
     std::filesystem::create_directories(dir);

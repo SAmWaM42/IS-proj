@@ -26,7 +26,7 @@ namespace
 {
     // Sample varied but bounded elapsed time between decisions. Paired agents
     // receive the same interval sequence within each episode.
-    constexpr int kDetailedStepLogEpisodes = 2;
+    constexpr int kDetailedStepLogEpisodes = std::numeric_limits<int>::max();
     constexpr float kMinSecondsPerTrainingStep = 0.5f;
     constexpr float kMaxSecondsPerTrainingStep = 5.0f;
 
@@ -1088,12 +1088,26 @@ namespace
                 row["affect_stress_after_transition"] = agent.getAffectiveState().stress;
                 row["affect_engagement_after_transition"] = agent.getAffectiveState().engagement;
                 row["affect_affinity_after_transition"] = agent.getAffectiveState().affinity;
+                row["affect_energy_after_transition"] = static_cast<int>(agent.getAffectiveState().energy);
+                row["affect_valence_after_transition"] = static_cast<int>(agent.getAffectiveState().valence);
+                row["memory_record_count_after_transition"] = agent.getMemoryRecords().size();
+                row["memory_signal_after_transition"] = summarizeMemorySignal(agent.getMemoryRecords());
+                row["preferred_fetch_object"] = agent.getPreferredFetchObject();
                 const auto& decisionTrace = agent.getLastDecisionTrace();
                 row["general_preference_override"] = decisionTrace.general_preference_override;
                 row["rejection_override_applied"] = decisionTrace.rejection_override_applied;
             } else {
                 row["general_preference_override"] = "";
                 row["rejection_override_applied"] = false;
+                row["affect_arousal_after_transition"] = nullptr;
+                row["affect_stress_after_transition"] = nullptr;
+                row["affect_engagement_after_transition"] = nullptr;
+                row["affect_affinity_after_transition"] = nullptr;
+                row["affect_energy_after_transition"] = nullptr;
+                row["affect_valence_after_transition"] = nullptr;
+                row["memory_record_count_after_transition"] = nullptr;
+                row["memory_signal_after_transition"] = nullptr;
+                row["preferred_fetch_object"] = nullptr;
             }
             row["policy_action_before_overrides"] = policyAction;
             row["final_action_after_overrides"] = finalAction;
@@ -1101,6 +1115,7 @@ namespace
             for (const auto& item : decisionQValues) {
                 validActionQValues.push_back({{"action", item.first}, {"q_value", item.second}});
             }
+            row["valid_actions"] = validActions;
             row["valid_action_q_values"] = validActionQValues;
             row["stored_valid_action_names"] = storedValidActionNames;
             row["environment_stress_after"] = transition.stress_after;
@@ -1430,18 +1445,14 @@ bool runTrainingExperiment(const std::string &mode,
                            unsigned int seed,
                            const std::string &outputDirectory,
                            bool resumeTraining,
-                           const std::vector<std::string>& commandArguments,
-                           const std::string& userModel)
+                           const std::vector<std::string>& commandArguments)
 {
+    const std::string userModel = "randomized_scripted";
     const std::string runStartedAtUtc = utcTimestampNow();
     const bool trainingMode = mode == "train" || mode == "resume-training";
     if (mode != "train" && mode != "resume-training" && mode != "validate" && mode != "compare")
     {
         std::cerr << "Unsupported experiment mode: " << mode << '\n';
-        return false;
-    }
-    if(userModel!="scripted"&&userModel!="synthetic") {
-        std::cerr << "Unsupported user model '" << userModel << "'. Choose scripted or synthetic.\n";
         return false;
     }
     if (episodes < 1 || steps < 1)
@@ -2255,8 +2266,21 @@ bool runTemporalStimulusDiagnostics(const std::string& policyDirectory,
     return true;
 }
 
+bool testFetchObjectPreferenceBias() {
+    ProposedAgent ropeAgent;
+    if (ropeAgent.getPreferredFetchObject() != "ball") return false;
+    ropeAgent.recordUserStatement("likes", "rope");
+    if (ropeAgent.getPreferredFetchObject() != "rope") return false;
+    ProposedAgent stickAgent;
+    stickAgent.recordUserStatement("likes", "stick");
+    return stickAgent.getPreferredFetchObject() == "stick";
+}
+
 bool runTrainingSelfTests()
 {
+    const bool fetchChoicePassed = testFetchObjectPreferenceBias();
+    std::cout << "Remembered fetch-object preference biases object selection: "
+              << (fetchChoicePassed ? "PASS" : "FAIL") << '\n';
     const bool scenarioGenerationPassed = testScenarioGenerationAndIgnoredRequest();
     std::cout << "Seeded scenario randomisation and ignored-request/INSIST eligibility: "
               << (scenarioGenerationPassed ? "PASS" : "FAIL") << '\n';
@@ -2301,7 +2325,7 @@ bool runTrainingSelfTests()
             [](const auto& lhs, const auto& rhs) { return lhs.first == rhs.first; });
     std::cout << "Comparable baseline/proposed valid-action Q diagnostics: "
               << (comparableQDiagnostics ? "PASS" : "FAIL") << '\n';
-    return scenarioGenerationPassed && syntheticUserPassed && repetitionPenaltyPassed && comparableQDiagnostics &&
+    return fetchChoicePassed && scenarioGenerationPassed && syntheticUserPassed && repetitionPenaltyPassed && comparableQDiagnostics &&
            energyDrainPassed && recoveryPriorityPassed && depletionTransitionPassed &&
            temporalDecayPassed && transitionsPassed && retryPassed &&
            taskPriorityPassed && completionContextPassed;
