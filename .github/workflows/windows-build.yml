@@ -1,0 +1,98 @@
+name: Windows participant build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - deployment/participant-client
+    paths:
+      - "**.cpp"
+      - "**.c++"
+      - "**.h"
+      - "CMakeLists.txt"
+      - "Deployment/**"
+      - ".github/workflows/windows-build.yml"
+  push:
+    branches:
+      - feature/windows-github-actions
+    paths:
+      - "**.cpp"
+      - "**.c++"
+      - "**.h"
+      - "CMakeLists.txt"
+      - "Deployment/**"
+      - ".github/workflows/windows-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Build with MSVC and SFML 3
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out participant branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up MSVC developer environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Install SFML 3 through vcpkg
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install sfml:x64-windows
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg failed to install SFML." }
+
+      - name: Configure CMake
+        shell: pwsh
+        run: |
+          cmake -S . -B build-participant-windows -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_BUILD_TESTS=ON
+          if ($LASTEXITCODE -ne 0) { throw "CMake configuration failed." }
+
+      - name: Compile participant application and tests
+        shell: pwsh
+        run: |
+          cmake --build build-participant-windows --config Release --parallel
+          if ($LASTEXITCODE -ne 0) { throw "Windows compilation failed." }
+
+      - name: Run C++ and NLP tests
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install spacy
+          python -m spacy download en_core_web_sm
+          if ($LASTEXITCODE -ne 0) { throw "Could not install spaCy model for tests." }
+          ctest --test-dir build-participant-windows -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw "One or more participant tests failed." }
+
+      - name: Assemble Windows smoke-test bundle
+        shell: pwsh
+        run: |
+          $stage = "dist/windows-smoke-test/AnimalAgent"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item "build-participant-windows/Release/AnimalAgent.exe" $stage
+          Copy-Item "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/bin/*.dll" $stage
+          @'
+          Windows CI smoke-test bundle
+          This is a build-validation artifact, not yet the final participant release.
+          It contains AnimalAgent.exe and SFML runtime DLLs.
+          The full participant package still needs the bundled Python/spaCy runtime,
+          model files, study configuration, assets, policies and launcher.
+          '@ | Set-Content "$stage/README.txt" -Encoding UTF8
+
+      - name: Upload Windows smoke-test bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnimalAgent-Windows-smoke-test
+          path: dist/windows-smoke-test/AnimalAgent/
+          if-no-files-found: error
+          retention-days: 14
