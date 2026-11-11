@@ -462,3 +462,14 @@ The following choices were approved for the demonstrable pipeline implementation
 - Baseline and proposed Q-tables are initialised from their respective trained policy files because their state encodings may differ; this is not a claim that they start from identical Q-values.
 - The current nine-scenario participant fixture does not include repeated scenario IDs or matched event/control pairs. The analysis therefore reports cross-condition action agreement, but correctly marks within-condition repeated-scenario consistency and event/control adaptation as not estimable until suitable matched scenarios are added.
 - A successful build, interactive run, pilot, and data-integrity check are still required before the pipeline can be called fully verified.
+
+
+---
+
+## Current implementation and validation boundary — 11 November 2026
+
+The participant application now contains an in-app questionnaire path and typed response/submission integration in source. The participant branch persists pending questionnaire submissions locally and retries them at application startup. The web repository accepts the versioned submission envelope, checks participant assignment and authentication, and stores JSON in Google Drive. Researcher-side download and questionnaire JSON analysis utilities are maintained on `Dev`.
+
+This is not a completed or approved human-study pipeline. Full active-questionnaire answer validation on the server, protocol/questionnaire approval, current participant build and CTest, interactive study walkthrough, restart recovery, clean-machine packaging, and synthetic end-to-end participant-to-Drive verification remain gates. Do not collect real participant data until these gates and the applicable ethics/supervisor requirements are satisfied.
+
+Keep questionnaire-derived perceived-believability outcomes distinct from synthetic training reward and behavioural engineering diagnostics. The participant client is on `deployment/participant-client`; API/storage is in `IS-proj-web`; researcher retrieval and analysis are on `Dev`.

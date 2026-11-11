@@ -273,3 +273,12 @@ Every summary should include schema version, code revision, seed list, state/act
 ## 7. Recommended immediate next task
 
 Complete the Stage −1 verification gate first, then implement **Stage 0 only**. Stage −1 standardises the action contract; Stage 0 then repairs reward/data semantics and instrumentation before the project adds a complicated user simulator or more reward coefficients. After Stage 0 passes, proceed sequentially through Stages 1–4.
+
+
+---
+
+## Current implementation note — 11 November 2026
+
+The active researcher-side training path has moved beyond the original staged proposal in this document. The current runner uses randomized scripted scenario composition as the selected active setup; it does not expose the synthetic-user model selector as the default training path. Per-decision JSONL diagnostics and an offline training dashboard are implemented in source. See the current `Docs/07-implementation-status-and-roadmap.md` and `Docs/20-training-visualisation-spec.md` for the current researcher-side status.
+
+This document remains a design/research specification for training and evaluation methodology. It must not be read as a statement that every proposed stage, ablation, multi-seed experiment or acceptance gate has been completed. Training and researcher evaluation remain on `Dev`; the participant client consumes fixed trained policies on `deployment/participant-client`; questionnaire collection is handled by `IS-proj-web`.

@@ -364,3 +364,14 @@ Google Drive folder (OAuth refresh token held by Vercel)
 - [ ] Build and test both platform ZIPs on clean Linux and Windows systems.
 
 **Important:** The current menu/questionnaire flow has not yet been replaced. The collection transport and server infrastructure are now present, but the participant-facing questionnaire integration is not complete. Do not recruit participants or distribute a release package until the remaining items above are completed and tested.
+
+
+---
+
+## Current implementation update — 11 November 2026
+
+This specification describes only the participant desktop runtime and package boundary. The current participant branch contains the single `AnimalAgent` CMake executable, General Interaction and Believability Study menu modes, participant configuration/credentials parsing, guided study and questionnaire UI/content, questionnaire submission adaptation, local submission manager/queue, Python uploader/NLP service, trained baseline/proposed policy assets and platform package scripts.
+
+The questionnaire completion path is connected in source: session 1 is queued after the first condition questionnaire; session 2 is queued after the second condition questionnaire and final comparison. Pending submissions are retried at startup. These are source-integration facts, not proof of end-to-end operation. A full build/CTest, interactive study walkthrough, restart/offline retry, clean-machine package test and synthetic API-to-Drive verification remain required.
+
+The web API and Google Drive storage are specified in `IS-proj-web/README.md`; researcher-side training and analysis remain on `Dev`. The Windows vcpkg/static-SFML CI candidate is separate on `feature/windows-github-actions` via PR #29 and is not yet merged or verified. Do not treat it as release-ready.

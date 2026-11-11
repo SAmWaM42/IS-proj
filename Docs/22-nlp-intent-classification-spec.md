@@ -112,3 +112,12 @@ ctest --test-dir build --output-on-failure
 \`\`\`
 
 The test suite permits the keyword fallback when spaCy/model assets are unavailable. For a separate spaCy-path check, ensure \`en_core_web_sm\` is installed in the same Python environment used by the application.
+
+
+---
+
+## Current implementation note — 11 November 2026
+
+The deterministic NLP intent adapter is present on both `Dev` and `deployment/participant-client`. It uses a persistent newline-delimited JSON Python process; spaCy classification is used when `en_core_web_sm` is available and the service retains a deterministic keyword fallback. Supported classes include greeting, request, disturbance, rest, negative feedback, praise, preference and unknown. The C++ interaction layer, not the NLP service, owns the memory handoff. Supported explicit preferences may update proposed-agent user-scoped semantic memory; they do not directly trigger an action or give the baseline persistent preference memory.
+
+The participant CMake project registers NLP smoke and intent-classification tests when participant tests are enabled. Do not infer that the latest complete participant build or interactive flow has passed without current test evidence. The web repository does not perform NLP classification; it receives questionnaire submissions only.

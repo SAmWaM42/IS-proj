@@ -209,3 +209,12 @@ python3 scripts/visualize_training_dashboard.py \
 The dashboard supports mode, agent, and episode selection, plus filters for INSIST opportunities, memory presence, affect data, low energy, and action overrides. It plots reward, episode length, action availability/selection, state/action coverage, energy, affect/memory, INSIST, Q-table support, repetition, interaction status, and stimulus alignment.
 
 **Verification status:** Repository edits are committed. A C++ build, CTest run, browser rendering check, and fresh training/validation run have not been executed in this remote editing session. The dashboard generator therefore still requires local execution against the user's run artifacts before the resulting HTML can be treated as runtime-verified.
+
+
+---
+
+## Current implementation note — 11 November 2026
+
+The researcher-side implementation now includes detailed per-decision JSONL logging and `scripts/visualize_training_dashboard.py`, which generates a self-contained offline HTML dashboard from training/validation/comparison artifacts. The dashboard is a development diagnostic and not a participant-facing screen or a perceived-believability measure. The dashboard generator and its browser/rendering behaviour still require execution against current run artifacts and validation; source presence alone is not runtime verification.
+
+This specification applies to the researcher tooling on `Dev`. The participant application and its package scripts are on `deployment/participant-client`; the web API/download redirect is in `IS-proj-web`.

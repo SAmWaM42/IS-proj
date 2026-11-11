@@ -41,3 +41,12 @@ The guided protocol matcher accepts the stated rope preference and the fetch-toy
 - Inferring preference from one unlabelled fetch.
 - Changing Q-learning, action vocabulary, reward weights, or synthetic-user response logic.
 - Changing participant deployment, production, or questionnaire scoring.
+
+
+---
+
+## Current implementation note — 11 November 2026
+
+The preference-to-fetch behaviour is implemented in the researcher-side source and has been selectively ported to `deployment/participant-client`. The participant yard exposes ball, stick and rope; the proposed agent can use supported user-scoped semantic preference memory to bias FETCH object selection, while the baseline retains the neutral ball default. The participant guided flow asks for a rope preference before the fetch interaction. This is a preference bias over the selected object, not a new Q-learning action or reward change.
+
+The participant branch has a separate runtime parity note at `Docs/24-participant-runtime-parity-update.md`. Full scene pickup/carry/return and guided participant-flow verification remain separate acceptance checks. Researcher training scenario generation remains on `Dev`; it is not part of the participant client.
