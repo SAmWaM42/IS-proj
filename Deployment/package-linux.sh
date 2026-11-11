@@ -66,8 +66,11 @@ if grep -qE '^[[:space:]]*libstb\.so\.0[[:space:]]*=>' <<< "$STB_LDD"; then
     STB_SOURCE="$(ldconfig -p 2>/dev/null | awk '$1 == "libstb.so.0" { print $NF; exit }')"
   fi
   if [[ -n "$STB_SOURCE" && -f "$STB_SOURCE" ]]; then
-    cp -L "$STB_SOURCE" "$STAGE/lib/libstb.so.0"
-    echo "Bundled libstb.so.0 from $STB_SOURCE"
+    # Avoid copying a library onto itself when SFML_RUNTIME already staged it.
+    if [[ "$(readlink -f "$STB_SOURCE")" != "$(readlink -f "$STAGE/lib/libstb.so.0" 2>/dev/null || true)" ]]; then
+      cp -L "$STB_SOURCE" "$STAGE/lib/libstb.so.0"
+    fi
+    echo "Bundled/resolved libstb.so.0 from $STB_SOURCE"
   elif [[ ! -s "$STAGE/lib/libstb.so.0" ]]; then
     echo "AnimalAgent requires libstb.so.0, but it could not be located." >&2
     echo "Install the runtime library on the build machine or set ANIMAL_AGENT_STB_LIBRARY=/path/to/libstb.so.0." >&2
