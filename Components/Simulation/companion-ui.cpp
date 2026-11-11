@@ -1997,6 +1997,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
     if (guidedStudyMode && studyPhase != "guided" && studyPhase != "free") return;
 
     const bool explicitLike = lower.find("prefer") != std::string::npos ||
+                              lower.find("favorite") != std::string::npos ||
+                              lower.find("favourite") != std::string::npos ||
                               lower.find(" like ") != std::string::npos ||
                               lower.rfind("like ", 0) == 0 ||
                               lower.find("love") != std::string::npos;
@@ -2021,7 +2023,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             std::size_t relationStart = std::string::npos;
             std::size_t relationLength = 0;
             for (const std::string& marker : {std::string("like"), std::string("love"),
-                                              std::string("prefer"), std::string("hate"),
+                                              std::string("prefer"), std::string("favorite"),
+                                              std::string("favourite"), std::string("hate"),
                                               std::string("dislike")}) {
                 const std::size_t found = lower.find(marker);
                 if (found != std::string::npos && (relationStart == std::string::npos || found < relationStart)) {
