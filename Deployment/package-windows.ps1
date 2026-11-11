@@ -8,9 +8,6 @@ $Stage = Join-Path $DistDir "AnimalAgent"
 if (-not $env:ANIMAL_AGENT_PYTHON_RUNTIME) {
     throw "Set ANIMAL_AGENT_PYTHON_RUNTIME to a relocatable Windows Python runtime containing python.exe, spaCy, and en_core_web_sm."
 }
-if (-not $env:ANIMAL_AGENT_SFML_DLL_DIR) {
-    throw "Set ANIMAL_AGENT_SFML_DLL_DIR to the directory containing SFML 3 runtime DLLs."
-}
 $Python = Join-Path $env:ANIMAL_AGENT_PYTHON_RUNTIME "python.exe"
 if (-not (Test-Path $Python)) { throw "Missing $Python" }
 & $Python -c "import spacy; spacy.load('en_core_web_sm')"
@@ -22,7 +19,14 @@ foreach ($policy in @("baseline.qtable", "proposed.qtable")) {
     if (-not (Test-Path (Join-Path $Root "artifacts/training/$policy"))) { throw "Missing trained policy $policy" }
 }
 
-cmake -S $Root -B $BuildDir -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_BUILD_TESTS=OFF
+$cmakeArgs = @("-S", $Root, "-B", $BuildDir, "-DCMAKE_BUILD_TYPE=Release", "-DANIMAL_AGENT_BUILD_TESTS=OFF")
+if ($env:CMAKE_TOOLCHAIN_FILE) {
+    $cmakeArgs += "-DCMAKE_TOOLCHAIN_FILE=$env:CMAKE_TOOLCHAIN_FILE"
+}
+if ($env:VCPKG_TARGET_TRIPLET) {
+    $cmakeArgs += "-DVCPKG_TARGET_TRIPLET=$env:VCPKG_TARGET_TRIPLET"
+}
+& cmake @cmakeArgs
 if ($LASTEXITCODE -ne 0) { throw "CMake configure failed." }
 cmake --build $BuildDir --config Release --parallel
 if ($LASTEXITCODE -ne 0) { throw "Build failed." }
@@ -33,13 +37,26 @@ $Executable = Join-Path $BuildDir "AnimalAgent.exe"
 if (-not (Test-Path $Executable)) { $Executable = Join-Path $BuildDir "Release/AnimalAgent.exe" }
 if (-not (Test-Path $Executable)) { throw "Could not locate the built AnimalAgent.exe." }
 Copy-Item $Executable $Stage
-Copy-Item $env:ANIMAL_AGENT_SFML_DLL_DIR/*.dll $Stage
+
+# Static SFML builds need no SFML DLLs. Dynamic builds can provide them explicitly.
+if ($env:ANIMAL_AGENT_SFML_DLL_DIR) {
+    if (-not (Test-Path $env:ANIMAL_AGENT_SFML_DLL_DIR)) {
+        throw "ANIMAL_AGENT_SFML_DLL_DIR does not exist."
+    }
+    $sfmlDlls = Get-ChildItem (Join-Path $env:ANIMAL_AGENT_SFML_DLL_DIR "*.dll")
+    if (-not $sfmlDlls) { throw "No SFML DLLs found in ANIMAL_AGENT_SFML_DLL_DIR." }
+    Copy-Item $sfmlDlls.FullName $Stage
+}
+
 New-Item -ItemType Directory -Force -Path (Join-Path $Stage "Data/Assets/free version"), (Join-Path $Stage "Data/Assets/white_dog_by_Brysia"), (Join-Path $Stage "Data/Fonts"), (Join-Path $Stage "Data/Study"), (Join-Path $Stage "Components/NLP"), (Join-Path $Stage "Policies"), (Join-Path $Stage "runtime/python") | Out-Null
 Copy-Item (Join-Path $Root "Data/Assets/free version/free.png") (Join-Path $Stage "Data/Assets/free version/free.png")
 if (-not $env:ANIMAL_AGENT_FONT_FILE -or -not (Test-Path $env:ANIMAL_AGENT_FONT_FILE)) {
-    throw "Set ANIMAL_AGENT_FONT_FILE to a redistributable TTF font (for example, a DejaVu Sans font file)."
+    throw "Set ANIMAL_AGENT_FONT_FILE to a redistributable TTF font file."
 }
 Copy-Item $env:ANIMAL_AGENT_FONT_FILE (Join-Path $Stage "Data/Fonts/UIFont.ttf")
+if ($env:ANIMAL_AGENT_FONT_LICENSE_FILE -and (Test-Path $env:ANIMAL_AGENT_FONT_LICENSE_FILE)) {
+    Copy-Item $env:ANIMAL_AGENT_FONT_LICENSE_FILE (Join-Path $Stage "Data/Fonts/UIFont-LICENSE.txt")
+}
 Copy-Item (Join-Path $Root "Data/Assets/white_dog_by_Brysia/*.png") (Join-Path $Stage "Data/Assets/white_dog_by_Brysia/")
 Copy-Item (Join-Path $Root "Data/Study/*.json") (Join-Path $Stage "Data/Study/")
 Copy-Item (Join-Path $Root "Components/NLP/nlp_intent_service.py") (Join-Path $Stage "Components/NLP/")
@@ -47,6 +64,7 @@ Copy-Item (Join-Path $Root "Components/NLP/upload_submission.py") (Join-Path $St
 Copy-Item (Join-Path $Root "artifacts/training/baseline.qtable") (Join-Path $Root "artifacts/training/proposed.qtable") (Join-Path $Stage "Policies/")
 Copy-Item (Join-Path $env:ANIMAL_AGENT_PYTHON_RUNTIME "*") (Join-Path $Stage "runtime/python/") -Recurse
 $StagedPython = Join-Path $Stage "runtime/python/python.exe"
+if (-not (Test-Path $StagedPython)) { throw "The staged Python runtime is missing python.exe." }
 & $StagedPython -c "import spacy; spacy.load('en_core_web_sm')"
 if ($LASTEXITCODE -ne 0) { throw "The staged Python runtime cannot load spaCy en_core_web_sm." }
 
