@@ -182,6 +182,8 @@ struct EnvironmentObservation
     bool play_available = false;
     // Shared physical/environmental energy (0..1), observable to both agents.
     float energy = 0.8f;
+    // Consecutive observable no-response attempts for the current pending task.
+    int no_response_count = 0;
 };
 
 struct ActionResult
