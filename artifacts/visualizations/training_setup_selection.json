@@ -1,0 +1,75 @@
+{
+  "selected_setup": "randomized_scripted",
+  "decision_basis": "The randomized scripted setup has higher reward per decision for both agents in training and validation, and higher state-action coverage ratios for both agents. Synthetic-user runs have higher absolute unique-state and unique-pair counts, but lower coverage ratios and lower rewards.",
+  "caveat": "These are single-seed engineering runs. They are not statistical significance evidence and do not measure perceived believability. Absolute visitation counts and coverage ratios measure different properties.",
+  "results": {
+    "randomized_scripted": {
+      "training": {
+        "baseline": {
+          "reward_per_step": 0.5961811599474192,
+          "unique_states": 86,
+          "unique_state_action_pairs": 381,
+          "available_state_action_pairs": 579,
+          "coverage_ratio": 0.658
+        },
+        "proposed": {
+          "reward_per_step": 0.6136877610240888,
+          "unique_states": 328,
+          "unique_state_action_pairs": 577,
+          "available_state_action_pairs": 2119,
+          "coverage_ratio": 0.2723
+        }
+      },
+      "validation": {
+        "baseline": {
+          "reward_per_step": 0.7570797614395226,
+          "unique_states": 65,
+          "unique_state_action_pairs": 78,
+          "available_state_action_pairs": 432,
+          "coverage_ratio": 0.1806
+        },
+        "proposed": {
+          "reward_per_step": 0.7245923307605255,
+          "unique_states": 122,
+          "unique_state_action_pairs": 132,
+          "available_state_action_pairs": 771,
+          "coverage_ratio": 0.1712
+        }
+      }
+    },
+    "synthetic_user": {
+      "training": {
+        "baseline": {
+          "reward_per_step": 0.5849996434561046,
+          "unique_states": 114,
+          "unique_state_action_pairs": 434,
+          "available_state_action_pairs": 825,
+          "coverage_ratio": 0.5261
+        },
+        "proposed": {
+          "reward_per_step": 0.567382639489837,
+          "unique_states": 384,
+          "unique_state_action_pairs": 650,
+          "available_state_action_pairs": 2675,
+          "coverage_ratio": 0.243
+        }
+      },
+      "validation": {
+        "baseline": {
+          "reward_per_step": 0.7197729133226248,
+          "unique_states": 85,
+          "unique_state_action_pairs": 99,
+          "available_state_action_pairs": 602,
+          "coverage_ratio": 0.1645
+        },
+        "proposed": {
+          "reward_per_step": 0.6728595836374529,
+          "unique_states": 155,
+          "unique_state_action_pairs": 165,
+          "available_state_action_pairs": 1054,
+          "coverage_ratio": 0.1565
+        }
+      }
+    }
+  }
+}
