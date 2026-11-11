@@ -79,6 +79,9 @@ jobs:
           ctest --test-dir build-participant-windows -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) { throw "One or more participant tests failed." }
 
+      - name: Set up uv for standalone Python runtime
+        uses: astral-sh/setup-uv@v6
+
       - name: Provision relocatable Python runtime for participant ZIP
         shell: pwsh
         run: |
@@ -87,9 +90,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Could not provision standalone Python." }
           $python = Get-ChildItem $runtimeRoot -Recurse -Filter python.exe | Select-Object -First 1
           if (-not $python) { throw "Standalone Python installation did not contain python.exe." }
-          & $python.FullName -m ensurepip --upgrade
-          if ($LASTEXITCODE -ne 0) { throw "Could not bootstrap pip in standalone Python." }
-          & $python.FullName -m pip install "spacy==3.8.7"
+          uv pip install --python $python.FullName "spacy==3.8.7"
           if ($LASTEXITCODE -ne 0) { throw "Could not install spaCy in standalone Python." }
           & $python.FullName -m spacy download en_core_web_sm
           if ($LASTEXITCODE -ne 0) { throw "Could not install en_core_web_sm in standalone Python." }
