@@ -55,7 +55,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "spacy==3.8.7"
+          python -m pip install "spacy==3.8.7" "click>=8.0"
           python -m spacy download en_core_web_sm
           if ($LASTEXITCODE -ne 0) { throw "Could not install spaCy model for tests." }
 
@@ -76,7 +76,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Could not provision standalone Python." }
           $python = Get-ChildItem $runtimeRoot -Recurse -Filter python.exe | Select-Object -First 1
           if (-not $python) { throw "Standalone Python installation did not contain python.exe." }
-          uv pip install --python $python.FullName "spacy==3.8.7"
+          uv pip install --python $python.FullName "spacy==3.8.7" "click>=8.0"
           if ($LASTEXITCODE -ne 0) { throw "Could not install spaCy in standalone Python." }
           & $python.FullName -m spacy download en_core_web_sm
           if ($LASTEXITCODE -ne 0) { throw "Could not install en_core_web_sm in standalone Python." }
