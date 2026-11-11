@@ -35,7 +35,7 @@ for utterance, expected in CASES.items():
 
 EXPECTED_MAPPINGS = {
     "negative_feedback": (0, 1, 2, 0.45, -1.0),
-    "praise": (0, 0, 0, 0.75, 1.0),
+    "praise": (0, 0, 1, 0.75, 1.0),
     "preference": (0, 0, 0, 0.50, 0.60),
 }
 for intent, expected in EXPECTED_MAPPINGS.items():
