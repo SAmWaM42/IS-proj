@@ -83,6 +83,9 @@ if(ANIMAL_AGENT_BUILD_TESTS)
    add_test(NAME nlp_service_smoke_test
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/nlp_service_smoke_test.py)
 
+   add_test(NAME nlp_intent_classification_test
+      COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_nlp_intent_classification.py)
+
    add_executable(backyard_environment_test
       tests/backyard_environment_test.cpp
       Components/Simulation/backyard-environment.cpp)
