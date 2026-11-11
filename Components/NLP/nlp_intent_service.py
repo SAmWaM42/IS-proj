@@ -24,7 +24,7 @@ INTENTS = {
 }
 
 NEGATIVE_WORDS = {"stop", "annoy", "bad", "wrong", "hate", "dislike"}
-PREFERENCE_WORDS = {"favorite", "prefer"}
+PREFERENCE_WORDS = {"favorite", "favourite", "prefer"}
 AFFINITY_LEMMAS = {"like", "love"}
 REQUEST_WORDS = {"fetch", "bring", "get", "retrieve", "ball", "toy", "find"}
 DISTURBANCE_WORDS = {"noise", "loud", "scare", "scared", "frighten", "bang", "thunder"}
