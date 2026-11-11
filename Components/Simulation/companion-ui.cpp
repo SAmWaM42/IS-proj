@@ -395,7 +395,7 @@ const std::array<ControlButton, 10> kControls{{
     {"Explore",    "Let the companion explore",            2, 1, 0, 0, 0.30f, false, false,  0.25f, "",           "nearest"},
     {"Rest",       "The companion should rest",            2, 2, 0, 0, 0.20f, false, false,  0.25f, "",           "bed"},
     {"Loud noise", "A sudden loud noise occurs",           2, 0, 0, 0, 0.95f, false, false, -0.15f, "",           "nearest"},
-    {"Fetch ball", "Ask the companion to fetch the ball",  1, 1, 1, 1, 0.85f, false, false,  0.85f, "fetch_ball", "ball"},
+    {"Fetch toy",  "Ask the companion to fetch a toy",     1, 1, 1, 1, 0.85f, false, false,  0.85f, "fetch_toy", "ball"},
     {"Throw ball", "Throw the ball for the companion",     1, 1, 1, 1, 0.85f, false, false,  0.85f, "throw_ball", "ball"},
 }};
 }
@@ -594,6 +594,8 @@ CompanionUI::SceneLayout CompanionUI::sceneLayout() const {
     L.bowlY = L.y + L.h * 0.68f;
     L.ballHomeX = L.x + L.w * 0.50f;
     L.ballHomeY = L.y + L.h * 0.86f;
+    L.stickHomeX = L.x + L.w * 0.40f; L.stickHomeY = L.y + L.h * 0.84f;
+    L.ropeHomeX = L.x + L.w * 0.60f; L.ropeHomeY = L.y + L.h * 0.84f;
     L.treeX = L.x + 330.0f;
     L.houseX = L.x + L.w - 260.0f;
     return L;
@@ -609,8 +611,9 @@ std::vector<CompanionUI::SceneObject> CompanionUI::sceneObjects() const {
                                   sf::FloatRect({L.bowlX - 30.0f, L.bowlY - 20.0f}, {60.0f, 34.0f})});
     objects.push_back(SceneObject{"You", sf::FloatRect({userX - 22.0f, userY - 100.0f}, {44.0f, 100.0f})});
     objects.push_back(SceneObject{"Companion", sf::FloatRect({agentX - 36.0f, agentY - 72.0f}, {72.0f, 72.0f})});
-    if (!ballCarried)
-        objects.push_back(SceneObject{"Ball", sf::FloatRect({ballX - 15.0f, ballY - ballHeight - 26.0f}, {30.0f, 30.0f})});
+    if (!toyCarried || activeFetchToy != "ball") objects.push_back(SceneObject{"Ball", sf::FloatRect({ballX - 15.0f, ballY - ballHeight - 26.0f}, {30.0f, 30.0f})});
+    if (!toyCarried || activeFetchToy != "stick") objects.push_back(SceneObject{"Stick", sf::FloatRect({stickX - 28.0f, stickY - 9.0f}, {56.0f, 18.0f})});
+    if (!toyCarried || activeFetchToy != "rope") objects.push_back(SceneObject{"Rope toy", sf::FloatRect({ropeX - 18.0f, ropeY - 18.0f}, {36.0f, 36.0f})});
     return objects;
 }
 
@@ -630,8 +633,10 @@ void CompanionUI::resetScene() {
     agentX = L.x + L.w * 0.58f;
     agentY = L.y + L.h * 0.70f;
     facingRight = false;
-    ballX = L.ballHomeX;
-    ballY = L.ballHomeY;
+    ballX = L.ballHomeX; ballY = L.ballHomeY;
+    stickX = L.stickHomeX; stickY = L.stickHomeY;
+    ropeX = L.ropeHomeX; ropeY = L.ropeHomeY;
+    activeFetchToy = "ball"; toyCarried = false;
     ballLandX = ballX;
     ballLandY = ballY;
     ballHeight = 0.0f;
@@ -717,8 +722,8 @@ std::string CompanionUI::currentStudyPrompt() const {
         "3/12: Press Throw ball and watch.",
         "4/12: Press Feed.",
         "5/12: Press Loud noise.",
-        "6/12: Type: I like the ball. Then press Enter.",
-        "7/12: Press Throw ball again.",
+        "6/12: Type: I prefer the rope toy. Then press Enter.",
+        "7/12: Ask the companion to fetch a toy.",
         "8/12: Press Scold.",
         "9/12: Stay still for 30 seconds and watch the companion.",
         "10/12: Type: I hate loud noises. Then press Enter.",
@@ -740,8 +745,8 @@ bool CompanionUI::studyInputMatches(const std::string& interaction, bool isText)
         case 2: return !isText && lower.find("throw") != std::string::npos && lower.find("ball") != std::string::npos;
         case 3: return !isText && (lower.find("feed") != std::string::npos || lower.find("food") != std::string::npos);
         case 4: return !isText && lower.find("loud noise") != std::string::npos;
-        case 5: return isText && lower.find("i like the ball") != std::string::npos;
-        case 6: return !isText && lower.find("throw") != std::string::npos && lower.find("ball") != std::string::npos;
+        case 5: return isText && lower.find("rope") != std::string::npos && (lower.find("prefer") != std::string::npos || lower.find("like") != std::string::npos);
+        case 6: return !isText && (lower.find("fetch") != std::string::npos || lower.find("toy") != std::string::npos);
         case 7: return !isText && lower.find("scold") != std::string::npos;
         case 8: return false; // completed by the timed observation window
         case 9: return isText && lower.find("i hate loud noises") != std::string::npos;
@@ -755,7 +760,7 @@ void CompanionUI::writeStudyManifest() {
     if (!guidedStudyMode) return;
     nlohmann::json manifest = {
         {"schema_version", 1},
-        {"protocol_id", "companion-believability-v0.1"},
+        {"protocol_id", "companion-believability-v0.2"},
         {"participant_code", studyParticipantCode},
         {"run_id", runId},
         {"session_index", studySessionIndex},
@@ -773,7 +778,7 @@ void CompanionUI::writeStudyManifest() {
         {"policy_updates_enabled", false},
         {"exploration_rate", 0.0},
         {"memory_initialisation", "clean proposed memory per participant; no cross-participant memory"},
-        {"guided_script_version", 1},
+        {"guided_script_version", 2},
         {"guided_step_count", 12}
     };
     const auto manifestPath = std::filesystem::path(outputDirectory) /
@@ -1036,15 +1041,12 @@ void CompanionUI::applySceneEvent(const std::string& sceneEvent) {
     const SceneLayout L = sceneLayout();
     if (sceneEvent == "feed") {
         foodPresent = true;
-    } else if (sceneEvent == "fetch_ball") {
-        // The user puts the ball down in the yard.
-        ballCarried = false;
-        ballFlying = false;
-        ballHeight = 0.0f;
-        ballX = L.ballHomeX;
-        ballY = L.ballHomeY;
-        ballLandX = ballX;
-        ballLandY = ballY;
+    } else if (sceneEvent == "fetch_ball" || sceneEvent == "fetch_toy") {
+        ballCarried = false; toyCarried = false; ballFlying = false; ballHeight = 0.0f;
+        ballX = L.ballHomeX; ballY = L.ballHomeY;
+        stickX = L.stickHomeX; stickY = L.stickHomeY;
+        ropeX = L.ropeHomeX; ropeY = L.ropeHomeY;
+        ballLandX = ballX; ballLandY = ballY;
     } else if (sceneEvent == "throw_ball") {
         ballCarried = false;
         ballStartX = userX + (playerFacingRight ? 26.0f : -26.0f);
@@ -1079,19 +1081,16 @@ void CompanionUI::applyGeometryProximity(EnvironmentObservation& observation, co
         float x;
         float y;
     };
-    std::array<Target, 4> targets{{
-        {"user", userX, userY},
-        {"bowl", L.bowlX, L.bowlY},
-        {"bed", L.bedX, L.bedY},
-        {"ball", ballFlying ? ballLandX : ballX, ballFlying ? ballLandY : ballY}
+    std::array<Target, 6> targets{{
+        {"user", userX, userY}, {"bowl", L.bowlX, L.bowlY}, {"bed", L.bedX, L.bedY},
+        {"ball", ballFlying ? ballLandX : ballX, ballFlying ? ballLandY : ballY},
+        {"stick", stickX, stickY}, {"rope", ropeX, ropeY}
     }};
-
-    // A carried ball is not a separate reachable target.
-    const bool ballIsAvailable = !ballCarried;
+    const bool ballIsAvailable = !toyCarried;
     const Target* selected = nullptr;
     if (!basis.empty() && basis != "nearest") {
         for (const auto& target : targets) {
-            if (basis == target.name && (basis != "ball" || ballIsAvailable)) {
+            if (basis == target.name && (basis == "user" || basis == "bowl" || basis == "bed" || ballIsAvailable)) {
                 selected = &target;
                 break;
             }
@@ -1103,7 +1102,7 @@ void CompanionUI::applyGeometryProximity(EnvironmentObservation& observation, co
     if (!selected) {
         float nearestDistance = std::numeric_limits<float>::max();
         for (const auto& target : targets) {
-            if (std::string(target.name) == "ball" && !ballIsAvailable) continue;
+            if ((std::string(target.name) == "ball" || std::string(target.name) == "stick" || std::string(target.name) == "rope") && !ballIsAvailable) continue;
             const float distance = std::hypot(agentX - target.x, agentY - target.y);
             if (distance < nearestDistance) {
                 nearestDistance = distance;
@@ -1125,17 +1124,13 @@ void CompanionUI::beginStep() {
     frameTimer = 0.0f;
     if (s.faceDir != 0) facingRight = s.faceDir > 0;
     if (s.trackUser) s.trackSide = (agentX >= userX) ? 1 : -1;   // choose the side the dog is on NOW
-    if (s.pickUpBall) {
-        ballCarried = true;
-        ballFlying = false;
-        ballHeight = 0.0f;
-    }
+    if (s.pickUpBall) { toyCarried = true; ballCarried = activeFetchToy == "ball"; ballFlying = false; ballHeight = 0.0f; }
     if (s.dropBall) {
-        ballCarried = false;
-        ballX = agentX + (facingRight ? kMouthOffset : -kMouthOffset);
-        ballY = agentY;
-        ballLandX = ballX;
-        ballLandY = ballY;
+        toyCarried = false;
+        const float dropX = agentX + (facingRight ? kMouthOffset : -kMouthOffset);
+        if (activeFetchToy == "ball") { ballCarried = false; ballX = dropX; ballY = agentY; ballLandX = ballX; ballLandY = ballY; }
+        else if (activeFetchToy == "stick") { stickX = dropX; stickY = agentY; }
+        else { ropeX = dropX; ropeY = agentY; }
         ballHeight = 0.0f;
     }
 }
@@ -1185,8 +1180,10 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
     };
 
     if (action == "FETCH") {
-        const float ballTx = ballFlying ? ballLandX : ballX;
-        const float ballTy = ballFlying ? ballLandY : ballY;
+        float ballTx = ballX, ballTy = ballY;
+        if (activeFetchToy == "stick") { ballTx = stickX; ballTy = stickY; }
+        else if (activeFetchToy == "rope") { ballTx = ropeX; ballTy = ropeY; }
+        else if (ballFlying) { ballTx = ballLandX; ballTy = ballLandY; }
         if (sceneEvent == "throw_ball") {
             BehaviourStep watch = stay("idle", 0.55f, "!");   // watch the ball leave the hand
             watch.faceDir = playerFacingRight ? 1 : -1;
@@ -1205,7 +1202,7 @@ void CompanionUI::startBehaviour(const std::string& action, const std::string& s
     } else if (action == "SNIFF") {
         const float ballDistance = std::hypot(agentX - ballX, agentY - ballY);
         const float bowlDistance = std::hypot(agentX - L.bowlX, agentY - L.bowlY);
-        const bool ballCloser = !ballCarried && ballDistance <= bowlDistance;
+        const bool ballCloser = !toyCarried && ballDistance <= bowlDistance;
         const float tx = ballCloser ? ballX : L.bowlX;
         const float ty = ballCloser ? ballY : L.bowlY;
         const float standX = (tx >= agentX) ? tx - 50.0f : tx + 50.0f;
@@ -1450,7 +1447,7 @@ void CompanionUI::updateAnimation(float elapsedSeconds) {
             ambient.task_status = 0;
             ambient.signal_strength = 0.0f;
             ambient.food_available = foodPresent;
-            ambient.play_available = !ballCarried && !ballFlying;
+            ambient.play_available = !toyCarried && !ballFlying;
             applyGeometryProximity(ambient, "nearest");
 
             if (guidedStudyMode) {
@@ -1572,16 +1569,21 @@ void CompanionUI::drawCompanion(float x, float y) {
     dog.setPosition({std::round(x + shiver), std::round(y - hopOffset)});
     window.draw(dog);
 
-    if (ballCarried) {
+    if (toyCarried) {
         const float mouthX = x + (facingRight ? kMouthOffset : -kMouthOffset);
         const float mouthY = y - hopOffset - 27.0f;
-        sf::CircleShape ball(9.0f);
-        ball.setOrigin({9.0f, 9.0f});
-        ball.setPosition({mouthX, mouthY});
-        ball.setFillColor(sf::Color(204, 62, 56));
-        ball.setOutlineColor(sf::Color(110, 30, 28));
-        ball.setOutlineThickness(2.0f);
-        window.draw(ball);
+        if (activeFetchToy == "stick") {
+            sf::RectangleShape toy({30.0f, 7.0f}); toy.setOrigin({15.0f, 3.5f}); toy.setPosition({mouthX, mouthY});
+            toy.setRotation(sf::degrees(-12.0f)); toy.setFillColor(sf::Color(137, 91, 49)); window.draw(toy);
+        } else if (activeFetchToy == "rope") {
+            sf::CircleShape toy(10.0f); toy.setOrigin({10.0f, 10.0f}); toy.setPosition({mouthX, mouthY});
+            toy.setFillColor(sf::Color::Transparent); toy.setOutlineColor(sf::Color(65, 151, 165));
+            toy.setOutlineThickness(4.0f); window.draw(toy);
+        } else {
+            sf::CircleShape toy(9.0f); toy.setOrigin({9.0f, 9.0f}); toy.setPosition({mouthX, mouthY});
+            toy.setFillColor(sf::Color(204, 62, 56)); toy.setOutlineColor(sf::Color(110, 30, 28));
+            toy.setOutlineThickness(2.0f); window.draw(toy);
+        }
     }
 
     std::string cue = step ? step->cue : (restingPose == "sleep" ? std::string("Zzz") : std::string());
@@ -1678,8 +1680,8 @@ void CompanionUI::drawSceneObjects() {
         }
     }
 
-    // Ball on the ground or in flight (the carried ball is drawn with the dog)
-    if (!ballCarried) {
+    // All fetch choices remain visible unless the companion carries that object.
+    if (!toyCarried || activeFetchToy != "ball") {
         sf::CircleShape ballShadow(9.0f);
         ballShadow.setOrigin({9.0f, 9.0f});
         ballShadow.setScale({1.0f, 0.32f});
@@ -1698,6 +1700,16 @@ void CompanionUI::drawSceneObjects() {
         shine.setPosition({ballX - 3.0f, ballY - ballHeight - 12.0f});
         shine.setFillColor(sf::Color(255, 220, 215));
         window.draw(shine);
+    }
+    if (!toyCarried || activeFetchToy != "stick") {
+        sf::RectangleShape stick({52.0f, 8.0f}); stick.setOrigin({26.0f, 4.0f}); stick.setPosition({stickX, stickY});
+        stick.setRotation(sf::degrees(-8.0f)); stick.setFillColor(sf::Color(137, 91, 49));
+        stick.setOutlineColor(sf::Color(91, 57, 30)); stick.setOutlineThickness(1.5f); window.draw(stick);
+    }
+    if (!toyCarried || activeFetchToy != "rope") {
+        sf::CircleShape rope(15.0f); rope.setOrigin({15.0f, 15.0f}); rope.setPosition({ropeX, ropeY});
+        rope.setFillColor(sf::Color::Transparent); rope.setOutlineColor(sf::Color(65, 151, 165));
+        rope.setOutlineThickness(5.0f); window.draw(rope);
     }
 }
 
@@ -1801,9 +1813,12 @@ void CompanionUI::executeInteraction(const std::string& label,
             });
         }
     }
-    // Show the visible companion's chosen action in the scene.
-    // The scene event was already applied (and proximity derived) before this call.
-    startBehaviour(selectedAgentIsProposed ? latestProposedAction : latestBaselineAction, sceneEvent);
+    const std::string visibleAction = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
+    if (visibleAction == "FETCH") {
+        activeFetchToy = selectedAgentIsProposed ? proposed.getPreferredFetchObject() : "ball";
+        if (activeFetchToy != "ball" && activeFetchToy != "stick" && activeFetchToy != "rope") activeFetchToy = "ball";
+    }
+    startBehaviour(visibleAction, sceneEvent);
     const auto responseLatencyMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - interactionQueuedAt).count();
 
@@ -1848,6 +1863,7 @@ void CompanionUI::executeInteraction(const std::string& label,
         row["software_revision"] = IS2_GIT_REVISION;
         row["policy_updates_enabled"] = false;
         row["selected_action"] = selectedAgentIsProposed ? latestProposedAction : latestBaselineAction;
+        row["fetch_object_selected"] = visibleAction == "FETCH" ? activeFetchToy : "";
         row["response_latency_ms"] = guidedStudyMode ? nlohmann::json(responseLatencyMs) : nlohmann::json(nullptr);
         row["q_table_state_present"] = selectedAgentIsProposed
             ? proposed.getLastDecisionTrace().q_table_state_present : baseline.lastDecisionHadQTableState();
@@ -1977,7 +1993,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
     std::transform(lower.begin(), lower.end(), lower.begin(),
         [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
     const std::string safeTextForLogs = !guidedStudyMode ? text :
-        (studyPhase == "guided" && studyStepIndex == 5 ? "scripted_preference:likes_ball" :
+        (studyPhase == "guided" && studyStepIndex == 5 ? "scripted_preference:likes_rope" :
          studyPhase == "guided" && studyStepIndex == 9 ? "scripted_preference:dislikes_sound" :
          studyPhase == "free" ? "free_phase_text_input" : "guided_text_input");
     if (guidedStudyMode && studyPhase == "guided" && !studyInputMatches(text, true)) {
@@ -1987,6 +2003,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
     if (guidedStudyMode && studyPhase != "guided" && studyPhase != "free") return;
 
     const bool explicitLike = lower.find("prefer") != std::string::npos ||
+                              lower.find("favorite") != std::string::npos ||
+                              lower.find("favourite") != std::string::npos ||
                               lower.find(" like ") != std::string::npos ||
                               lower.rfind("like ", 0) == 0 ||
                               lower.find("love") != std::string::npos;
@@ -2000,8 +2018,10 @@ void CompanionUI::processTextInteraction(const std::string& text) {
     // refer to a recent action/event, but that relationship remains a candidate.
     if (explicitLike || explicitDislike) {
         std::string object;
-        if (lower.find("ball") != std::string::npos || lower.find("toy") != std::string::npos ||
-            lower.find("fetch") != std::string::npos) object = "ball";
+        if (lower.find("rope") != std::string::npos) object = "rope";
+        else if (lower.find("stick") != std::string::npos) object = "stick";
+        else if (lower.find("ball") != std::string::npos) object = "ball";
+        else if (lower.find("toy") != std::string::npos || lower.find("fetch") != std::string::npos) object = "ball";
         else if (lower.find("sound") != std::string::npos || lower.find("noise") != std::string::npos ||
                  lower.find("bark") != std::string::npos) object = "sound";
         else if (lower.find("rest") != std::string::npos || lower.find("sleep") != std::string::npos) object = "rest";
@@ -2009,7 +2029,8 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             std::size_t relationStart = std::string::npos;
             std::size_t relationLength = 0;
             for (const std::string& marker : {std::string("like"), std::string("love"),
-                                              std::string("prefer"), std::string("hate"),
+                                              std::string("prefer"), std::string("favorite"),
+                                              std::string("favourite"), std::string("hate"),
                                               std::string("dislike")}) {
                 const std::size_t found = lower.find(marker);
                 if (found != std::string::npos && (relationStart == std::string::npos || found < relationStart)) {
@@ -2059,17 +2080,11 @@ void CompanionUI::processTextInteraction(const std::string& text) {
         } else {
             const std::string relation = explicitDislike ? "dislikes" : "likes";
             const bool memoryUpdated = !guidedStudyMode || selectedAgentIsProposed;
-            bool studyActionPreferenceAdded = false;
+            bool studyFetchObjectPreferenceAdded = false;
             if (memoryUpdated) {
                 proposed.recordUserStatement(relation, object);
-                // In the fixed protocol, "I like the ball" is the operationalised
-                // preference probe for the later FETCH opportunity (step 7).
-                // The baseline never receives this record.
-                if (guidedStudyMode && selectedAgentIsProposed &&
-                    relation == "likes" && object == "ball") {
-                    proposed.recordUserPreference("FETCH", true);
-                    studyActionPreferenceAdded = true;
-                }
+                studyFetchObjectPreferenceAdded = guidedStudyMode && selectedAgentIsProposed &&
+                    relation == "likes" && (object == "ball" || object == "stick" || object == "rope");
             }
             const std::string previousContext = latestStimulus;
             std::string associationType = "none";
@@ -2123,7 +2138,7 @@ void CompanionUI::processTextInteraction(const std::string& text) {
             row["utterance_analysis"] = {
                 {"kind", "preference_statement"}, {"relation", relation}, {"object", object},
                 {"memory_updated", memoryUpdated},
-                {"study_action_preference_added", studyActionPreferenceAdded},
+                {"study_fetch_object_preference_added", studyFetchObjectPreferenceAdded},
                 {"response_required", false}, {"response_action", "NONE"},
                 {"candidate_association", associationType}, {"association_confidence", associationConfidence},
                 {"association_reason", associationReason},
@@ -2184,11 +2199,12 @@ void CompanionUI::processTextInteraction(const std::string& text) {
     if (lower.find("throw") != std::string::npos) sceneEvent = "throw_ball";
     else if (intent == "request" && (lower.find("ball") != std::string::npos ||
                                      lower.find("fetch") != std::string::npos ||
-                                     lower.find("bring") != std::string::npos)) sceneEvent = "fetch_ball";
+                                     lower.find("bring") != std::string::npos ||
+                                     lower.find("toy") != std::string::npos)) sceneEvent = "fetch_toy";
     else if (intent == "feeding") sceneEvent = "feed";
 
     std::string proximityBasis;
-    if (sceneEvent == "fetch_ball" || sceneEvent == "throw_ball") proximityBasis = "ball";
+    if (sceneEvent == "fetch_ball" || sceneEvent == "fetch_toy" || sceneEvent == "throw_ball") proximityBasis = "ball";
     else if (sceneEvent == "feed") proximityBasis = "bowl";
     else if (intent == "praise" || intent == "negative_feedback" || intent == "greeting" || intent == "play") proximityBasis = "user";
     else if (lower.find("rest") != std::string::npos || lower.find("sleep") != std::string::npos) proximityBasis = "bed";
