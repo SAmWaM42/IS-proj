@@ -49,7 +49,8 @@ def _is_imperative(doc):
         return False
     # spaCy's small English model does not expose a reliable imperative mood
     # feature, so a subject-less verbal root is used as a conservative cue.
-    return root.pos_ == "VERB" and root.tag_ in ("VB", "VBP")
+    return (root.pos_ == "VERB" and root.tag_ in ("VB", "VBP")
+            and root.lemma_.lower() in {"fetch", "bring", "get", "retrieve", "find"})
 
 
 def classify(doc, raw):
