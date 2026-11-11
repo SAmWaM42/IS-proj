@@ -295,3 +295,19 @@ Focused self-tests were added to the existing training/agent self-test paths for
 **Q-table compatibility:** adding `no_response_count` changes the encoded state key. Existing Q-table checkpoints were created under the previous state encoding and must not be reused for the updated training experiment. Start with fresh policies using `--train`; do not use `--resume-training` with pre-change checkpoints.
 
 **Deployment boundary:** all changes are currently limited to `Dev`. Do not cherry-pick or port them to `deployment/participant-client` until build, self-test, paired-condition, scenario-distribution, reward-parity, and runtime INSIST validation have passed and the project owner explicitly authorises the deployment update. No production deployment was changed.
+
+
+---
+
+## Cross-branch documentation and implementation status — 11 November 2026
+
+This document tracks researcher-side implementation on `Dev`. It does not describe the participant release or web backend as if they were part of this branch. See [Current Implementation Map](00-current-implementation-map.md) for the repository split and current verification caveats.
+
+- **Dev:** researcher-side C++ agent/simulation, Q-learning, randomized scripted training, paired evaluation, detailed training traces, offline training dashboard, researcher questionnaire retrieval and descriptive questionnaire analysis are present in source. Verify the current build/tests and run artifacts before describing a specific experiment as validated.
+- **Participant runtime:** maintained separately on `deployment/participant-client`. It contains the menu, General Interaction and Believability Study modes, participant credentials, in-app questionnaires, local submission queue/uploader and platform packaging scripts. Do not merge researcher training/analysis tools into that package.
+- **Web collection/distribution:** maintained in `SAmWaM42/IS-proj-web`. The current API validates the versioned submission envelope, deterministic submission ID, odd/even A/B assignment, idempotency header and HMAC participant token, then stores questionnaire JSON in Google Drive. Full per-question validation is still incomplete; Drive lookup/create is not atomic under concurrent duplicates.
+- **Windows CI candidate:** PR #29 proposes a vcpkg/static-SFML build and packaging workflow on `feature/windows-github-actions`. At the last recorded check, no run/status/artifact was visible. This is not a successful Windows build. Even a future CI artifact requires real Windows GUI and participant-flow validation.
+
+### Evidence language
+
+Use distinct labels: **implemented in source**, **built**, **tests passed**, **packaged**, **clean-machine tested**, **interactive participant flow validated**, and **end-to-end collection verified**. Do not collapse them into a single “complete” status. A successful synthetic training run is not participant evidence; a successful CI package is not desktop GUI validation; an API smoke test is not a complete participant-to-Drive validation.

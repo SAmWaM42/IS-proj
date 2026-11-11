@@ -1,212 +1,107 @@
-# Animal Agent
+# Animal Agent — Research and Development
 
-A C++/SFML simulated companion-animal application and research prototype. The research investigates whether persistent semantic memory and affective-state modelling influence the perceived believability of a simulated companion agent.
+This branch (`Dev`) contains the researcher/development implementation: agent and simulation source, training, evaluation, behavioural diagnostics, and researcher-side questionnaire analysis.
 
-The project is not a general-purpose chatbot and does not currently control a physical robot. The participant application presents a bounded simulated companion in a shared environment.
+It is **not** the participant release branch. The participant application is maintained on [`deployment/participant-client`](https://github.com/SAmWaM42/IS-proj/tree/deployment/participant-client). The collection API and download redirect service are maintained in [`SAmWaM42/IS-proj-web`](https://github.com/SAmWaM42/IS-proj-web).
 
-> **Current status (5 November 2026):** the participant executable, Free Roam / Research Session menu, guided interaction flow, baseline/proposed agents, embedded shortened questionnaire UI, local draft persistence, and authenticated web-backend implementation exist in source. Questionnaire completion is now adapted to the versioned submission envelope and connected to `SubmissionManager`: session 1 is queued after the A questionnaire; session 2 is queued after the B questionnaire and final comparison. Pending submissions are retried at application startup, and the participant UI displays server acknowledgement versus local pending status. This integration is **implemented but not yet built or end-to-end verified**. The upload URL remains a placeholder, the tested Vercel Preview deployment is protected and cannot be called by the participant uploader without an approved public participant endpoint, strict server-side questionnaire validation is outstanding, and restart recovery / packaging / protocol approval remain incomplete. Do not collect real participant data. See [the milestone tracker](Docs/21-participant-study-milestones.md).
+> **Documentation authority:** this README describes Dev. See [Current implementation map](Docs/00-current-implementation-map.md) for cross-branch boundaries and verification status, and [Implementation status and roadmap](Docs/07-implementation-status-and-roadmap.md) for researcher milestones. Older numbered specifications retain design history and are not, by themselves, proof that every proposed detail is implemented.
 
-## Research design
+## Research purpose
 
-The intended comparison is between:
+The project investigates how persistent semantic memory and affective-state modelling influence the perceived believability of a simulated companion animal. It is not a general-purpose chatbot or a physical robot.
 
-- **Baseline:** a tabular Q-learning companion using the shared environment/action contract, without the proposed semantic-memory and affect augmentation.
-- **Proposed:** a tabular Q-learning companion augmented with semantic memory and affective-state information.
+- **Baseline:** tabular Q-learning using the shared environment/action contract without the proposed persistent semantic-memory and affect augmentation.
+- **Proposed:** tabular Q-learning augmented with memory- and affect-derived state/context.
 
-Both conditions must use the same environment, action vocabulary, interaction script, reward/transition rules, and frozen policy settings during participant sessions. Learning is disabled and exploration is set to zero during the study. Physical/environmental energy is shared by both agents; it must not become an unfair treatment difference.
+Participant-perceived believability is the primary human-study outcome. Behavioural consistency, adaptability and contextual appropriateness are supporting outcomes only where explicitly measured. Synthetic reward, Q-table support, coverage and action counts are engineering diagnostics, not believability scores.
 
-The primary research outcome is **participant-perceived believability**. Behavioural consistency and adaptability may be examined as supporting outcomes only where the protocol defines how they are measured. Synthetic rewards, Q-table coverage, action counts, and training plots are engineering diagnostics; they are not believability measurements.
+## What belongs on Dev
 
-## Intended participant workflow
+- C++ agent, state/action, simulation and researcher-mode implementation.
+- Tabular Q-learning training and policy generation.
+- Randomized scripted training scenarios and paired baseline/proposed experiments.
+- Memory retrieval/ranking, affect updates and persistence experiments.
+- Training/validation diagnostics, per-decision traces and offline dashboard generation.
+- Researcher-side study-data retrieval and questionnaire JSON analysis/visualisation.
+- Development tests and implementation specifications.
 
-One participant-facing executable is launched. Its menu offers:
+The active training setup uses randomized scripted scenarios. Synthetic-user training experiments and earlier training designs remain in documentation/history but are not the current default training path. Check the current runner and status tracker before treating an older training specification as current.
 
-1. **Free Roam** — ordinary companion interaction; it does not enter the research workflow.
-2. **Research Session** — a controlled, counterbalanced study sequence.
+## Architecture overview
 
-The intended Research Session sequence is:
+```text
+C++ simulation / researcher runner
+  ├─ Environment observations and action constraints
+  ├─ Baseline Q-learning agent
+  ├─ Proposed agent
+  │    ├─ Semantic memory and retrieval/ranking
+  │    ├─ Affective state and bounded summaries
+  │    └─ Persistence / session continuity
+  ├─ Shared scenario and reward/transition handling
+  └─ Structured training and evaluation traces
 
-1. Load the participant's assigned ID and private upload token.
-2. Present consent information; a declined participant exits without creating a submission.
-3. Run the first blinded condition (A): guided interactions, followed by the bounded free-interaction period.
-4. Present the condition-A questionnaire inside the application.
-5. Run the second blinded condition (B) under the same protocol.
-6. Present the condition-B questionnaire inside the application.
-7. Present the final A/B comparison questionnaire.
-8. Persist the completed response data locally, queue it for submission, and report whether it was acknowledged by the server or remains queued for retry.
+Python NLP service (spaCy + deterministic fallback)
+  └─ newline-delimited JSON process boundary
 
-### Counterbalancing contract
+Researcher utilities
+  ├─ training dashboard from run summaries and JSONL traces
+  ├─ Google Drive questionnaire submission downloader
+  └─ questionnaire JSON validation, pairing and descriptive analysis
+```
 
-Participant number is assigned before the session and is read from that participant's private credentials. It is **not** generated by incrementing a counter on each computer.
+The baseline must remain free of the proposed agent's persistent semantic-memory and affect features.
 
-| Participant number | Condition A | Condition B |
-|---|---|---|
-| Odd | Baseline | Proposed |
-| Even | Proposed | Baseline |
+## Build and test
 
-This matches the current web API's condition mapping. The same participant ID must remain associated with both conditions and any retry/recovery of the session.
+The project uses C++17 and CMake. The participant/development runtime uses SFML 3.0. Dev also contains Python-based NLP and researcher utilities.
 
-## Intended code structure
-
-This is the target responsibility split. It is a direction for incremental work, not a claim that all these classes/files already exist.
-
-~~~text
-main.c++
-  RuntimePaths
-  SubmissionManager (retry previously queued submissions)
-  ParticipantMenu
-    Free Roam
-      CompanionUI
-    Research Session
-      ParticipantConfig
-        credentials.json (per-participant, private, placed beside AnimalAgent after extraction)
-      StudyController
-        Consent
-        Condition A
-          CompanionUI / shared simulation
-          QuestionnaireUI
-        Condition B
-          CompanionUI / shared simulation
-          QuestionnaireUI
-        Comparison Questionnaire
-      StudySessionData
-      SubmissionManager
-        Local JSON queue
-        upload_submission.py
-          IS-proj-web /api/submissions
-            Google Drive
-~~~
-
-Planned responsibility boundaries:
-
-| Component | Responsibility |
-|---|---|
-| ParticipantMenu | Choose Free Roam or Research Session in the same executable. |
-| ParticipantConfig | Load and validate the assigned participant number and private token. Never generate participant identity. |
-| StudyController | Own the consent/condition/questionnaire/comparison sequence, A/B mapping, and recovery state. It should not draw UI widgets. |
-| CompanionUI | Render the environment and handle participant interactions. It should not own submission or questionnaire persistence. |
-| QuestionnaireUI | Render question pages, validate answers, and return structured responses. |
-| StudySessionData | Own the typed response/session model and serialisation contract. |
-| SubmissionManager | Persist pending submissions, upload them, retry failures, and distinguish local queueing from server acknowledgement. It should not depend on SFML. |
-| Web API | Authenticate participants, validate the payload, enforce the condition/submission contract, and store questionnaire data. |
-
-## Current implementation reality
-
-The source on deployment/participant-client currently contains:
-
-- main.c++ — participant startup path, pending-upload retry at launch, menu selection, and construction of CompanionUI.
-- Components/Simulation/participant-menu.* — the Free Roam / Research Session menu. It is a separate SFML window but remains part of the same executable.
-- Components/Simulation/companion-ui.* — simulation rendering, interaction handling, and the current guided-study phases.
-- Components/Simulation/runtime-paths.h — executable and per-user data directory resolution.
-- Components/Simulation/submission-manager.* — local pending JSON queue and Python uploader invocation.
-- Components/NLP/upload_submission.py — HTTP client for the separate web endpoint.
-- Data/Study/form-config.json — legacy external-form URL and prefill-entry configuration.
-- Data/Study/upload-config.json — endpoint configuration, currently containing a placeholder URL.
-
-The guided-study implementation includes consent, warm-up, 12 guided prompts, a bounded free-interaction phase, and per-condition ratings through the external form. Study event/manifest writing is currently gated by researcherMode, while the participant application constructs the study UI with researcherMode=false. The participant path therefore does not currently persist those study traces/manifests. saveSession() in guided-study mode writes only the manifest path and returns; it does not save questionnaire responses.
-
-SubmissionManager can queue and upload a response object and retries pending files on application startup. However, the current participant flow does not call queueSubmission() when a questionnaire is completed. It is infrastructure, not an integrated participant pipeline.
-
-The participant identity is now loaded from credentials.json beside the AnimalAgent executable in the extracted application directory. The previous study-participant-counter.txt allocation has been removed from guided-study initialization. The project owner reports successful builds, passing focused tests, and valid credentials loading. Invalid-file handling and packaged-release checks remain to be verified.
-
-The external form launcher considers a successful browser launch sufficient to proceed; it cannot verify that the participant actually submitted the form. The participant questionnaire must be brought inside the SFML application.
-
-## Important decisions and constraints
-
-1. **Single participant executable:** Free Roam and Research Session are menu choices in one application, not separate participant executables.
-2. **Participant ID source:** assigned participant number and token come from a private credentials.json placed in the root of each participant's extracted application directory (beside AnimalAgent). It is supplied separately per participant, not committed or included in the common ZIP.
-3. **A/B assignment:** odd IDs receive baseline then proposed; even IDs receive proposed then baseline. The participant number is stable across the entire study.
-4. **Questionnaires are the uploaded research dataset:** do not upload raw interaction text, memory records, affect traces, Q-table contents, or diagnostic logs. If additional derived metrics are later required, define them explicitly and check the approved protocol/consent first.
-5. **Final comparison payload:** attach final comparison responses as a distinct comparison_questionnaire object to the second-session submission (Pxx-S2); session 1 carries null. This is the adopted implementation design to preserve the current two-session API pattern.
-6. **Local durability before upload:** write a complete response payload atomically to the local queue before attempting HTTP delivery. A failed upload must not discard responses.
-7. **Queueing is not acknowledgement:** UI wording must distinguish “saved locally / pending upload” from “received by server”.
-8. **Backend implementation:** SAmWaM42/IS-proj-web branch test currently contains the HMAC-authenticated API implementation. It is not yet a confirmed production deployment. Do not treat its existence as proof that Vercel/Google Drive is configured or live.
-9. **No real data collection yet:** supervisor/institutional ethics approval, approved consent, and a piloted questionnaire/protocol are prerequisites.
-10. **No raw research telemetry by default:** any local interaction/affect logging must be justified by the protocol, access-controlled, and covered by retention rules.
-
-## Build and launch
-
-Requirements currently visible in the build configuration:
-
-- CMake 3.16 or newer.
-- C++17 compiler.
-- SFML 3 (Graphics, Window, System).
-- Threads support.
-- The repository's bundled nlohmann/json headers.
-- Runtime assets under Data/Assets/ and Data/Fonts/.
-
-Build the participant application:
-
-~~~sh
+```bash
 cmake -S . -B build
-cmake --build build --target IS-2
-./build/AnimalAgent
-~~~
+cmake --build build --parallel
+```
 
-The CMake target is named IS-2, but its output executable is AnimalAgent. These refer to the same single participant application; Free Roam and Research Session are runtime menu choices. Additional targets such as participant_config_test are developer/test executables, not alternative participant applications. The current CMake target defines IS2_PARTICIPANT_BUILD=1; the participant executable is launched without command-line modes and opens the menu. Do not use older README instructions such as ./build/AnimalAgent --sim for this participant build.
+Run the self-tests and CTest targets documented for the current revision before relying on a result. Some older specifications mention earlier CMake options or targets; consult the current `CMakeLists.txt` and `build.sh` rather than copying stale commands blindly.
 
-Optional research tests are configured with:
+The NLP interaction service is a persistent Python process using newline-delimited JSON. Stdout is reserved for protocol responses; diagnostics belong on stderr. The intent adapter supports spaCy with a deterministic keyword fallback when the model is unavailable.
 
-~~~sh
-cmake -S . -B build -DANIMAL_AGENT_BUILD_RESEARCH_TESTS=ON
-cmake --build build
-ctest --test-dir build --output-on-failure
-~~~
+## Training and diagnostics
 
-Run these checks on the exact revision being evaluated. A historical test report is not evidence that a newer revision passes.
+Training outputs and policies are written under `artifacts/training/`. The active training runner uses randomized scripted scenarios and paired conditions. Per-decision diagnostics include selected action, valid actions and Q support, energy/reward/repetition information, INSIST eligibility, and proposed-agent memory/affect context where available. Baseline memory/affect diagnostic fields are explicitly not applicable.
 
-### Runtime configuration
+Generate the offline dashboard after producing compatible training/validation artifacts:
 
-- Data/Study/upload-config.json must contain the real deployed /api/submissions endpoint before upload can work. It currently contains a placeholder.
-- The participant uploader expects the bundled Python runtime at runtime/python/ (python.exe on Windows or bin/python3 on Linux). Unlike the NLP interaction path, the uploader does not fall back to a system Python executable.
-- The NLP interaction service can use a bundled or system Python runtime and has a keyword fallback when the spaCy service is unavailable.
-- Real participant tokens must be held only in the per-participant credentials.json beside AnimalAgent, not in source control, upload-config.json, or the common application ZIP.
+```bash
+python3 scripts/visualize_training_dashboard.py \
+  --input-dir artifacts/training \
+  --output artifacts/visualizations/training_dashboard.html
+```
 
-## Documentation map
+The dashboard is a researcher diagnostic. It does not measure perceived believability and must not be presented as a participant outcome.
 
-- [Project context and hand-off](Docs/project-context.md) — authoritative project purpose, architecture, constraints, and decisions.
-- [Implementation status and roadmap](Docs/07-implementation-status-and-roadmap.md) — concise current status and milestone index.
-- [Participant-study milestone tracker](Docs/21-participant-study-milestones.md) — live task checklist, acceptance criteria, blockers, and completion evidence.
-- [Stage −1 action architecture](Docs/20-stage-minus-one-action-architecture.md) — shared action/observation design.
-- [Study validity and logging specification](Docs/08-research-validity-memory-affect-and-logging-spec.md) — research validity constraints and data-collection considerations.
+## Researcher questionnaire data
 
-## Development rules
+1. The participant app submits questionnaire response envelopes to the web API.
+2. The web API stores JSON submissions in the configured Google Drive folder.
+3. The researcher downloads submissions locally using the researcher utility.
+4. The analysis utility validates envelopes, pairs participant sessions/conditions and produces descriptive summaries/visualisations.
 
-- Inspect the current branch and relevant source files before editing.
-- Make the smallest change that completes the current milestone task.
-- Keep simulation, study orchestration, questionnaire rendering, response data, and HTTP submission responsibilities separate.
-- Ask before making a decision that changes the research protocol or the submitted data schema.
-- Update the milestone tracker and context documents when a decision or verified implementation status changes.
-- Report exact files changed and tests run. Never claim a build, deployment, or end-to-end workflow was verified unless it was actually executed.
+Downloaded participant data is stored outside the repository by default. Do not commit participant responses, credentials, OAuth material, tokens or generated private datasets.
 
+## Related branches and repository
 
-### Build target note
+| Location | Responsibility |
+|---|---|
+| `Dev` | Researcher-side simulation, agent development, training, evaluation and analysis. |
+| `deployment/participant-client` | Participant desktop app, guided study, questionnaires, local queue, runtime packaging. |
+| `IS-proj-web` | HTTPS submission API, participant authentication, Google Drive storage and release-download redirects. |
+| `main` in this repository | Cross-project overview, pipeline, build configuration and toolchain summary. |
 
-Build the participant application with `cmake --build build --target IS-2`. The produced executable is named `AnimalAgent`. The CMake target name and output filename are two names for the same application. Optional research-test targets (for example `participant_config_test`) are separate test executables and are not participant-facing builds or modes.
+Runtime changes affecting participant behaviour must be deliberately ported to the participant branch. Do not merge researcher-only training/analysis code into the participant build. Do not change production Vercel configuration without explicit approval.
 
-### Questionnaire styling hand-off
+## Research safeguards
 
-The project owner will provide a questionnaire styling template for later integration. Implement the questionnaire content/data contract and functional in-app flow without locking in final styling until that template is supplied.
-
-
-## Questionnaire response contract (M1.2)
-
-A generic typed response model has been added in Components/Study/study-session-data.h/.cpp, with the envelope schema at Data/Study/questionnaire-submission.schema.json. Each answer is identified by a stable question_id, has an answer_type, and stores a typed value. Supported generic types are likert, integer, number, single_choice, multiple_choice, text, and boolean. Each question definition can specify required status, numeric bounds, allowed options, and maximum text length.
-
-A session payload contains:
-- participant and submission metadata (Pxx-S1 or Pxx-S2);
-- questionnaire_version;
-- responses.condition_questionnaire.answers for the current condition;
-- responses.comparison_questionnaire, which is null in session 1 and contains the final A/B comparison answers in session 2.
-
-This contract does not invent the research questions or rating scales. Synthetic IDs in tests are fixtures only. The final approved question wording, scales, required status, and version must be supplied before the questionnaire is populated. The functional model is independent of the styling template the project owner will provide later. The new study_session_data_test target has been added but still needs to be built and run locally. The current web API does not yet strictly validate this schema; that is M2 work.
-
-
-## Research data retrieval
-
-Questionnaire submissions can be downloaded from the configured Google Drive folder using the researcher-side local utility. See [Local Google Drive Study Data Retrieval](Docs/22-local-study-data-retrieval.md) and run `python3 scripts/download_study_submissions.py --dry-run` after configuring the researcher's Google OAuth environment variables. Downloaded participant data is stored outside the repository by default.
-
-
-## Questionnaire analysis
-
-After downloading questionnaire submissions, run the researcher-side descriptive analysis and visualisation tool. See [Questionnaire JSON Analysis and Visualisation](Docs/23-questionnaire-json-analysis.md). The tool analyses participant questionnaire responses only and keeps these outcomes separate from training and behavioural diagnostics.
+- Never commit participant credentials, bearer tokens, token maps, Google OAuth secrets, refresh tokens or private response data.
+- The common participant ZIP must not contain participant-specific credentials.
+- Send questionnaire responses only; do not send raw interaction text, memory/affect traces, Q-tables or training diagnostics to the collection API.
+- Keep synthetic reward and engineering diagnostics separate from human believability outcomes.
+- Do not collect real participant data until the protocol, questionnaire, endpoint, packaging and end-to-end recovery path are approved and verified.
