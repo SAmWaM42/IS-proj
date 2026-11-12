@@ -1,6 +1,6 @@
 # Current Implementation Map
 
-**Last reviewed:** 11 November 2026  
+**Last reviewed:** 12 November 2026  
 **Purpose:** Cross-branch source-of-truth index. This records source implementation separately from verification status; it does not replace detailed design contracts.
 
 ## Repository responsibilities
@@ -55,9 +55,15 @@
 
 Do not collect real participant data or distribute a package as release-ready before the study/protocol and technical gates are complete.
 
-## Windows build candidate (not yet part of deployment branch)
+## Windows participant build and release — 12 November 2026
 
-A vcpkg/static-SFML-aware Windows GitHub Actions workflow and revised packaging script are on `feature/windows-github-actions`, proposed in [PR #29](https://github.com/SAmWaM42/IS-proj/pull/29). This branch is separate from `deployment/participant-client` until reviewed and merged. The last recorded check found no workflow run, status check or artifact for its then-current head. A future successful CI artifact will still not replace real Windows desktop GUI/participant-flow validation.
+The Windows workflow and packaging changes from [PR #29](https://github.com/SAmWaM42/IS-proj/pull/29) have been merged into `deployment/participant-client`. The MSVC/vcpkg GitHub Actions workflow passed its build, configured C++/NLP tests, standalone Python/spaCy provisioning and packaging steps.
+
+The resulting Windows package was manually extracted and launched on a separate Windows computer without the project development toolchain or separately installed application dependencies. The participant test confirmed login, both A/B questionnaires, distinct session 1/session 2 submission IDs and persistence of the latest answers in Google Drive. See the [manual validation record](https://github.com/SAmWaM42/IS-proj/blob/deployment/participant-client/Docs/25-windows-participant-manual-validation.md).
+
+The [published release candidate](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1) contains `AnimalAgent-Linux.zip` and `AnimalAgent-Windows.zip`. The web frontend is deployed at [is-proj-web.vercel.app](https://is-proj-web.vercel.app/) with platform-specific release redirects.
+
+The Windows evidence applies to the tested machine and workflow; it is not a universal compatibility claim. The presence of a Linux asset in the release is not proof of a new clean-machine Linux test in this validation cycle.
 
 ## Web service
 
