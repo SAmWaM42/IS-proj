@@ -55,7 +55,7 @@ AnimalAgent desktop executable (C++17 + SFML 3)
             -> Python HTTPS uploader
 ```
 
-The participant executable loads trained baseline/proposed policies and does not perform researcher training. Participant identity is supplied through a private per-participant `credentials.json`, placed beside the executable; the common ZIP must not contain it. The questionnaire integration and submission path exist in source but must not be treated as fully verified until build, CTest, interactive flow, restart recovery, clean-machine packaging and live API/Drive checks pass.
+The participant executable loads trained baseline/proposed policies and does not perform researcher training. Participant identity is supplied through a private per-participant `credentials.json`, placed beside the executable; the common ZIP must not contain it. The participant workflow has been manually validated on Windows using the packaged release: participant login, both A/B questionnaires, distinct session 1/session 2 submission IDs, and persistence of the latest answers in Google Drive were confirmed. This is evidence for the tested Windows environment, not a guarantee for every Windows version or hardware configuration.
 
 ### 3. Questionnaire collection pipeline
 
@@ -92,7 +92,7 @@ CMake + C++17 + SFML 3
   -> IS-proj-web /api/downloads/latest redirect
 ```
 
-Linux packaging uses `Deployment/package-linux.sh` and requires a Python environment with spaCy/model, SFML shared libraries, trained Q-table files, endpoint configuration and a redistributable font. Windows packaging on `deployment/participant-client` expects a standalone Python runtime, SFML DLL directory, trained policies, endpoint configuration and font. The newer vcpkg/static-SFML GitHub Actions workflow is being developed separately on `feature/windows-github-actions` through [PR #29](https://github.com/SAmWaM42/IS-proj/pull/29); it is not yet part of the participant branch and must not be described as successful until a run and artifact are verified.
+Linux packaging uses `Deployment/package-linux.sh`; Windows packaging is built by the vcpkg/MSVC GitHub Actions workflow merged through [PR #29](https://github.com/SAmWaM42/IS-proj/pull/29). The Windows workflow builds and tests the participant executable, provisions a standalone Python/spaCy runtime, stages the application and uploads the package artifact. The resulting Windows package was manually extracted and exercised on a Windows computer without the project's development toolchain or separately installed application dependencies.
 
 ## Build configuration and dependencies
 
@@ -167,7 +167,7 @@ Never store these values in the desktop application, Git repository or public do
 - Vercel deploys the web API and download redirect.
 - Google Drive is the current questionnaire-response store.
 - GitHub Releases distribute versioned platform ZIP assets.
-- GitHub Actions is the intended Windows build/test/package runner; PR #29 remains pending verification.
+- GitHub Actions runs the Windows MSVC/vcpkg build, test and package workflow merged by PR #29.
 - Researcher-side Python scripts retrieve/analyse questionnaire submissions and render training diagnostics.
 
 ## Branch and release discipline
@@ -179,9 +179,15 @@ Never store these values in the desktop application, Git repository or public do
 5. Record exact commit, build command, tests, package contents and target-platform validation.
 6. Distinguish source-integrated, locally built, CI-built, clean-machine tested, and participant-flow validated states.
 
-## Current readiness caveat
+## Current release status — 12 November 2026
 
-This README is a project-level map, not a release sign-off. The questionnaire/submission path and Windows package pipeline have remaining verification gates. PR #29 has not yet produced a verified successful run/artifact in the last recorded check. Real Windows desktop GUI/participant-flow validation is still required after CI succeeds. Do not recruit participants or distribute an unverified build.
+The participant Windows build workflow is merged into `deployment/participant-client`. Automated Windows CI completed successfully, and the packaged application was manually tested on a separate Windows computer without the development toolchain or application dependencies installed. The test covered participant login, both questionnaire conditions, session 1 and session 2 with distinct submission IDs, and successful Google Drive persistence with the latest answers.
+
+The release candidate [v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1) contains `AnimalAgent-Linux.zip` and `AnimalAgent-Windows.zip`.
+
+The website is deployed at [https://is-proj-web.vercel.app/](https://is-proj-web.vercel.app/) and exposes platform downloads through `/api/downloads/latest?platform=linux` and `/api/downloads/latest?platform=windows`.
+
+The Windows package has passed the documented manual participant workflow on the tested machine. This does not establish compatibility with every Windows configuration, nor does it claim equivalent clean-machine testing for Linux. The web API validates the submission envelope and participant authentication but does not yet validate every questionnaire answer against the full questionnaire schema. Drive lookup-before-create supports ordinary retries but is not an atomic uniqueness guarantee.
 
 
 ## Specification history
