@@ -26,7 +26,7 @@ The participant branch also contains the NLP intent adapter (greeting, request, 
 - The web API stores questionnaire JSON in Google Drive. It should receive questionnaire response data only, not raw interaction text, memory/affect traces, Q-tables or diagnostics.
 - Mutable application data belongs in the platform's user-data directory, not the extracted installation folder.
 
-The participant questionnaire and submission integration exists in source, but the latest integration has not yet been fully built, interactively walked through, or end-to-end verified. Do not use this branch for real participant collection until the study milestone tracker and validation gates are complete.
+The participant questionnaire and submission integration has been built and exercised end-to-end in the tested Windows package. Both A/B conditions and both sessions were completed; session 1 and session 2 generated distinct submission IDs, and the latest questionnaire answers were confirmed in the configured Google Drive folder. See [Windows manual validation](Docs/25-windows-participant-manual-validation.md). This is technical validation of the tested workflow, not a substitute for required study/ethics approval or ongoing collection monitoring.
 
 ## Build requirements
 
@@ -51,11 +51,13 @@ Read [Deployment packaging notes](Deployment/README.md) before creating a releas
 - Linux: `bash Deployment/package-linux.sh`
 - Windows: `powershell -ExecutionPolicy Bypass -File Deployment/package-windows.ps1`
 
-The scripts create allow-list ZIPs under `dist/`. The current Linux script expects a Python environment containing spaCy/model and an SFML 3 shared-library directory; an ordinary copied virtualenv is not guaranteed to be portable to a clean machine. The current Windows script expects a standalone Python runtime, an SFML DLL directory and a redistributable font. A packaging-script exit alone is not proof that the package runs on a clean target machine.
+The scripts create allow-list ZIPs under `dist/`. The Linux script expects a Python environment containing spaCy/model and an SFML 3 shared-library directory; an ordinary copied virtualenv is not guaranteed to be portable to a clean machine. The Windows GitHub Actions workflow uses MSVC, vcpkg-provided SFML and a provisioned standalone Python/spaCy runtime. The resulting Windows package was manually extracted and run on a Windows computer without the project development toolchain or separately installed application dependencies.
 
-### Windows CI status
+### Windows CI and release status
 
-A Windows GitHub Actions workflow is being developed on the separate feature branch `feature/windows-github-actions`, proposed through [PR #29](https://github.com/SAmWaM42/IS-proj/pull/29). It is not yet part of this branch. At the last recorded check, no CI run or artifact had been observed. Do not describe the Windows package as CI-verified until the workflow builds, tests, packages `AnimalAgent-Windows.zip`, and the uploaded artifact is present. Even then, a real Windows desktop GUI and participant-flow test remains necessary.
+The Windows workflow was merged from PR #29 into this branch. It builds the participant client with MSVC/vcpkg, runs the configured C++ and NLP tests, provisions the standalone Python/spaCy runtime, packages the application and uploads the `AnimalAgent-Windows` artifact. The CI run passed. The downloaded package was then manually tested on a separate Windows computer; participant login, both A/B questionnaires, distinct session submission IDs and Google Drive persistence were confirmed.
+
+The published [release candidate](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1) contains both `AnimalAgent-Linux.zip` and `AnimalAgent-Windows.zip`. The website's platform download links are served by the web repository's release redirect endpoint. See [manual validation record](Docs/25-windows-participant-manual-validation.md).
 
 ## Branch boundaries
 
