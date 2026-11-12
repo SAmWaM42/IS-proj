@@ -1131,3 +1131,49 @@ Record the evidence level explicitly:
 7. authenticated questionnaire submission and Drive persistence verified.
 
 These are separate gates. In particular, successful Windows CI packaging will not establish real Windows desktop GUI or participant-flow validation.
+
+
+## Current cross-repository implementation hand-off — 12 November 2026
+
+> **Authority:** This dated update supersedes the 11 November hand-off and older status statements in this document wherever they describe the Windows participant build, participant validation, release assets or public download frontend as pending. Earlier architecture notes and design history are retained.
+
+### Repository responsibilities
+
+- `IS-proj/Dev`: researcher-side simulation, agent development, training, evaluation, diagnostics, questionnaire retrieval and analysis.
+- `IS-proj/deployment/participant-client`: participant executable, guided study, questionnaires, local submission queue/uploader, runtime assets and platform build/package workflows.
+- `IS-proj-web/main`: Vercel submission API, participant-token authentication, Google Drive persistence, release-download redirects and public frontend.
+
+### Participant application and submission flow
+
+The participant desktop application is the C++17/SFML 3 `AnimalAgent` executable. It provides General Interaction and Believability Study modes. The guided study uses individually supplied `credentials.json`, counterbalanced A/B conditions, two sessions and in-app questionnaires.
+
+Questionnaire submissions use deterministic IDs `P{participant}-S{session}`. The local submission manager queues response data under the platform user-data directory and invokes the Python HTTPS uploader. The uploader sends the participant token as a Bearer token and the matching idempotency key, while excluding the token from the transmitted JSON body. Pending submissions are retried at application startup.
+
+On Windows, mutable application data is stored under `%LOCALAPPDATA%\\AnimalAgent`. Successful uploads leave a local receipt in submitted-submissions and remove the pending response payload. Failed uploads remain pending for retry.
+
+The web API validates schema version, participant number, session index, deterministic submission ID, odd/even A/B assignment, idempotency header and HMAC-backed participant token. It stores questionnaire JSON in the configured Google Drive folder using server-side OAuth credentials. It does not yet validate every active question ID, answer type, required field, allowed option, scale bound or questionnaire version. Drive lookup-before-create supports ordinary retry after a lost acknowledgement but is not atomic for simultaneous duplicate requests.
+
+### Windows build and manual validation — completed
+
+The Windows GitHub Actions workflow from PR #29 is merged into `deployment/participant-client`. The MSVC/vcpkg build, configured C++/NLP tests, standalone Python/spaCy runtime provisioning and package creation passed in CI.
+
+The downloaded Windows package was extracted and launched on a separate Windows computer without the project's development toolchain or separately installed application dependencies. Manual validation confirmed:
+- participant login and assigned participant-number entry;
+- both questionnaire conditions (A and B);
+- distinct session 1 and session 2 submission IDs;
+- successful submission and Google Drive persistence;
+- stored JSON contained the latest answers entered during the test.
+
+See [Docs/25-windows-participant-manual-validation.md](https://github.com/SAmWaM42/IS-proj/blob/deployment/participant-client/Docs/25-windows-participant-manual-validation.md). This is evidence for the tested Windows environment, not a claim of universal compatibility.
+
+### Release and public frontend
+
+The published [release candidate v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1) contains `AnimalAgent-Linux.zip` and `AnimalAgent-Windows.zip`. The public frontend is deployed at [https://is-proj-web.vercel.app/](https://is-proj-web.vercel.app/). Platform downloads resolve through `/api/downloads/latest?platform=linux` and `/api/downloads/latest?platform=windows` to the newest eligible GitHub Release asset containing the requested filename.
+
+### Remaining caveats
+
+- The Windows manual test does not establish compatibility with every Windows version or hardware configuration.
+- The presence of the Linux asset in the release does not by itself establish a new clean-machine Linux test in this validation cycle.
+- Study/ethics/supervisor approval remains separate from software validation.
+- The collection API's questionnaire answer validation and concurrent duplicate-write guarantees remain limited as described above.
+- Never commit participant credentials, raw tokens, token maps, OAuth secrets, refresh tokens or participant response data.
