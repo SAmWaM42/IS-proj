@@ -2,7 +2,7 @@
 
 **Target branch:** \`deployment/participant-client\`  
 **Source of selected runtime behavior:** \`Dev\`  
-**Status:** Ported; local participant build and study walkthrough pending  
+**Status:** Ported; participant build, Windows CI and documented Windows study workflow validated  
 **Scope:** Runtime logic only. Researcher training orchestration, experiment configuration, and analysis utilities are intentionally excluded.
 
 ## 1. Why this is a selective port
@@ -92,10 +92,12 @@ Do not treat the participant branch as release-ready until the local build, CTes
 
 ---
 
-## Current status clarification — 11 November 2026
+## Current status clarification — 12 November 2026
 
-This parity note records the selected runtime behaviour ported to the participant branch. It is not a claim that the latest full participant application has passed build, test, interactive or collection validation. The current participant README and [deployment specification](23-participant-client-deployment-spec.md) are the branch-specific operational references; the cross-branch implementation map is maintained on `Dev`.
+This parity note records the selected runtime behaviour ported to the participant branch. The participant application has passed the Windows CI build/test/package workflow and the documented manual Windows participant workflow.
 
-The participant CMake configuration currently registers NLP smoke/classification, backyard environment, participant configuration, questionnaire submission and questionnaire content tests when `ANIMAL_AGENT_BUILD_TESTS=ON`. The questionnaire/submission integration is present in source but still needs a complete build/CTest run, guided study walkthrough, restart/offline queue test, clean-machine package test and synthetic API-to-Drive verification.
+The manual test used the downloaded Windows package on a separate Windows computer without the project's development toolchain or separately installed application dependencies. It confirmed participant login, both questionnaire conditions (A and B), distinct session 1/session 2 submission IDs, successful submission acknowledgement and Google Drive persistence of the latest answers. See [Windows manual validation](25-windows-participant-manual-validation.md).
 
-The Windows vcpkg/static-SFML candidate is separate on `feature/windows-github-actions` via PR #29. It has not yet been verified by a successful Actions run and uploaded ZIP artifact. Do not infer Windows GUI validation from CI success.
+The Windows workflow and packaging changes were merged through PR #29. The published [release candidate v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1) contains both `AnimalAgent-Linux.zip` and `AnimalAgent-Windows.zip`. The participant website exposes platform-specific download redirects.
+
+These results validate the tested Windows machine and participant sequence; they do not establish compatibility with every Windows configuration. The release's Linux asset is not, by itself, evidence of a new clean-machine Linux validation. Study/ethics approval and protocol governance remain independent requirements.
