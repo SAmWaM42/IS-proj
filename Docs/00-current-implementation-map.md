@@ -93,4 +93,4 @@ Retain older design documents as design history; update their status when revisi
 
 The numbered design documents include early prototype contracts, completed implementation stages, experimental branches and proposals that were never promoted. Use [the specification status register](99-specification-status-register.md) for a document-by-document disposition. It distinguishes source implementation from build/test verification and identifies which newer branch-specific README or specification is authoritative. Do not use an older draft's proposed action/state contract as the current runtime contract without checking the active source.
 
-The Windows candidate workflow's invalid `**.c++` path filters have been removed on `feature/windows-github-actions`. The corrected workflow now triggers on the scoped pull request and feature-branch push. The resulting CI run is in progress; it is not yet a verified package.
+The Windows workflow is now merged and validated; see the current Windows participant build and release section above. The earlier path-filter correction is retained here as implementation history only.
