@@ -92,7 +92,7 @@ jobs:
         run: |
           $fontDir = Join-Path $env:RUNNER_TEMP "animal-agent-font"
           New-Item -ItemType Directory -Force -Path $fontDir | Out-Null
-          Invoke-WebRequest "https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OpenSans%5Bwght%5D.ttf" -OutFile (Join-Path $fontDir "OpenSans.ttf")
+          Invoke-WebRequest "https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OpenSans%5Bwdth%2Cwght%5D.ttf" -OutFile (Join-Path $fontDir "OpenSans.ttf")
           Invoke-WebRequest "https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OFL.txt" -OutFile (Join-Path $fontDir "OFL.txt")
           "ANIMAL_AGENT_FONT_FILE=$(Join-Path $fontDir 'OpenSans.ttf')" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "ANIMAL_AGENT_FONT_LICENSE_FILE=$(Join-Path $fontDir 'OFL.txt')" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
