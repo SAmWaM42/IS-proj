@@ -61,7 +61,10 @@ Copy-Item (Join-Path $Root "Data/Assets/white_dog_by_Brysia/*.png") (Join-Path $
 Copy-Item (Join-Path $Root "Data/Study/*.json") (Join-Path $Stage "Data/Study/")
 Copy-Item (Join-Path $Root "Components/NLP/nlp_intent_service.py") (Join-Path $Stage "Components/NLP/")
 Copy-Item (Join-Path $Root "Components/NLP/upload_submission.py") (Join-Path $Stage "Components/NLP/")
-Copy-Item (Join-Path $Root "artifacts/training/baseline.qtable") (Join-Path $Root "artifacts/training/proposed.qtable") (Join-Path $Stage "Policies/")
+Copy-Item -Path @(
+    (Join-Path $Root "artifacts/training/baseline.qtable"),
+    (Join-Path $Root "artifacts/training/proposed.qtable")
+) -Destination (Join-Path $Stage "Policies/")
 Copy-Item (Join-Path $env:ANIMAL_AGENT_PYTHON_RUNTIME "*") (Join-Path $Stage "runtime/python/") -Recurse
 $StagedPython = Join-Path $Stage "runtime/python/python.exe"
 if (-not (Test-Path $StagedPython)) { throw "The staged Python runtime is missing python.exe." }
