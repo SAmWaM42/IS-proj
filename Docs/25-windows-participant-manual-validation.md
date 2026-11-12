@@ -34,3 +34,13 @@ The automated workflow separately validates compilation, C++/NLP tests, standalo
 - The successful submission confirms the tested records were persisted. It does not replace ongoing monitoring of the collection service during the participant study.
 - Participant credentials are supplied separately and are not included in the common Windows package.
 - The test was performed using the downloaded package, not by compiling the application on the test computer.
+
+## Published release
+
+The validated Windows package is published as `AnimalAgent-Windows.zip` in [release v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1), alongside `AnimalAgent-Linux.zip`.
+
+- Windows asset SHA-256: `908a25abcb8404c2e8fee04c35816545c774d182f7b35bc181c9d4ae803f1e7f`
+- Windows website download: [https://is-proj-web.vercel.app/api/downloads/latest?platform=windows](https://is-proj-web.vercel.app/api/downloads/latest?platform=windows)
+- Linux website download: [https://is-proj-web.vercel.app/api/downloads/latest?platform=linux](https://is-proj-web.vercel.app/api/downloads/latest?platform=linux)
+
+The release asset checksum is the digest reported by GitHub for the published ZIP.
