@@ -3,7 +3,7 @@
 **Branch:** `deployment/participant-client`  
 **Scope:** Participant runtime only  
 **Related implementation:** `Dev` (researcher/development); `IS-proj-web` (collection and downloads)  
-**Last reviewed:** 11 November 2026
+**Last reviewed:** 12 November 2026
 
 ## 1. Purpose and branch boundary
 
@@ -24,7 +24,7 @@ The participant executable is built by CMake as `AnimalAgent` (C++17, SFML 3). C
 
 The menu offers General Interaction and Believability Study. The guided study path contains consent and counterbalanced A/B condition handling, guided interactions and in-app questionnaires. Questionnaire completion is adapted to the versioned submission envelope: session 1 follows the condition-A questionnaire; session 2 follows the condition-B questionnaire and final comparison form. Pending submissions are retried at application startup. The code reports server acknowledgement versus locally pending status.
 
-**Verification qualification:** these integrations are present in source, but the latest questionnaire/submission integration has not yet been confirmed by a complete build, CTest run, interactive study walkthrough, clean-machine package test and live API/Drive end-to-end test. Treat source presence and verified release readiness as separate statuses. Do not collect real participant data yet.
+**Verification status — 12 November 2026:** the participant Windows workflow passed automated CI build/test/package and a manual end-to-end test using the downloaded release package on a separate Windows computer without the project's development toolchain or separately installed application dependencies. The manual test confirmed participant login, both A/B questionnaires, distinct session 1/session 2 submission IDs, and persistence of the latest answers in Google Drive. See [Windows manual validation](25-windows-participant-manual-validation.md). This does not establish compatibility with every Windows configuration or replace study/ethics approval.
 
 ## 3. Behavioural parity with Dev
 
@@ -76,22 +76,22 @@ The Windows script currently requires:
 - baseline/proposed Q-table assets;
 - a redistributable font supplied through `ANIMAL_AGENT_FONT_FILE`.
 
-The Windows packaging script on this branch is not the same as the newer static-SFML/vcpkg-aware script proposed in PR #29. The PR workflow is on `feature/windows-github-actions`, not merged. The last recorded status for PR #29 was no workflow run and no artifact observed. Do not infer a successful Windows package.
+The Windows GitHub Actions workflow (`.github/workflows/windows-build.yml`) uses MSVC x64 and vcpkg SFML, provisions a standalone Python runtime with spaCy and `en_core_web_sm`, stages the participant executable and runtime assets, and uploads the `AnimalAgent-Windows` artifact. It runs the configured C++ and NLP tests. This workflow and packaging update were merged through PR #29; CI passed and the package was subsequently manually tested on a separate Windows computer.
 
-## 7. Release acceptance gates
+## 7. Release acceptance and verification record
 
-Before distribution or participant recruitment:
-1. Build the participant executable on the target OS.
-2. Run the complete CTest suite on that OS.
-3. Test the menu, both modes, consent/withdrawal path, counterbalanced conditions and questionnaire sequence interactively.
-4. Confirm preference-to-fetch behaviour and baseline isolation.
-5. Confirm credentials are loaded from the correct per-participant file and never included in the common ZIP.
-6. Test local queue persistence, restart recovery and retry after network failure.
-7. Test the configured HTTPS endpoint, token authentication, idempotency and actual Drive persistence with synthetic test records.
-8. Extract and launch each ZIP on a clean machine.
-9. For Windows, separately validate the GUI and complete participant flow on a real Windows desktop.
+The following Windows release gates have been completed:
+1. Windows CI compiled the participant application and ran the configured C++/NLP test jobs.
+2. CI provisioned the standalone Python/spaCy runtime and produced the Windows package.
+3. The downloaded package was extracted and launched on a separate Windows computer without the project's development toolchain or separately installed application dependencies.
+4. Participant login and participant-number entry succeeded.
+5. Both questionnaire conditions (A and B) were exercised.
+6. Session 1 and session 2 produced distinct submission IDs.
+7. The submission service accepted the test submissions and the corresponding Google Drive JSON contained the latest answers.
 
-A successful CI build/package is necessary but does not satisfy the clean-machine or real desktop GUI acceptance gates.
+The evidence is recorded in [Docs/25-windows-participant-manual-validation.md](25-windows-participant-manual-validation.md). The Windows package is published as `AnimalAgent-Windows.zip` in [release v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1), alongside `AnimalAgent-Linux.zip`.
+
+These checks validate the tested Windows package and workflow, not every Windows hardware/OS combination. The Linux asset is present in the release, but its inclusion alone does not claim a new clean-machine Linux test in this validation cycle. Study/ethics approval and any remaining protocol requirements remain separate from software validation.
 
 ## 8. Related repositories
 
