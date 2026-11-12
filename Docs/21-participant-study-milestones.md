@@ -3,7 +3,7 @@
 **Project:** Animal Agent — simulated companion research prototype  
 **Research title:** Investigating the Effect of Memory and Affective State on the Perceived Believability of a Simulated Companion Agent  
 **Tracking branch:** SAmWaM42/IS-proj — deployment/participant-client  
-**Last status review:** 5 November 2026  
+**Last status review:** 12 November 2026  
 **Document role:** Live implementation tracker. Update this file as work is completed; do not mark an item complete without evidence from the current revision.
 
 ---
@@ -11,6 +11,8 @@
 ## 1. How to use this tracker
 
 This document is the working plan for completing the participant research pipeline. It complements, rather than replaces, the detailed component specifications.
+
+**Current status note — 12 November 2026:** The historical baseline and milestone notes below retain the status recorded when they were written. The Windows participant build and participant workflow have since passed CI and manual validation; see the current release milestone at the end of this tracker and [Docs/25-windows-participant-manual-validation.md](https://github.com/SAmWaM42/IS-proj/blob/deployment/participant-client/Docs/25-windows-participant-manual-validation.md). Do not interpret older `unverified` statements below as the current Windows participant build status. They may still describe separate unresolved work such as restart recovery, strict server-side answer validation, protocol approval, or researcher-side retrieval/analysis.
 
 For each task:
 
@@ -604,3 +606,20 @@ Following the project owner's runtime feedback, the embedded questionnaire has b
 **API contract alignment note:** the API smoke test proved metadata/authentication/Drive behaviour with a synthetic `responses` object, not strict validation of the active questionnaire. The server currently accepts arbitrary response fields. The client adapter emits `questionnaire_version` and `responses.condition_questionnaire.answers` / `comparison_questionnaire.answers`; server-side validation must be aligned before live data collection.
 
 **Verification log:** the project owner reports that the separate backend's nine smoke cases passed and that valid synthetic files were present in Drive without duplicates. This verifies the backend smoke-test path only; it does not verify this C++ participant integration or bypass the Preview protection limitation.
+
+## Current release validation addendum — 12 November 2026
+
+This addendum updates the participant deployment status without rewriting the dated implementation history above.
+
+| Acceptance area | Current result | Evidence / boundary |
+|---|---|---|
+| Participant login | **Verified on tested Windows package** | Packaged application launched and accepted assigned participant number. |
+| Condition assignment | **Verified** | Both A and B questionnaire conditions tested. |
+| Session identity | **Verified** | Session 1 and session 2 generated distinct deterministic submission IDs. |
+| Submission persistence | **Verified for tested submissions** | Corresponding Google Drive JSON files contained the latest answers entered during testing. |
+| Windows standalone runtime | **Verified on tested computer** | Downloaded package ran without the project's development toolchain or separately installed application dependencies. |
+| Windows CI build/package | **Passed** | Merged MSVC/vcpkg workflow built, ran configured C++/NLP tests, provisioned standalone Python/spaCy and packaged the application. |
+| Windows release publication | **Published** | `AnimalAgent-Windows.zip` is attached to release [v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1), alongside `AnimalAgent-Linux.zip`. |
+| Public download frontend | **Deployed** | [is-proj-web.vercel.app](https://is-proj-web.vercel.app/) exposes platform-specific download links. |
+
+The Windows manual test validates the tested machine and workflow, not every Windows version or hardware configuration. The Linux asset's presence in the release is not evidence of a new clean-machine Linux validation in this cycle. The API's full questionnaire answer validation and atomic duplicate-write guarantees remain limited. Study/ethics approval and protocol sign-off remain separate gates before real participant recruitment.
