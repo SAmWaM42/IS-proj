@@ -110,6 +110,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AnimalAgent-Windows
-          path: dist/windows/AnimalAgent-Windows.zip
+          path: dist/windows/AnimalAgent/
           if-no-files-found: error
           retention-days: 30
