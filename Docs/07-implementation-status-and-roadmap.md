@@ -1,7 +1,7 @@
 # Implementation Status and Roadmap
 
 **Current branch under review:** `Dev` (researcher-side data retrieval work is being reviewed)  
-**Last documentation review:** 5 November 2026  
+**Last documentation review:** 12 November 2026  
 **Authoritative milestone tracker:** [21-participant-study-milestones.md](21-participant-study-milestones.md)
 
 ## 1. Current project state
@@ -306,8 +306,29 @@ This document tracks researcher-side implementation on `Dev`. It does not descri
 - **Dev:** researcher-side C++ agent/simulation, Q-learning, randomized scripted training, paired evaluation, detailed training traces, offline training dashboard, researcher questionnaire retrieval and descriptive questionnaire analysis are present in source. Verify the current build/tests and run artifacts before describing a specific experiment as validated.
 - **Participant runtime:** maintained separately on `deployment/participant-client`. It contains the menu, General Interaction and Believability Study modes, participant credentials, in-app questionnaires, local submission queue/uploader and platform packaging scripts. Do not merge researcher training/analysis tools into that package.
 - **Web collection/distribution:** maintained in `SAmWaM42/IS-proj-web`. The current API validates the versioned submission envelope, deterministic submission ID, odd/even A/B assignment, idempotency header and HMAC participant token, then stores questionnaire JSON in Google Drive. Full per-question validation is still incomplete; Drive lookup/create is not atomic under concurrent duplicates.
-- **Windows CI candidate:** PR #29 proposes a vcpkg/static-SFML build and packaging workflow on `feature/windows-github-actions`. At the last recorded check, no run/status/artifact was visible. This is not a successful Windows build. Even a future CI artifact requires real Windows GUI and participant-flow validation.
+- **Windows CI and participant package:** PR #29 has been merged into `deployment/participant-client`. CI passed, and the packaged Windows application completed the documented manual participant workflow on a separate Windows computer. See the 12 November milestone below and the participant branch validation record.
 
 ### Evidence language
 
 Use distinct labels: **implemented in source**, **built**, **tests passed**, **packaged**, **clean-machine tested**, **interactive participant flow validated**, and **end-to-end collection verified**. Do not collapse them into a single “complete” status. A successful synthetic training run is not participant evidence; a successful CI package is not desktop GUI validation; an API smoke test is not a complete participant-to-Drive validation.
+
+
+## Windows participant release milestone — 12 November 2026
+
+This milestone records the completed participant-client Windows build and deployment work. It does not imply that researcher-side training or analysis tasks on Dev are complete.
+
+- [x] Windows MSVC/vcpkg GitHub Actions workflow merged through PR #29 into `deployment/participant-client`.
+- [x] Windows build, configured C++/NLP tests, standalone Python/spaCy provisioning and package creation passed in CI.
+- [x] Downloaded package extracted and launched on a separate Windows computer without the project development toolchain or separately installed application dependencies.
+- [x] Participant login and assigned participant-number entry verified.
+- [x] Both questionnaire conditions (A and B) verified.
+- [x] Session 1 and session 2 generated distinct submission IDs.
+- [x] Questionnaire submission persisted to Google Drive; the stored JSON contained the latest answers entered during the test.
+- [x] Windows package published as `AnimalAgent-Windows.zip` in release [v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1), alongside `AnimalAgent-Linux.zip`.
+- [x] Participant website updated and deployed with Windows and Linux download links: [https://is-proj-web.vercel.app/](https://is-proj-web.vercel.app/).
+
+Manual evidence is recorded in [the participant branch validation report](https://github.com/SAmWaM42/IS-proj/blob/deployment/participant-client/Docs/25-windows-participant-manual-validation.md). This validates the tested Windows machine and workflow, not every Windows configuration. The release's Linux asset is not a substitute for a separately documented clean-machine Linux validation.
+
+### Remaining boundaries
+
+The software validation milestone does not itself grant ethics/supervisor approval for participant recruitment. The web API validates the submission envelope, deterministic ID, condition mapping, idempotency header and participant authentication; it does not perform complete validation of every questionnaire answer against the active questionnaire schema. Google Drive lookup-before-create is not atomic under concurrent duplicate requests.
