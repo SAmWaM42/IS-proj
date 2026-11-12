@@ -6,6 +6,8 @@ It is **not** the participant release branch. The participant application is mai
 
 > **Documentation authority:** this README describes Dev. See [Current implementation map](Docs/00-current-implementation-map.md) for cross-branch boundaries and verification status, and [Implementation status and roadmap](Docs/07-implementation-status-and-roadmap.md) for researcher milestones. Older numbered specifications retain design history and are not, by themselves, proof that every proposed detail is implemented.
 
+> **Participant release status (12 November 2026):** the separate `deployment/participant-client` branch now contains the merged Windows CI/package workflow. The Windows package passed CI and the documented manual participant workflow on a separate Windows computer; both A/B conditions, distinct session IDs and Google Drive persistence were confirmed. Linux and Windows packages are published in [release v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1), and the public download frontend is deployed at [is-proj-web.vercel.app](https://is-proj-web.vercel.app/). This does not change the scope of Dev or claim that researcher-side analysis tasks are complete.
+
 ## Research purpose
 
 The project investigates how persistent semantic memory and affective-state modelling influence the perceived believability of a simulated companion animal. It is not a general-purpose chatbot or a physical robot.
