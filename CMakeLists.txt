@@ -1,12 +1,26 @@
 cmake_minimum_required(VERSION 3.16)
 project(AnimalAgentParticipant LANGUAGES CXX)
 
+# Match the static MSVC runtime used by the x64-windows-static vcpkg
+# dependencies. Set this before creating any application or test targets.
+if(MSVC)
+   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(ANIMAL_AGENT_BUILD_TESTS "Build participant-runtime tests" OFF)
 
 find_package(SFML 3.0 REQUIRED COMPONENTS Graphics Window System)
 find_package(Threads REQUIRED)
+
+function(animal_agent_enable_warnings target)
+   if(MSVC)
+      target_compile_options(${target} PRIVATE /W4)
+   else()
+      target_compile_options(${target} PRIVATE -Wall -Wextra)
+   endif()
+endfunction()
 
 file(TO_CMAKE_PATH "${CMAKE_SOURCE_DIR}" IS2_SOURCE_DIR_NORMALIZED)
 execute_process(
@@ -40,9 +54,6 @@ if(UNIX AND NOT APPLE)
    set_target_properties(AnimalAgent PROPERTIES
       BUILD_RPATH "$ORIGIN/lib"
       INSTALL_RPATH "$ORIGIN/lib")
-elseif(MSVC)
-   set_property(TARGET AnimalAgent PROPERTY
-      MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 target_compile_definitions(AnimalAgent PRIVATE
@@ -61,20 +72,16 @@ target_include_directories(AnimalAgent PRIVATE
 )
 
 target_link_libraries(AnimalAgent PRIVATE
-   sfml-graphics
-   sfml-window
-   sfml-system
+   SFML::Graphics
+   SFML::Window
+   SFML::System
    Threads::Threads
 )
 if(WIN32)
    target_link_libraries(AnimalAgent PRIVATE shell32)
 endif()
 
-if(MSVC)
-   target_compile_options(AnimalAgent PRIVATE /W4)
-else()
-   target_compile_options(AnimalAgent PRIVATE -Wall -Wextra)
-endif()
+animal_agent_enable_warnings(AnimalAgent)
 
 if(ANIMAL_AGENT_BUILD_TESTS)
    enable_testing()
@@ -90,21 +97,21 @@ if(ANIMAL_AGENT_BUILD_TESTS)
       tests/backyard_environment_test.cpp
       Components/Simulation/backyard-environment.cpp)
    target_include_directories(backyard_environment_test PRIVATE ${CMAKE_SOURCE_DIR})
-   target_compile_options(backyard_environment_test PRIVATE -Wall -Wextra)
+   animal_agent_enable_warnings(backyard_environment_test)
    add_test(NAME backyard_environment_test COMMAND backyard_environment_test)
 
    add_executable(participant_config_test
       tests/participant_config_test.cpp
       Components/Study/participant-config.cpp)
    target_include_directories(participant_config_test PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/Inc)
-   target_compile_options(participant_config_test PRIVATE -Wall -Wextra)
+   animal_agent_enable_warnings(participant_config_test)
    add_test(NAME participant_config_test COMMAND participant_config_test)
 
    add_executable(questionnaire_submission_test
       tests/questionnaire_submission_test.cpp
       Components/Study/questionnaire-submission.cpp)
    target_include_directories(questionnaire_submission_test PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/Inc)
-   target_compile_options(questionnaire_submission_test PRIVATE -Wall -Wextra)
+   animal_agent_enable_warnings(questionnaire_submission_test)
    add_test(NAME questionnaire_submission_test COMMAND questionnaire_submission_test)
 
    add_executable(questionnaire_content_test
@@ -114,7 +121,7 @@ if(ANIMAL_AGENT_BUILD_TESTS)
       ${CMAKE_SOURCE_DIR}
       ${CMAKE_SOURCE_DIR}/Inc
       ${CMAKE_SOURCE_DIR}/Components/Questionnaire)
-   target_link_libraries(questionnaire_content_test PRIVATE sfml-graphics sfml-window sfml-system)
-   target_compile_options(questionnaire_content_test PRIVATE -Wall -Wextra)
+   target_link_libraries(questionnaire_content_test PRIVATE SFML::Graphics SFML::Window SFML::System)
+   animal_agent_enable_warnings(questionnaire_content_test)
    add_test(NAME questionnaire_content_test COMMAND questionnaire_content_test)
 endif()

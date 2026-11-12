@@ -1,0 +1,115 @@
+name: Windows participant build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - deployment/participant-client
+  push:
+    branches:
+      - feature/windows-github-actions
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Build, test and package Windows participant client
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up MSVC developer environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Set up Python for tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install SFML 3 through vcpkg
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install sfml:x64-windows-static
+          if ($LASTEXITCODE -ne 0) { throw "vcpkg failed to install SFML." }
+
+      - name: Configure and compile participant app and tests
+        shell: pwsh
+        run: |
+          cmake -S . -B build-participant-windows -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_BUILD_TYPE=Release -DANIMAL_AGENT_BUILD_TESTS=ON
+          if ($LASTEXITCODE -ne 0) { throw "CMake configuration failed." }
+          cmake --build build-participant-windows --config Release --parallel
+          if ($LASTEXITCODE -ne 0) { throw "Windows compilation failed." }
+
+      - name: Install NLP test dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "spacy==3.8.7" "click>=8.0"
+          python -m spacy download en_core_web_sm
+          if ($LASTEXITCODE -ne 0) { throw "Could not install spaCy model for tests." }
+
+      - name: Run C++ and NLP tests
+        shell: pwsh
+        run: |
+          ctest --test-dir build-participant-windows -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw "One or more participant tests failed." }
+
+      - name: Set up uv for standalone Python runtime
+        uses: astral-sh/setup-uv@v6
+
+      - name: Provision relocatable Python runtime for participant ZIP
+        shell: pwsh
+        run: |
+          $runtimeRoot = Join-Path $env:GITHUB_WORKSPACE "python-runtime"
+          uv python install 3.11 --install-dir $runtimeRoot
+          if ($LASTEXITCODE -ne 0) { throw "Could not provision standalone Python." }
+          $python = Get-ChildItem $runtimeRoot -Recurse -Filter python.exe | Select-Object -First 1
+          if (-not $python) { throw "Standalone Python installation did not contain python.exe." }
+          uv pip install --python $python.FullName --system --break-system-packages "spacy==3.8.7" "click>=8.0"
+          if ($LASTEXITCODE -ne 0) { throw "Could not install spaCy in standalone Python." }
+          # Install the pinned model wheel directly with uv. The spaCy download
+          # command delegates to pip and fails under uv's externally-managed
+          # standalone interpreter (PEP 668).
+          uv pip install --python $python.FullName --system --break-system-packages "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+          if ($LASTEXITCODE -ne 0) { throw "Could not install en_core_web_sm in standalone Python." }
+          & $python.FullName -c "import spacy; spacy.load('en_core_web_sm')"
+          if ($LASTEXITCODE -ne 0) { throw "Standalone Python cannot load en_core_web_sm." }
+          "ANIMAL_AGENT_PYTHON_RUNTIME=$($python.DirectoryName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Fetch redistributable Open Sans font and licence
+        shell: pwsh
+        run: |
+          $fontDir = Join-Path $env:RUNNER_TEMP "animal-agent-font"
+          New-Item -ItemType Directory -Force -Path $fontDir | Out-Null
+          Invoke-WebRequest "https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OpenSans%5Bwdth%2Cwght%5D.ttf" -OutFile (Join-Path $fontDir "OpenSans.ttf")
+          Invoke-WebRequest "https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OFL.txt" -OutFile (Join-Path $fontDir "OFL.txt")
+          "ANIMAL_AGENT_FONT_FILE=$(Join-Path $fontDir 'OpenSans.ttf')" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "ANIMAL_AGENT_FONT_LICENSE_FILE=$(Join-Path $fontDir 'OFL.txt')" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Package complete Windows participant release
+        shell: pwsh
+        run: |
+          $env:CMAKE_TOOLCHAIN_FILE = "$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          $env:VCPKG_TARGET_TRIPLET = "x64-windows-static"
+          ./Deployment/package-windows.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Windows participant packaging failed." }
+          if (-not (Test-Path "dist/windows/AnimalAgent-Windows.zip")) { throw "Expected Windows ZIP was not created." }
+
+      - name: Upload Windows participant package
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnimalAgent-Windows
+          path: dist/windows/AnimalAgent/
+          if-no-files-found: error
+          retention-days: 30
