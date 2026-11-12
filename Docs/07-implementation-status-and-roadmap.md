@@ -6,12 +6,11 @@
 
 ## 1. Current project state
 
-The core simulated companion and its baseline/proposed agent architecture exist. The current participant application is a single CMake executable whose output name is AnimalAgent. It opens an SFML menu with **Free Roam** and **Research Session** choices.
+The core simulated companion and baseline/proposed agent architecture are implemented on `Dev`; this tracker is scoped to researcher-side development, training, retrieval and analysis. The participant-facing application is maintained separately on `deployment/participant-client`, and the web collection service is maintained in `IS-proj-web`.
 
-The participant research workflow remains a prototype, not a completed data-collection pipeline. Participant credentials are parsed from credentials.json beside AnimalAgent and the guided-study local counter has been removed. The project owner confirms valid credentials.json loading; IS-2 and participant_config_test previously built successfully and the focused CTest passed. The embedded shortened questionnaire is now integrated into the guided flow and saves durable local drafts. A new adapter maps its completed results into the API response envelope and connects session 1 / session 2 completion to SubmissionManager. These latest source changes have not yet been built or tested. The upload endpoint configuration remains a placeholder; the tested Vercel Preview is deployment-protected and the participant uploader does not carry the smoke-test OIDC bypass token. Server-side answer validation, restart recovery, packaging, and protocol approval remain outstanding.
+**Participant deployment status is no longer the prototype status recorded in the historical progress notes below.** As of 12 November 2026, the Windows participant workflow has passed CI build/test/package and a manual end-to-end test on a separate Windows computer. Participant login, both A/B questionnaires, distinct session 1/session 2 submission IDs, and persistence of the latest answers in Google Drive were confirmed. The Windows package is published alongside the Linux package in [release v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1). The public download frontend is deployed at [is-proj-web.vercel.app](https://is-proj-web.vercel.app/). See the [current implementation map](00-current-implementation-map.md) and [participant validation record](https://github.com/SAmWaM42/IS-proj/blob/deployment/participant-client/Docs/25-windows-participant-manual-validation.md).
 
-No real participant data should be collected using the current build.
-
+The historical milestone notes below preserve the state and outstanding work recorded at their original dates; they should not be read as the current participant-client status. Software validation does not replace supervisor/ethics approval or study protocol requirements. Do not collect real participant data until those approvals are in place.
 ## 2. Status summary
 
 | Area | Status | Current note |
