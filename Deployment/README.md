@@ -81,10 +81,14 @@ The backend uses idempotency to make ordinary retries safe; simultaneous duplica
 
 ---
 
-## Current branch and CI status (11 November 2026)
+## Current branch and release status — 12 November 2026
 
-This packaging guide applies to the current `deployment/participant-client` branch scripts. The participant CMake project builds C++17 against SFML 3.0 Graphics/Window/System and Threads. The Windows packager currently expects `ANIMAL_AGENT_PYTHON_RUNTIME`, `ANIMAL_AGENT_SFML_DLL_DIR`, a configured HTTPS upload endpoint, both trained Q-table files and `ANIMAL_AGENT_FONT_FILE`. The Linux packager expects a Python environment containing spaCy/model, `ANIMAL_AGENT_SFML_RUNTIME`, configured endpoint, policy files and a redistributable font. Review the scripts themselves for exact checks and output paths.
+The participant CMake project builds C++17 against SFML 3.0 Graphics/Window/System and Threads. Linux packaging remains handled by `Deployment/package-linux.sh`; its runtime requirements and portability checks are described above. The Windows package is produced by the merged GitHub Actions workflow at `.github/workflows/windows-build.yml`, using MSVC x64, vcpkg SFML, a standalone Python runtime, spaCy and `en_core_web_sm`. The workflow also runs the configured C++ and NLP tests and stages the participant package.
 
-The newer vcpkg/static-SFML Windows workflow and corresponding packaging changes are on `feature/windows-github-actions`, proposed by [PR #29](https://github.com/SAmWaM42/IS-proj/pull/29). They are not yet merged into this branch. At the last recorded check, no Actions run, status check or ZIP artifact had been observed. Do not treat the candidate workflow as a successful build until the run succeeds and the artifact is available.
+PR #29 was merged into `deployment/participant-client`. The Windows CI build and packaging completed successfully. The resulting package was downloaded, extracted and run on a separate Windows computer without the project's development toolchain or separately installed application dependencies. The manual workflow test confirmed participant login, both A/B questionnaires, distinct session 1/session 2 submission IDs and Google Drive persistence of the latest answers. See [Windows manual validation](../Docs/25-windows-participant-manual-validation.md).
 
-A package-script exit or successful CI artifact does not prove portability on a clean Windows installation. The Windows executable still requires real desktop GUI, menu, consent, condition sequence, questionnaire, local queue and upload-flow validation. Linux and Windows packages must be tested on their respective target operating systems.
+The published [release candidate v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1) contains both `AnimalAgent-Linux.zip` and `AnimalAgent-Windows.zip`. The website's platform download endpoints redirect to the corresponding GitHub Release asset:
+- Windows: `/api/downloads/latest?platform=windows`
+- Linux: `/api/downloads/latest?platform=linux`
+
+The Windows package has passed the documented manual workflow on the tested machine. This is not a guarantee for every Windows version or hardware configuration. The Linux package's inclusion in the release is not, by itself, evidence of a new clean-machine Linux validation in this release cycle.
