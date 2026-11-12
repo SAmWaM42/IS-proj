@@ -1,6 +1,6 @@
 # Specification and README Status Register
 
-**Review date:** 11 November 2026  
+**Review date:** 12 November 2026  
 **Authority:** This register classifies the documentation currently present on `Dev`. It preserves the original design history; it does not rewrite historical requirements as though they were always the current implementation.  
 **Status rule:** “Implemented” means source implementation is identified in the current project record; it does not automatically mean a fresh build, tests, clean-machine run, or participant validation passed.
 
@@ -79,9 +79,15 @@ The branch responsibilities are:
 | `Google Form Template Companion Believability Study.md` | **Proposed** | Draft form template. Supervisor/ethics approval, final question wording and preview/dry-run checks remain required. |
 | `project-context.md` | **Implemented / living hand-off** | Architectural source of context. Its latest dated cross-repository hand-off section takes precedence over older status text earlier in the file. |
 
-## Windows CI correction
+## Windows CI and release update — 12 November 2026
 
-The Windows candidate workflow is maintained on `feature/windows-github-actions` and proposed by PR #29. GitHub rejected the earlier `paths` filters because `**.c++` is invalid. The filters have been removed from both the `pull_request` and `push` triggers, retaining branch-scoped triggers. The corrected workflow has started a new CI run; see [PR #29](https://github.com/SAmWaM42/IS-proj/pull/29) and the [latest run](https://github.com/SAmWaM42/IS-proj/actions/runs/43026396328). No successful Windows package or artifact is claimed until the run completes and the ZIP is verified.
+The Windows workflow and packaging changes from PR #29 have been merged into `deployment/participant-client`. The MSVC/vcpkg workflow passed its build, configured C++/NLP tests, standalone Python/spaCy provisioning and package creation. The resulting package was manually extracted and run on a separate Windows computer without the project development toolchain or separately installed application dependencies.
+
+Manual validation confirmed participant login, both A/B questionnaire conditions, distinct session 1/session 2 submission IDs, and Google Drive persistence of the latest submitted answers. See [the participant Windows validation record](https://github.com/SAmWaM42/IS-proj/blob/deployment/participant-client/Docs/25-windows-participant-manual-validation.md).
+
+The published [release candidate v0.1.0-rc.1](https://github.com/SAmWaM42/IS-proj/releases/tag/v0.1.0-rc.1) contains both `AnimalAgent-Linux.zip` and `AnimalAgent-Windows.zip`. The website frontend is deployed at [is-proj-web.vercel.app](https://is-proj-web.vercel.app/) and provides platform-specific release download redirects.
+
+The evidence validates the tested Windows environment and participant workflow; it does not establish universal Windows compatibility. The Linux asset's presence does not independently document a new clean-machine Linux test in this cycle.
 
 ## Documentation maintenance rule
 
