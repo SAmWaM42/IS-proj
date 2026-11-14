@@ -113,11 +113,11 @@ jobs:
           printf '{"text":"I prefer the rope toy"}\n' | "$PYTHON" "$PACKAGE/Components/NLP/nlp_intent_service.py" > "$RUNNER_TEMP/nlp-response.json"
           "$PYTHON" -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["intent"] == "preference", r; assert r["method"] == "spacy", r; print("Packaged NLP service OK")' "$RUNNER_TEMP/nlp-response.json"
 
-      - name: Upload Linux participant package
+      - name: Upload Linux participant application (directly extractable)
         uses: actions/upload-artifact@v4
         with:
           name: AnimalAgent-Linux
-          path: dist/linux/AnimalAgent-Linux.zip
+          path: dist/linux/AnimalAgent/
           if-no-files-found: error
           retention-days: 30
 
@@ -148,12 +148,14 @@ jobs:
           name: AnimalAgent-Linux
           path: /tmp/animal-agent-artifact
 
-      - name: Extract and inspect runtime dependencies
+      - name: Inspect directly extracted application and runtime dependencies
         shell: bash
         run: |
-          mkdir -p /tmp/animal-agent-extracted
-          unzip -q /tmp/animal-agent-artifact/AnimalAgent-Linux.zip -d /tmp/animal-agent-extracted
-          PACKAGE=/tmp/animal-agent-extracted/AnimalAgent
+          # download-artifact extracts the artifact archive automatically. The
+          # artifact now contains the application folder itself, not another ZIP.
+          PACKAGE=/tmp/animal-agent-artifact
+          test -x "$PACKAGE/run-animal-agent.sh"
+          test -x "$PACKAGE/AnimalAgent"
           export LD_LIBRARY_PATH="$PACKAGE/lib:$PACKAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}"
           PYTHON="$PACKAGE/runtime/python/bin/python"
           if [[ ! -x "$PYTHON" ]]; then PYTHON="$PACKAGE/runtime/python/bin/python3"; fi
@@ -172,7 +174,7 @@ jobs:
       - name: Launch packaged application from outside its directory
         shell: bash
         run: |
-          PACKAGE=/tmp/animal-agent-extracted/AnimalAgent
+          PACKAGE=/tmp/animal-agent-artifact
           cd /tmp
           set +e
           timeout --signal=TERM 12s xvfb-run -a "$PACKAGE/run-animal-agent.sh"
