@@ -113,11 +113,18 @@ jobs:
           printf '{"text":"I prefer the rope toy"}\n' | "$PYTHON" "$PACKAGE/Components/NLP/nlp_intent_service.py" > "$RUNNER_TEMP/nlp-response.json"
           "$PYTHON" -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["intent"] == "preference", r; assert r["method"] == "spacy", r; print("Packaged NLP service OK")' "$RUNNER_TEMP/nlp-response.json"
 
-      - name: Upload Linux participant application (directly extractable)
+      - name: Create permission-preserving Linux application archive
+        shell: bash
+        run: |
+          tar -czf dist/linux/AnimalAgent-Linux.tar.gz -C dist/linux AnimalAgent
+          test -s dist/linux/AnimalAgent-Linux.tar.gz
+          tar -tvzf dist/linux/AnimalAgent-Linux.tar.gz | head -n 20
+
+      - name: Upload Linux participant application archive
         uses: actions/upload-artifact@v4
         with:
           name: AnimalAgent-Linux
-          path: dist/linux/AnimalAgent/
+          path: dist/linux/AnimalAgent-Linux.tar.gz
           if-no-files-found: error
           retention-days: 30
 
@@ -133,7 +140,7 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            ca-certificates unzip xvfb xauth coreutils \
+            ca-certificates unzip tar xvfb xauth coreutils \
             libx11-6 libxrandr2 libxcursor1 libxi6 libudev1 \
             libfreetype6 libflac12t64 libvorbis0a libvorbisenc2 \
             libgl1 libegl1 libwayland-client0 libxkbcommon0 \
@@ -148,16 +155,30 @@ jobs:
           name: AnimalAgent-Linux
           path: /tmp/animal-agent-artifact
 
-      - name: Inspect directly extracted application and runtime dependencies
+      - name: Extract permission-preserving application archive
         shell: bash
         run: |
-          # The artifact path points to dist/linux/AnimalAgent/, so the
-          # downloaded application files are placed directly at this root.
-          PACKAGE=/tmp/animal-agent-artifact
-          if [[ ! -d "$PACKAGE" ]]; then
-            echo "Downloaded application directory was not present." >&2
-            echo "Downloaded artifact contents:" >&2
+          ARCHIVE=/tmp/animal-agent-artifact/AnimalAgent-Linux.tar.gz
+          if [[ ! -s "$ARCHIVE" ]]; then
+            echo "Expected Linux tar archive was not downloaded." >&2
             find /tmp/animal-agent-artifact -maxdepth 3 -type f -print >&2
+            exit 1
+          fi
+          mkdir -p /tmp/animal-agent-extracted
+          tar -xzf "$ARCHIVE" -C /tmp/animal-agent-extracted
+          PACKAGE=/tmp/animal-agent-extracted/AnimalAgent
+          echo "Extracted launcher and binary permissions:"
+          stat -c '%A (%a) %n' "$PACKAGE/run-animal-agent.sh" "$PACKAGE/AnimalAgent"
+          test -x "$PACKAGE/run-animal-agent.sh"
+          test -x "$PACKAGE/AnimalAgent"
+
+      - name: Inspect extracted application and runtime dependencies
+        shell: bash
+        run: |
+          PACKAGE=/tmp/animal-agent-extracted/AnimalAgent
+          if [[ ! -d "$PACKAGE" ]]; then
+            echo "Extracted application directory was not present." >&2
+            find /tmp/animal-agent-extracted -maxdepth 3 -type f -print >&2
             exit 1
           fi
           test -x "$PACKAGE/run-animal-agent.sh"
@@ -180,7 +201,7 @@ jobs:
       - name: Launch packaged application from outside its directory
         shell: bash
         run: |
-          PACKAGE=/tmp/animal-agent-artifact
+          PACKAGE=/tmp/animal-agent-extracted/AnimalAgent
           cd /tmp
           set +e
           timeout --signal=TERM 12s xvfb-run -a "$PACKAGE/run-animal-agent.sh"
