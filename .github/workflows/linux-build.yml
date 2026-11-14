@@ -1,0 +1,177 @@
+name: Linux participant build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - deployment/participant-client
+  push:
+    branches:
+      - feature/linux-github-actions
+
+permissions:
+  contents: read
+
+jobs:
+  package-linux:
+    name: Build, test and package Linux participant client
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Linux build and packaging dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config git curl zip unzip patchelf \
+            xvfb xauth fonts-dejavu-core \
+            libx11-dev libxrandr-dev libxcursor-dev libxi-dev libudev-dev \
+            libfreetype-dev libflac-dev libvorbis-dev libgl1-mesa-dev \
+            libegl1-mesa-dev libwayland-dev libxkbcommon-dev
+
+      - name: Install SFML 3 with vcpkg
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$RUNNER_TEMP/vcpkg"
+          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          "$RUNNER_TEMP/vcpkg/vcpkg" install sfml:x64-linux
+          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+          echo "CMAKE_TOOLCHAIN_FILE=$RUNNER_TEMP/vcpkg/scripts/buildsystems/vcpkg.cmake" >> "$GITHUB_ENV"
+          echo "VCPKG_TARGET_TRIPLET=x64-linux" >> "$GITHUB_ENV"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Provision standalone Python runtime
+        shell: bash
+        run: |
+          RUNTIME_ROOT="$RUNNER_TEMP/animal-agent-python"
+          uv python install 3.11 --install-dir "$RUNTIME_ROOT"
+          PYTHON="$(uv python find 3.11 --managed-python)"
+          PYTHON_BIN_DIR="$(dirname "$PYTHON")"
+          PYTHON_ROOT="$(dirname "$PYTHON_BIN_DIR")"
+          # The Linux packager expects conventional python/python3 names.
+          ln -sfn "$(basename "$PYTHON")" "$PYTHON_BIN_DIR/python"
+          ln -sfn "$(basename "$PYTHON")" "$PYTHON_BIN_DIR/python3"
+          PYTHON="$PYTHON_BIN_DIR/python"
+          uv pip install --python "$PYTHON" --system --break-system-packages "spacy==3.8.7" "click>=8.0"
+          uv pip install --python "$PYTHON" --system --break-system-packages \
+            "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+          "$PYTHON" -c 'import encodings, json, spacy; spacy.load("en_core_web_sm"); print("Standalone Python, standard library, spaCy and model OK")'
+          echo "ANIMAL_AGENT_PYTHON_RUNTIME=$PYTHON_ROOT" >> "$GITHUB_ENV"
+
+      - name: Configure and run C++ and NLP tests
+        shell: bash
+        run: |
+          cmake -S . -B build-participant-linux \
+            -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DANIMAL_AGENT_BUILD_TESTS=ON
+          cmake --build build-participant-linux --config Release --parallel
+          ctest --test-dir build-participant-linux --output-on-failure
+
+      - name: Package Linux participant release
+        shell: bash
+        run: |
+          export ANIMAL_AGENT_SFML_RUNTIME="$VCPKG_ROOT/installed/x64-linux/lib"
+          export ANIMAL_AGENT_FONT_FILE="/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+          bash Deployment/package-linux.sh
+          test -s dist/linux/AnimalAgent-Linux.zip
+
+      - name: Verify extracted package and bundled Python
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/package-check"
+          unzip -q dist/linux/AnimalAgent-Linux.zip -d "$RUNNER_TEMP/package-check"
+          PACKAGE="$RUNNER_TEMP/package-check/AnimalAgent"
+          test -x "$PACKAGE/run-animal-agent.sh"
+          test -x "$PACKAGE/AnimalAgent"
+          test -s "$PACKAGE/Data/Fonts/UIFont.ttf"
+          PYTHON="$PACKAGE/runtime/python/bin/python"
+          if [[ ! -x "$PYTHON" ]]; then PYTHON="$PACKAGE/runtime/python/bin/python3"; fi
+          test -x "$PYTHON"
+          export LD_LIBRARY_PATH="$PACKAGE/lib:$PACKAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}"
+          "$PYTHON" -c 'import encodings, json, spacy; spacy.load("en_core_web_sm"); print("Extracted Python runtime OK")'
+          for binary in "$PACKAGE/AnimalAgent" "$PYTHON"; do
+            ldd "$binary" | tee "$RUNNER_TEMP/ldd.txt"
+            if grep -q "not found" "$RUNNER_TEMP/ldd.txt"; then
+              echo "Unresolved shared library for $binary" >&2
+              exit 1
+            fi
+          done
+          printf '{"text":"I prefer the rope toy"}\n' | "$PYTHON" "$PACKAGE/Components/NLP/nlp_intent_service.py" > "$RUNNER_TEMP/nlp-response.json"
+          "$PYTHON" -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["intent"] == "preference", r; assert r["method"] == "spacy", r; print("Packaged NLP service OK")' "$RUNNER_TEMP/nlp-response.json"
+
+      - name: Upload Linux participant package
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnimalAgent-Linux
+          path: dist/linux/AnimalAgent-Linux.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  clean-runtime-smoke-test:
+    name: Test extracted package in clean Ubuntu container
+    needs: package-linux
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:24.04
+    timeout-minutes: 30
+    steps:
+      - name: Install only runtime libraries and virtual display
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates unzip xvfb xauth coreutils \
+            libx11-6 libxrandr2 libxcursor1 libxi6 libudev1 \
+            libfreetype6 libflac12t64 libvorbis0a libvorbisenc2 \
+            libgl1 libegl1 libwayland-client0 libxkbcommon0 \
+            libstdc++6 libgcc-s1 zlib1g libbz2-1.0 liblzma5 libffi8 \
+            libsqlite3-0 libssl3 libreadline8 libncursesw6 libuuid1 \
+            libexpat1 libgdbm6 libgdbm-compat4 libtirpc3 libnsl2 \
+            libfontconfig1 libpng16-16t64 libharfbuzz0b
+
+      - name: Download packaged Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: AnimalAgent-Linux
+          path: /tmp/animal-agent-artifact
+
+      - name: Extract and inspect runtime dependencies
+        shell: bash
+        run: |
+          mkdir -p /tmp/animal-agent-extracted
+          unzip -q /tmp/animal-agent-artifact/AnimalAgent-Linux.zip -d /tmp/animal-agent-extracted
+          PACKAGE=/tmp/animal-agent-extracted/AnimalAgent
+          export LD_LIBRARY_PATH="$PACKAGE/lib:$PACKAGE/runtime/python/lib:${LD_LIBRARY_PATH:-}"
+          PYTHON="$PACKAGE/runtime/python/bin/python"
+          if [[ ! -x "$PYTHON" ]]; then PYTHON="$PACKAGE/runtime/python/bin/python3"; fi
+          for binary in "$PACKAGE/AnimalAgent" "$PYTHON"; do
+            echo "Checking $binary"
+            ldd "$binary" | tee /tmp/ldd.txt
+            if grep -q "not found" /tmp/ldd.txt; then
+              echo "Missing runtime library detected in clean container." >&2
+              exit 1
+            fi
+          done
+          "$PYTHON" -c 'import encodings, json, spacy; spacy.load("en_core_web_sm"); print("Clean-container Python runtime OK")'
+          printf '{"text":"I prefer the rope toy"}\n' | "$PYTHON" "$PACKAGE/Components/NLP/nlp_intent_service.py" > /tmp/nlp-response.json
+          "$PYTHON" -c 'import json; r=json.load(open("/tmp/nlp-response.json")); assert r["intent"] == "preference", r; assert r["method"] == "spacy", r; print("Clean-container NLP service OK")'
+
+      - name: Launch packaged application from outside its directory
+        shell: bash
+        run: |
+          PACKAGE=/tmp/animal-agent-extracted/AnimalAgent
+          cd /tmp
+          set +e
+          timeout --signal=TERM 12s xvfb-run -a "$PACKAGE/run-animal-agent.sh"
+          status=$?
+          set -e
+          if [[ "$status" -ne 124 ]]; then
+            echo "Expected the GUI to remain running until timeout; launcher exited with status $status." >&2
+            exit 1
+          fi
+          echo "Packaged GUI stayed running for the smoke-test window."
