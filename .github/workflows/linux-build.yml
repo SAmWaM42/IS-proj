@@ -76,7 +76,7 @@ jobs:
           cmake -S . -B build-participant-linux \
             -DCMAKE_TOOLCHAIN_FILE="$CMAKE_TOOLCHAIN_FILE" \
             -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=Debug \
             -DANIMAL_AGENT_BUILD_TESTS=ON
           cmake --build build-participant-linux --config Release --parallel
           ctest --test-dir build-participant-linux --output-on-failure
