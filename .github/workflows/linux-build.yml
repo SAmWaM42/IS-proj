@@ -130,8 +130,8 @@ jobs:
             libfreetype6 libflac12t64 libvorbis0a libvorbisenc2 \
             libgl1 libegl1 libwayland-client0 libxkbcommon0 \
             libstdc++6 libgcc-s1 zlib1g libbz2-1.0 liblzma5 libffi8 \
-            libsqlite3-0 libssl3 libreadline8 libncursesw6 libuuid1 \
-            libexpat1 libgdbm6 libgdbm-compat4 libtirpc3 libnsl2 \
+            libsqlite3-0 libssl3t64 libreadline8 libncursesw6 libuuid1 \
+            libexpat1 libgdbm6t64 libgdbm-compat4t64 libtirpc3t64 libnsl2 libcrypt1 \
             libfontconfig1 libpng16-16t64 libharfbuzz0b
 
       - name: Download packaged Linux artifact
