@@ -49,7 +49,15 @@ jobs:
         run: |
           RUNTIME_ROOT="$RUNNER_TEMP/animal-agent-python"
           uv python install 3.11 --install-dir "$RUNTIME_ROOT"
-          PYTHON="$(uv python find 3.11 --managed-python)"
+          # uv installs managed interpreters under a versioned directory inside
+          # the custom install root; 'uv python find' does not search that root
+          # unless it is configured as uv's managed install directory.
+          PYTHON="$(find "$RUNTIME_ROOT" -type f -name 'python3.11' -perm /111 -print -quit)"
+          if [[ -z "$PYTHON" ]]; then
+            echo "Could not locate the Python 3.11 interpreter under $RUNTIME_ROOT" >&2
+            find "$RUNTIME_ROOT" -maxdepth 4 -type f -print >&2
+            exit 1
+          fi
           PYTHON_BIN_DIR="$(dirname "$PYTHON")"
           PYTHON_ROOT="$(dirname "$PYTHON_BIN_DIR")"
           # The Linux packager expects conventional python/python3 names.
