@@ -151,11 +151,11 @@ jobs:
       - name: Inspect directly extracted application and runtime dependencies
         shell: bash
         run: |
-          # upload-artifact preserves the top-level AnimalAgent directory.
-          # download-artifact extracts the archive, leaving that directory here.
-          PACKAGE=/tmp/animal-agent-artifact/AnimalAgent
+          # The artifact path points to dist/linux/AnimalAgent/, so the
+          # downloaded application files are placed directly at this root.
+          PACKAGE=/tmp/animal-agent-artifact
           if [[ ! -d "$PACKAGE" ]]; then
-            echo "Expected AnimalAgent directory was not present in downloaded artifact." >&2
+            echo "Downloaded application directory was not present." >&2
             echo "Downloaded artifact contents:" >&2
             find /tmp/animal-agent-artifact -maxdepth 3 -type f -print >&2
             exit 1
@@ -180,7 +180,7 @@ jobs:
       - name: Launch packaged application from outside its directory
         shell: bash
         run: |
-          PACKAGE=/tmp/animal-agent-artifact/AnimalAgent
+          PACKAGE=/tmp/animal-agent-artifact
           cd /tmp
           set +e
           timeout --signal=TERM 12s xvfb-run -a "$PACKAGE/run-animal-agent.sh"
